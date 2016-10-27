@@ -1,0 +1,85 @@
+function [measurements] = load_g2o_data(g2o_data_file)
+
+fid = fopen(g2o_data_file, 'r');
+
+edge_id = 0;
+
+read_line = fgets(fid);  % Read the next line from the file
+
+while ischar(read_line)  % As long as this line is a valid character string
+    
+    token = strtok(read_line);
+    
+    if(strcmp(token, 'EDGE_SE3:QUAT'))
+        
+        % 3D OBSERVATION
+        
+        edge_id = edge_id + 1;  % Increment the count for the number of edges
+        
+        
+        % The g2o format specifies a relative pose measurement in the
+        % following form:
+        
+        % EDGE_SE3:QUAT id1 id2 dx dy dz dqx dqy dqz dqw
+        % I11 I12 I13 I14 I15 I16
+        %     I22 I23 I24 I25 I26
+        %         I33 I34 I35 I36
+        %             I44 I45 I46
+        %                 I55 I56
+        %                     I66
+        
+        [name, id1, id2, dx, dy, dz, dqx, dqy, dqz, dqw, ...
+            I11, I12, I13, I14, I15, I16, ...
+            I22, I23, I24, I25, I26, ...
+            I33, I34, I35, I36, ...
+            I44, I45, I46, ...
+            I55, I56, ...
+            I66] = ...
+            strread(read_line, '%s %d %d %f %f %f %f %f %f %f    %f %f %f %f %f %f    %f %f %f %f %f   %f %f %f %f   %f %f %f    %f %f    %f');
+        
+        % Store the connectivity of this edge
+        edges(edge_id, :) = [id1 + 1, id2 + 1];  % NB: .g2o uses 0-based indexing, whereas MATLAB uses 1-based indexing
+        
+        % Store the translational measurement
+        t{edge_id} = [dx, dy, dz]';
+        
+        % Reconstruct quaternion for relative measurement
+        q = [dqw, dqx, dqy, dqz]';
+        q = q / norm(q);  % Make sure that this is properly normalized
+        
+        % Compute and store corresponding rotation matrix
+        R{edge_id} = quat2rot(q);
+        
+        % Reconstruct the information matrix
+        measurement_info = ...
+            [I11, I12, I13, I14, I15, I16,
+            I12, I22, I23, I24, I25, I26,
+            I13, I23, I33, I34, I35, I36,
+            I14, I24, I34, I44, I45, I46,
+            I15, I25, I35, I45, I55, I56,
+            I16, I26, I36, I46, I56, I66];
+        
+        % Extract and store an outer approximation for the translational 
+        % measurement precision
+        tau{edge_id} = min(eig(measurement_info(1:3, 1:3)));
+        
+        % Extract and store an outer approximation for the rotational
+        % measurement precision
+        kappa{edge_id} = min(eig(measurement_info(4:6, 4:6)));
+            
+    end
+    
+    read_line = fgets(fid);
+end
+
+% Construct and return measurements struct
+measurements.edges = edges;
+measurements.R = R;
+measurements.t = t;
+measurements.kappa = kappa;
+measurements.tau = tau;
+
+disp(sprintf('Read %d 3D measurements', edge_id));
+
+end
+
