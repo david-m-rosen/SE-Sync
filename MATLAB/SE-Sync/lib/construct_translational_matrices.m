@@ -6,6 +6,8 @@ function [T, Omega] = construct_translational_matrices(measurements)
 % matrix Omega containing the translational measurement precisions on its
 % main diagonal (see eq. (23) in the paper).
 
+% Copyright (C) 2016 by David M. Rosen
+
 D = length(measurements.t{1}); % D = dimension of SE(d)
 N = max(max(measurements.edges));  % N = number of nodes in the pose graph
 M = size(measurements.edges,1); % M = number of edges in the pose graph

@@ -5,6 +5,8 @@ function [rows, cols, vals] = rcvize_matrix(M, i, j)
 % block of a sparse matrix, this function computes and returns the
 % corresponding {row, col, val} vectors describing this block
 
+% Copyright (C) 2016 by David M. Rosen
+
 D = size(M, 1);
 
 vals = reshape(M, [1, D^2]);  %Vectorize M by concatenating its columns

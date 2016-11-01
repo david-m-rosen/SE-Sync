@@ -9,6 +9,8 @@ function [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, tol)
 % eigenvalue.  Here 'tol' refers to the relative tolerance of the minimum
 % eigenvalue computation using MATLAB's 'eigs' function
 
+% Copyright (C) 2016 by David M. Rosen
+
 if nargin < 3
     tol = 1e-5;  % default value
 end

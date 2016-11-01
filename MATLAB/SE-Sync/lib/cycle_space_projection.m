@@ -8,6 +8,8 @@ function Mproj = cycle_space_projection(M, Ared, L)
 % -L: A sparse lower-triangular Cholesky factor for the symmetric 
 % positive-definite product (Ared*Ared')
 
+% Copyright (C) 2016 by David M. Rosen
+
 P1 = Ared*M;
 P2 = L \ P1;
 P3 = L' \ P2;

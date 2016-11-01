@@ -1,16 +1,16 @@
-function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, auxiliary_data] = SE_Sync(measurements, manopt_options, SE_Sync_opts, Y0)
-%function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, auxiliary_data] = SE_Sync(measurements, manopt_options, SE_Sync_opts, Y0)
+function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measurements, Manopt_opts, SE_Sync_opts, Y0)
+%function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measurements, Manopt_opts, SE_Sync_opts, Y0)
 %
-% This function implements the SE-Sync algorithm described in the paper
-% "SE-Sync: A Certifiably Correct Algorithm for Synchronization over the
-% Special Euclidean Group"
+% SE-Sync: A certifiably correct algorithm for synchronization over the
+% special Euclidean group
+%
 % 
 % INPUTs:
 % 
 % measurements:  A MATLAB struct containing the data describing the special
 %   Euclidean synchronization problem (see eq. (11) in the paper for 
 %   details). Specifically, measurements must contain the following fields:
-%   edges:  An (mx2)-dimension encoding the edges in the measurement 
+%   edges:  An (mx2)-dimensional matrix encoding the edges in the measurement 
 %     network; edges(k, :) = [i,j] means that the kth measurement is of the
 %     relative transform x_i^{-1} x_j.  NB:  This indexing scheme requires
 %     that the states x_i are numbered sequentially as x_1, ... x_n.
@@ -23,13 +23,17 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, auxiliary_data] = SE_Sync(mea
 %   tau:  An m-dimensional cell array whose kth element gives the precision
 %     of the translational part of the kth measurement.
 %
-% manopt_options:  A MATLAB struct containing various options that 
+% Manopt_opts [optional]:  A MATLAB struct containing various options that 
 %       determine the behavior of Manopt's Riemannian truncated-Newton 
 %       trust-region method, which we use to solve instances of the 
 %       rank-restricted form of the semidefinite relaxation.  This struct 
-%       contains the following fields (among others, see the Manopt
-%       documentation)
+%       contains the following [optional] fields (among others, see the 
+%       Manopt documentation)
 %   tolgradnorm:  Stopping criterion; norm tolerance for the Riemannian gradient
+%   rel_func_tol:  An additional stopping criterion for the Manopt
+%     solver.  Terminate whenever the relative decrease in function value
+%     between subsequenct iterations is less than this value (in the range
+%     (0,1) ).
 %   maxinner:  Maximum number of Hessian-vector products to evaluate as part
 %      of the truncated conjugate-gradient procedure used to compute update
 %      steps.
@@ -37,21 +41,18 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, auxiliary_data] = SE_Sync(mea
 %   maxiter:  Maximum number of outer iterations (update steps).
 %   maxtime:  Maximum permissible elapsed computation time (in seconds).
 %
-% SE_Sync_opts:  A MATLB struct determining the behavior of the SE-Sync
-%       algorithm.  This struct contains the following fields:
+% SE_Sync_opts [optional]:  A MATLAB struct determining the behavior of the 
+%       SE-Sync algorithm.  This struct contains the following [optional]
+%       fields:
 %   r0:  The initial value of the maximum-rank parameter r at which to 
 %      start the Riemannian Staircase
 %   rmax:  The maximum value of the maximum-rank parameter r.
 %   eig_comp_rel_tol:  Relative tolerance for the minimum-eigenvalue 
 %      computation needed to verify second-order optimality using MATLAB's 
 %      eigs command (typical values here are on the order of 10^-5)
-%   min_eig_threshold:  Threshold for the minimum eigenvalue in order to
+%   min_eig_lower_bound:  Lower bound for the minimum eigenvalue in order to
 %      consider the matrix Q - Lambda to be positive semidefinite.  Typical
-%      values here should be small-magnitude negative numbers, e.g. 10^-4
-%   rel_func_decrease_tol:  An additional stopping criterion for the Manopt
-%     solver.  Terminate whenever the relative decrease in function value
-%     between subsequenct iterations is less than this value (in the range
-%     (0,1) ).
+%      values here should be small-magnitude negative numbers, e.g. -10^-4
 %
 % Y0:  [Optional]  An initial point on the manifold St(d, r)^n at which to
 %      initialize the first Riemannian optimization problem.  If this
@@ -90,7 +91,7 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, auxiliary_data] = SE_Sync(mea
 %      during its last execution (i.e. when solving the last explored level
 %      the Riemannian Staircase).
 %
-% auxiliary_data:  A MATLAB struct containing several auxiliary matrices
+% problem_data:  A MATLAB struct containing several auxiliary matrices
 % constructed from the input measurements that are used internally
 % throughout the SE-Sync algorithm.  Specifically, this struct contains the
 % following fields:
@@ -113,17 +114,113 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, auxiliary_data] = SE_Sync(mea
 %   V:  The sparse translational data matrix defined in eq. (16) in the
 %       paper.
 
+% Copyright (C) 2016 by David M. Rosen
+
 
 disp(sprintf('\n\n========== SE-Sync ==========\n'));
 
 timerVal = tic();
 
 
+%% INPUT PARSING
+
+% SE-Sync settings:
+disp(sprintf('ALGORITHM SETTINGS:\n'));
+
+if nargin < 3
+    disp('Using default settings for SE-Sync:');
+    SE_Sync_opts = struct;  % Create empty structure
+else
+    disp('SE-Sync settings:');
+end
+
+if isfield(SE_Sync_opts, 'r0')
+    disp(sprintf(' Initial level of Riemannian Staircase: %d', SE_Sync_opts.r0));
+else
+    SE_Sync_opts.r0 = 5;
+    disp(sprintf(' Setting initial level of Riemannian Staircase to %d [default]', SE_Sync_opts.r0));
+end
+
+if isfield(SE_Sync_opts, 'rmax')
+    disp(sprintf(' Final level of Riemannian Staircase: %d', SE_Sync_opts.rmax));
+else
+    SE_Sync_opts.rmax = 7;
+    disp(sprintf(' Setting final level of Riemannian Staircase to %d [default]', SE_Sync_opts.rmax));
+end
+
+if isfield(SE_Sync_opts, 'eig_comp_rel_tol')
+    disp(sprintf(' Relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness: %g', SE_Sync_opts.eig_comp_rel_tol));
+else
+    SE_Sync_opts.eig_comp_rel_tol = 1e-4;
+    disp(sprintf(' Setting relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness to: %g [default]', SE_Sync_opts.eig_comp_rel_tol));
+end
+
+if isfield(SE_Sync_opts, 'min_eig_lower_bound')
+    disp(sprintf(' Lower bound for minimum eigenvalue in test for positive semidefiniteness: %g', SE_Sync_opts.min_eig_lower_bound));
+else
+    SE_Sync_opts.min_eig_lower_bound = -1e-3;
+    disp(sprintf(' Setting lower bound for minimum eigenvalue in test for positive semidefiniteness to: %g [default]', SE_Sync_opts.min_eig_lower_bound));
+end
+
+disp(sprintf('\n'));
+
+% Manopt settings:
+
+if nargin < 2
+    disp('Using default settings for Manopt:');
+    Manopt_opts = struct;  % Create empty structure
+else
+    disp('Manopt settings:');
+end
+
+if isfield(Manopt_opts, 'tolgradnorm')
+    disp(sprintf(' Stopping tolerance for norm of Riemannian gradient: %g', Manopt_opts.tolgradnorm));
+else
+    Manopt_opts.tolgradnorm = 1e-2;
+    disp(sprintf(' Setting stopping tolerance for norm of Riemannian gradient to: %g [default]', Manopt_opts.tolgradnorm));
+end
+
+if isfield(Manopt_opts, 'rel_func_tol')
+    disp(sprintf(' Stopping tolerance for relative function decrease: %g', Manopt_opts.rel_func_tol));
+else
+    Manopt_opts.rel_func_tol = 1e-5;
+    disp(sprintf(' Setting stopping tolerance for relative function decrease to: %g [default]', Manopt_opts.rel_func_tol));
+end
+
+if isfield(Manopt_opts, 'maxinner')
+    disp(sprintf(' Maximum number of Hessian-vector products to evaluate in each truncated Newton iteration: %d', Manopt_opts.maxinner));
+else
+    Manopt_opts.maxinner = 500;
+    disp(sprintf(' Setting maximum number of Hessian-vector products to evaluate in each truncated Newton iteration to: %d [default]', Manopt_opts.maxinner));
+end
+
+if isfield(Manopt_opts, 'miniter')
+    disp(sprintf(' Minimum number of trust-region iterations: %d', Manopt_opts.miniter));
+else
+    Manopt_opts.miniter = 1;
+    disp(sprintf(' Setting minimum number of trust-region iterations to: %d [default]', Manopt_opts.miniter));
+end
+
+if isfield(Manopt_opts, 'maxiter')
+    disp(sprintf(' Maximum number of trust-region iterations: %d', Manopt_opts.maxiter));
+else
+    Manopt_opts.maxiter = 300;
+    disp(sprintf(' Setting maximum number of trust-region iterations to: %d [default]', Manopt_opts.maxiter));
+end
+
+if isfield(Manopt_opts, 'maxtime')
+    disp(sprintf(' Maximum permissible elapsed computation time [sec]: %g', Manopt_opts.maxtime));
+end
+
+
+
+
+
 %% Construct problem data matrices from input
-disp(sprintf('INITIALIZATION:\n'));
+disp(sprintf('\n\nINITIALIZATION:\n'));
  disp('Constructing auxiliary data matrices from raw measurements...');
  tic();
- auxiliary_data = construct_problem_data(measurements);
+ problem_data = construct_problem_data(measurements);
  auxiliary_matrix_construction_time = toc();
  disp(sprintf('Auxiliary data matrix construction finished\n', auxiliary_matrix_construction_time));
  
@@ -142,37 +239,37 @@ min_eig_vals = zeros(1, max_num_iters);
 
 % Set up Manopt problem
 % Check if a solver was explicitly supplied
-if(~isfield(manopt_options, 'solver'))
+if(~isfield(Manopt_opts, 'solver'))
     % Use the trust-region solver by default
-    manopt_options.solver = @trustregions;
+    Manopt_opts.solver = @trustregions;
 end
-solver_name = func2str(manopt_options.solver);
+solver_name = func2str(Manopt_opts.solver);
 if (~strcmp(solver_name, 'trustregions') && ~strcmp(solver_name, 'conjugategradient') && ~strcmp(solver_name, 'steepestdescent'))
     error(sprintf('Unrecognized Manopt solver: %s', solver_name));
 end
 disp(sprintf('Solving Riemannian optimization problems using Manopt''s "%s" solver\n', solver_name));
 
 % Set cost function handles
-manopt_data.cost = @(Y) evaluate_objective(Y', auxiliary_data);
-manopt_data.egrad = @(Y) Euclidean_gradient(Y', auxiliary_data)';
-manopt_data.ehess = @(Y, Ydot) Euclidean_Hessian_vector_product(Y', Ydot', auxiliary_data)';
+manopt_data.cost = @(Y) evaluate_objective(Y', problem_data);
+manopt_data.egrad = @(Y) Euclidean_gradient(Y', problem_data)';
+manopt_data.ehess = @(Y, Ydot) Euclidean_Hessian_vector_product(Y', Ydot', problem_data)';
 
 % We optimize over the manifold M := St(d, r)^N, the N-fold product of the 
 % (Stiefel) manifold of orthonormal d-frames in R^r.
-manopt_data.M = stiefelstackedfactory(auxiliary_data.n, auxiliary_data.d, SE_Sync_opts.r0);
+manopt_data.M = stiefelstackedfactory(problem_data.n, problem_data.d, SE_Sync_opts.r0);
 
 % Set additional stopping criterion for Manopt: stop if the relative
 % decrease in function value between successive iterates drops below the
 % threshold specified in SE_Sync_opts.relative_func_decrease_tol
 if(strcmp(solver_name, 'trustregions'))
-    manopt_options.stopfun = @(manopt_problem, x, info, last) relative_func_decrease_stopfun(manopt_problem, x, info, last, SE_Sync_opts.relative_func_decrease_tol);
+    Manopt_opts.stopfun = @(manopt_problem, x, info, last) relative_func_decrease_stopfun(manopt_problem, x, info, last, Manopt_opts.rel_func_tol);
 end
 
 
 
 % Check if an initial point was supplied
 if nargin < 4
-    disp(sprintf('Initializing Riemannian Staircase with randomly-sampled initial point on St(%d,%d)^%d\n', auxiliary_data.d, SE_Sync_opts.r0, auxiliary_data.n));
+    disp(sprintf('Initializing Riemannian Staircase with randomly-sampled initial point on St(%d,%d)^%d\n', problem_data.d, SE_Sync_opts.r0, problem_data.n));
     % Sample a random point on the Stiefel manifold as an initial guess
     Y0 = manopt_data.M.rand()';
 else
@@ -192,7 +289,7 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     
     disp(sprintf('RIEMANNIAN STAIRCASE (level r = %d):', r)); 
     
-    [YoptT, Fval, manopt_info, manopt_options] = manoptsolve(manopt_data, Y0', manopt_options);
+    [YoptT, Fval, manopt_info, Manopt_opts] = manoptsolve(manopt_data, Y0', Manopt_opts);
     Yopt = YoptT';
     SDPLRval = Fval(end);
     
@@ -205,7 +302,7 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     % preserves Yopt's first-order criticality while ensuring that it is
     % rank-deficient
     
-    Yplus = vertcat(Yopt, zeros(1, auxiliary_data.d * auxiliary_data.n));
+    Yplus = vertcat(Yopt, zeros(1, problem_data.d * problem_data.n));
        
     
     disp(sprintf('\nChecking second-order optimality...'));
@@ -213,18 +310,18 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     % 2nd-order optimality conditions
     
     % Compute Lagrange multiplier matrix Lambda corresponding to Yplus
-    Lambda = compute_Lambda(Yopt, auxiliary_data);
+    Lambda = compute_Lambda(Yopt, problem_data);
     
     % Compute minimum eigenvalue/eigenvector pair for Q - Lambda
     tic();
-    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, auxiliary_data, SE_Sync_opts.eig_comp_rel_tol);
+    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, SE_Sync_opts.eig_comp_rel_tol);
     min_eig_comp_time = toc();
     
     % Store the minimum eigenvalue and elapsed computation times
     min_eig_vals(iter) = lambda_min;
     min_eig_times(iter) = min_eig_comp_time;
     
-    if( lambda_min > SE_Sync_opts.min_eig_threshold)
+    if( lambda_min > SE_Sync_opts.min_eig_lower_bound)
         % Yopt is a second-order critical point
         disp(sprintf('Found second-order critical point! (minimum eigenvalue = %g, elapsed computation time %g seconds)\n', lambda_min, min_eig_comp_time));
         break;
@@ -243,10 +340,10 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
         % manifold St(d, r+1)^n at Yplus and provides a direction of
         % negative curvature
         disp('Computing escape direction...');
-        Ydot = vertcat(zeros(r, auxiliary_data.d * auxiliary_data.n), v');
+        Ydot = vertcat(zeros(r, problem_data.d * problem_data.n), v');
         
         % Compute the directional derivative of F at Yplus along Ydot
-        dF0 = trace(Euclidean_gradient(Yplus, auxiliary_data)*Ydot');
+        dF0 = trace(Euclidean_gradient(Yplus, problem_data)*Ydot');
         if dF0 > 0
             Ydot = -Ydot;
         end
@@ -254,7 +351,7 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
         % Augment the dimensionality of the Stiefel manifolds in
         % preparation for the next iteration
         
-        manopt_data.M = stiefelstackedfactory(auxiliary_data.n, auxiliary_data.d, r+1);
+        manopt_data.M = stiefelstackedfactory(problem_data.n, problem_data.d, r+1);
         
         % Perform line search along the escape direction Ydot to escape the
         % saddle point and obtain the initial iterate for the next level in
@@ -282,21 +379,21 @@ SDPval = SDPLRval;
 disp('Rounding solution...');
 % Round the solution
 tic();
-Rhat = round_solution(Yopt, auxiliary_data);
+Rhat = round_solution(Yopt, problem_data);
 solution_rounding_time = toc();
 disp(sprintf('Elapsed computation time: %g seconds\n', solution_rounding_time));
 
 disp('Recovering translational estimates...');
 % Recover the optimal translational estimates
 tic();
-that = recover_translations(Rhat, auxiliary_data);
+that = recover_translations(Rhat, problem_data);
 translation_recovery_time = toc();
 disp(sprintf('Elapsed computation time: %g seconds\n', translation_recovery_time));
 
 xhat.R = Rhat;
 xhat.t = that;
 
-Fxhat = evaluate_objective(Rhat, auxiliary_data);
+Fxhat = evaluate_objective(Rhat, problem_data);
 
 disp(sprintf('Suboptimality bound of recovered solution xhat: %g\n', Fxhat - SDPval));
 total_computation_time = toc(timerVal);

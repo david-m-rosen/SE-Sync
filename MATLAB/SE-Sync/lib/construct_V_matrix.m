@@ -4,6 +4,8 @@ function V = construct_V_matrix(measurements)
 % This function constructs and returns the translational data matrix V
 % defined in equation (16) of the paper
 
+% Copyright (C) 2016 by David M. Rosen
+
 D = length(measurements.t{1}); % D = dimension of SE(d)
 N = max(max(measurements.edges));  % N = number of nodes in the pose graph
 M = size(measurements.edges,1); % M = number of edges in the pose graph

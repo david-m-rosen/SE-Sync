@@ -19,6 +19,7 @@ function QX = Qproduct(X, problem_data)
 % -Omega: The (sparse) matrix whose main diagonal contains the precisions
 % of the translational measurements
 
+% Copyright (C) 2016 by David M. Rosen
 
 %TRANSLATIONAL TERM
 

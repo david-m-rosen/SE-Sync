@@ -3,7 +3,9 @@ function Lambda_blocks = compute_Lambda(Yopt, problem_data)
 %
 % Given an estimated local minimum Yopt for the (possibly lifted) relaxation,
 % this function computes and returns the block-diagonal elements of the
-% corresponding Lagrange multiplier 
+% corresponding Lagrange multiplier
+
+% Copyright (C) 2016 by David M. Rosen
 
 Lambda_blocks = zeros(problem_data.d, problem_data.d*problem_data.n);
 

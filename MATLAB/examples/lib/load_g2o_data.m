@@ -1,9 +1,29 @@
-function [measurements] = load_g2o_data(g2o_data_file)
+function measurements = load_g2o_data(g2o_data_file)
+%
+% function measurements = load_g2o_data(g2o_data_file)
+% This function accepts as input a .g2o file containing the description of
+% a 2D or 3D pose graph SLAM problem, and returns a MATLAB struct
+% 'measurements' containing the description of the problem in the format 
+% required by SE-Sync.  More precisely, 'measurements' consists of:
+% 
+% edges:  An (mx2)-dimensional matrix encoding the edges in the measurement 
+%      network; edges(k, :) = [i,j] means that the kth measurement is of the
+%      relative transform x_i^{-1} x_j.  NB:  This indexing scheme requires
+%      that the states x_i are numbered sequentially as x_1, ... x_n.
+% R:  An m-dimensional cell array whose kth element is the rotational part
+%      of the kth measurement
+% t:  An m-dimensional cell array whose kth element is the translational
+%      part of the kth measurement
+% kappa:  An m-dimensional cell array whose kth element gives the 
+%      precision of the rotational part of the kth measurement. 
+% tau:  An m-dimensional cell array whose kth element gives the precision
+%      of the translational part of the kth measurement.
+%
+% 
+
 
 fid = fopen(g2o_data_file, 'r');
-
 edge_id = 0;
-
 read_line = fgets(fid);  % Read the next line from the file
 
 while ischar(read_line)  % As long as this line is a valid character string
@@ -11,13 +31,12 @@ while ischar(read_line)  % As long as this line is a valid character string
     token = strtok(read_line);
     
     if(strcmp(token, 'EDGE_SE3:QUAT'))
-        
         % 3D OBSERVATION
-        
+    
         edge_id = edge_id + 1;  % Increment the count for the number of edges
         
         
-        % The g2o format specifies a relative pose measurement in the
+        % The g2o format specifies a 3D relative pose measurement in the
         % following form:
         
         % EDGE_SE3:QUAT id1 id2 dx dy dz dqx dqy dqz dqw
@@ -66,7 +85,43 @@ while ischar(read_line)  % As long as this line is a valid character string
         % Extract and store an outer approximation for the rotational
         % measurement precision
         kappa{edge_id} = min(eig(measurement_info(4:6, 4:6)));
-            
+    
+    elseif(strcmp(token, 'EDGE_SE2'))
+        % 2D OBSERVATION
+        
+        edge_id = edge_id + 1;
+        
+         % The g2o format specifies a 3D relative pose measurement in the
+        % following form:
+        
+        % EDGE_SE2 id1 id2 dx dy dtheta, I11, I12, I13, I22, I23, I33
+        
+        [name, id1, id2, dx, dy, dth, I11, I12, I13, I22, I23, I33] = strread(read_line, '%s %d %d %f %f %f %f %f %f %f %f %f');
+        
+          % Store the connectivity of this edge
+        edges(edge_id, :) = [id1 + 1, id2 + 1];  % NB: .g2o uses 0-based indexing, whereas MATLAB uses 1-based indexing
+        
+        % Store the translational measurement
+        t{edge_id} = [dx, dy]';
+       
+        % Reconstruct and store the rotational measurement
+        R{edge_id} = [cos(dth), -sin(dth); 
+                     sin(dth), cos(dth)];
+        
+        % Reconstruct the information matrix
+        measurement_info = ...
+            [I11, I12, I13;
+            I12, I22, I23;
+            I13, I23, I33];
+        
+        % Extract and store an outer approximation for the translational 
+        % measurement precision
+        tau{edge_id} = min(eig(measurement_info(1:2, 1:2)));
+        
+        % Extract and store an outer approximation for the rotational
+        % measurement precision
+        kappa{edge_id} = I33;
+       
     end
     
     read_line = fgets(fid);
@@ -78,8 +133,6 @@ measurements.R = R;
 measurements.t = t;
 measurements.kappa = kappa;
 measurements.tau = tau;
-
-disp(sprintf('Read %d 3D measurements', edge_id));
 
 end
 

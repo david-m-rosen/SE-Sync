@@ -4,6 +4,8 @@ function [R, singular_values, determinants] = round_solution(Yopt, problem_data)
 % Given an element Yopt in St(d, r)^n, this function rounds Yopt to an
 % element of SO(d)^n
 
+% Copyright (C) 2016 by David M. Rosen
+
 
 [r, trash] = size(Yopt);
 

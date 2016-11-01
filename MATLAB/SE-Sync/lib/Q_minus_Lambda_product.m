@@ -3,6 +3,8 @@ function Q_minus_Lambda_x = Q_minus_Lambda_product(x, Lambda, problem_data )
 %
 % This function computes and returns the matrix-vector product (Q - Lambda)*x.
 
+% Copyright (C) 2016 by David M. Rosen
+
 Lambda_x = zeros(size(x));
 
 for i = 1:problem_data.n

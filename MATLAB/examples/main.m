@@ -1,44 +1,43 @@
+% This file contains a minimum working example demonstrating the use of the
+% MATLAB distribution of SE-Sync, a certifiably correct algorithm for 
+% synchronization over the special Euclidean group
+%
+% Copyright (C) 2016 by David M. Rosen
+
 %% Reset environment
 clear all;
 close all;
 clc;
 
-%% Set up dependencies
+%% Import SE-Sync
+run('../import_SE_Sync.m');  % It's that easy :-)!
 
-% Import SE-Sync
-run('../import_SESync.m');
-
-% Add auxiliary experimental helper code
+% Add helper code for loading files, plotting output, etc.
 addpath(strcat(pwd, '/lib'));
 
 
 %% Select dataset to run
 % 3D datasets
+prefix_3d = '../../data/3D/';
 
-test = '../../data/3D/sphere2500vertigo';
-%test ='sphere_bignoise_vertex3';
-%test = 'torus3D';
-%test = 'grid3D';
-%test = 'parking-garage';
-%test = 'cubicle';
-%test = 'rim';
+sphere2500 = strcat(prefix_3d, 'sphere2500vertigo');
+sphere_a = strcat(prefix_3d,  'sphere_bignoise_vertex3');
+torus = strcat(prefix_3d, 'torus3D');
+grid = strcat(prefix_3d, 'grid3D');
+garage = strcat(prefix_3d, 'parking-garage');
+cubicle = strcat(prefix_3d, 'cubicle');
 
 % 2D datasets
-%test = 'm3500_g2o';
-%test = 'city10000_vertigo';
-%test = 'intel_suger';
-%test = 'ais2klinik_suger';
-%test = 'ETHCampus_suger';
-%test = 'kitti_00_odom_GT_LC.';
-%test = 'kitti_02_odom_GT_LC.';
-%test = 'kitti_05_odom_GT_LC';
-%test = 'kitti_07_odom_GT_LC';
-%test = 'kitti_08_odom_GT_LC';
-%test = 'kitti_09_odom_GT_LC';
+prefix_2d = '../../data/2D/';
 
-g2o_file = strcat(test, '.g2o');
-workspace_file = strcat(test, '.mat'); 
+m3500 =   strcat(prefix_2d, 'm3500');
+city10000 = strcat(prefix_2d, 'city10000_vertigo');
+intel = strcat(prefix_2d, 'intel_suger');
+ais = strcat(prefix_2d, 'ais2klinik_suger');
+eth = strcat(prefix_2d, 'ETHCampus_suger');
 
+% Pick the dataset to run here
+g2o_file = strcat(cubicle, '.g2o');
 
 %% Read in .g2o file
 tic();
@@ -51,27 +50,31 @@ disp(sprintf('Processed input file %s in %g seconds', g2o_file, t));
 disp(sprintf('Number of poses: %d', num_poses));
 disp(sprintf('Number of measurements: %d\n', num_measurements));
 
-%% Set Manopt options
-manopt_options.tolgradnorm = 1e-2;  % Stopping tolerance for norm of Riemannian gradient
-manopt_options.miniter = 1;  % Minimum number of outer iterations (i.e. accepted update steps) to perform
-manopt_options.maxiter = 300;  % Maximum number of outer iterations (i.e. accepted update steps) to perform
-manopt_options.maxinner = 500;  % Maximum number of iterations for the conjugate-gradient method used to compute approximate Newton steps
+%% Set Manopt options (if desired)
+Manopt_opts.tolgradnorm = 1e-2;  % Stopping tolerance for norm of Riemannian gradient
+Manopt_opts.rel_func_tol = 1e-5;  % Additional stopping criterion for Manopt: stop if the relative function decrease between two successive accepted iterates is less than this value
+Manopt_opts.miniter = 1;  % Minimum number of outer iterations (i.e. accepted update steps) to perform
+Manopt_opts.maxiter = 300;  % Maximum number of outer iterations (i.e. accepted update steps) to perform
+Manopt_opts.maxinner = 500;  % Maximum number of iterations for the conjugate-gradient method used to compute approximate Newton steps
 %manopt_options.maxtime = 60*60;  % Maximum computation time to allow, in seconds
 %manopt_options.solver = @steepestdescent;  % Select Manopt solver to use: {trustregions (default), conjugategradient, steepestdescent}
 
-%% Set SE-Sync options
-se_sync_opts.r0 = 6;  % Initial maximum-rank parameter at which to start the Riemannian Staircase
-se_sync_opts.rmax = 10;  % Maximum maximum-rank parameter at which to terminate the Riemannian Staircase
-se_sync_opts.eig_comp_rel_tol = 1e-5;  % Relative tolerance for the minimum-eigenvalue computation used to test for second-order optimality with MATLAB's eigs() function
-se_sync_opts.min_eig_threshold = -1e-4;  % Minimum eigenvalue threshold for accepting a maxtrix as numerically positive-semidefinite
-se_sync_opts.relative_func_decrease_tol = 1e-6;  % Additional stopping criterion for Manopt: stop if the relative function decrease between two successive accepted iterates is less than this value
+
+%% Set SE-Sync options (if desired)
+SE_Sync_opts.r0 = 5;  % Initial maximum-rank parameter at which to start the Riemannian Staircase
+SE_Sync_opts.rmax = 10;  % Maximum maximum-rank parameter at which to terminate the Riemannian Staircase
+SE_Sync_opts.eig_comp_rel_tol = 1e-4;  % Relative tolerance for the minimum-eigenvalue computation used to test for second-order optimality with MATLAB's eigs() function
+SE_Sync_opts.min_eig_lower_bound = -1e-3;  % Minimum eigenvalue threshold for accepting a maxtrix as numerically positive-semidefinite
 
 %% Run SE-Sync
-[SDPval, Yopt, xhat, Fxhat, se_sync_info, auxiliary_data] = SE_Sync(measurements, manopt_options, se_sync_opts);
 
-%% Save workspace
-%save(workspace_file);
+% Pass explict settings for SE-Sync and/or Manopt
+%[SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measurements, Manopt_opts, SE_Sync_opts);
 
+% ... or ...
+
+% Use default settings for everything
+[SDPval, Yopt, xhat, Fxhat, se_sync_info, problem_data] = SE_Sync(measurements);
 
 %% Plot resulting solution
 plot_loop_closures = true;
@@ -83,12 +86,5 @@ else
 end
 axis tight;
 
-%View(-90, 30);  % For 3D but nearly-planar datasets
-
-
-% Get rid of MATLAB's annoying border around the plotted stuff
-%set(gca,'position',[0 0 1 1],'units','normalized'); 
-
-fig_filename = strcat(test, '.eps');
-print(fig_filename, '-depsc');
+%view(-90, 90);  % For plotting 3D but nearly-planar datasets
 

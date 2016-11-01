@@ -6,6 +6,9 @@ function t = recover_translations(R, problem_data)
 % maximum-likelihood estimation, this function returns a dense (d x n)
 % matrix t whose columns are the oorresponding optimal translations
 
+% Copyright (C) 2016 by David M. Rosen
+
+
 % We have that vec(t) = -(L^pinv V \otimes I_3) vec(R)  (1)
 %
 % Using the fact that vec(AB) = (B' \otimes I) vec(A),

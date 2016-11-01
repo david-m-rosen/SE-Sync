@@ -10,6 +10,8 @@ function A = construct_incidence_matrix(measurements)
 %
 % (see eq. (7) in the paper).
 
+% Copyright (C) 2016 by David M. Rosen
+
 N = max(max(measurements.edges));  % Number of nodes in the pose graph
 M = size(measurements.edges, 1);  % Number of edges in the pose graph
 

@@ -20,6 +20,8 @@ M = size(measurements.edges,1); % M = number of edges in the pose graph
 % exploiting the fact that MATLAB's sparse() command forms the resulting
 % sparse matrix by *summing* values with the same (i,j) indices.
 
+% Copyright (C) 2016 by David M. Rosen
+
 D2 = D^2;
 off_diag_inc = 2*D2;
 

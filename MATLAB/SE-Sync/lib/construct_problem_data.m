@@ -50,6 +50,8 @@ function problem_data = construct_problem_data(measurements)
 %function constructs and returns the data matrices defining the pose-graph
 %relaxation problem
 
+% Copyright (C) 2016 by David M. Rosen
+
 % Set additional variables
 problem_data.d = length(measurements.t{1});
 problem_data.n = max(max(measurements.edges));

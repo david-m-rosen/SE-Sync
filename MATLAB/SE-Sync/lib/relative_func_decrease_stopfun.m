@@ -6,6 +6,8 @@ function stop = relative_func_decrease_stopfun(manopt_problem, x, info, last, re
 % between two successive accepted update steps is less than
 % rel_func_decrease_tol
 
+% Copyright (C) 2016 by David M. Rosen
+
 this_iterate_accepted = info(last).accepted;
 
 if (~this_iterate_accepted || last == 1)
