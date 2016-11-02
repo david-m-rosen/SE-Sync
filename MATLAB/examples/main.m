@@ -37,7 +37,7 @@ ais = strcat(prefix_2d, 'ais2klinik_suger');
 eth = strcat(prefix_2d, 'ETHCampus_suger');
 
 % Pick the dataset to run here
-g2o_file = strcat(cubicle, '.g2o');
+g2o_file = strcat(sphere2500, '.g2o');
 
 %% Read in .g2o file
 tic();
