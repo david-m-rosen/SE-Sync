@@ -4,7 +4,7 @@ We are making this software freely available in the hope that it will be useful 
 
 @article{Rosen2016SESync,
 title = {A Certifiably Correct Algorithm for Synchronization over the Special {Euclidean} Group},
-author = {Rosen, David M. and Carlone, Luca and Bandeira, Afonso S. and Leonard, John J.},
+author = {Rosen, D.M. and Carlone, L. and Bandeira, A.S. and Leonard, J.J.},
 booktitle = {Intl. Workshop on the Algorithmic Foundations of Robotics (WAFR)},
 month = dec,
 year = {2016},
@@ -24,7 +24,7 @@ year = {2007},
 month = jul,
 }
 
-If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt toolbox, which provides our MATLAB implementation of RTR:
+If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt toolbox, which provides the MATLAB implementation we use for RTR:
 
 @article{Boumal2014Manopt,
   title={{Manopt}, a {MATLAB} Toolbox for Optimization on Manifolds.},
