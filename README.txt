@@ -1,6 +1,6 @@
 SE-Sync is a certifiably correct algorithm for synchronization over the special Euclidean group, a common problem arising in the context of 2D and 3D geometric estimation (e.g. pose-graph SLAM and camera motion estimation).
 
-We are making this software freely available in the hope that it will be useful to others.  If you use SE-Sync in your own work, please cite the following papers:
+We are making this software freely available in the hope that it will be useful to others.  If you use SE-Sync in your own work, please cite our paper: 
 
 @article{Rosen2016SESync,
 title = {A Certifiably Correct Algorithm for Synchronization over the Special {Euclidean} Group},
@@ -10,6 +10,8 @@ month = dec,
 year = {2016},
 address = {San Francisco, CA},
 }
+
+and the following paper of Absil et al., which describes the Riemannian trust-region (RTR) method that SE-Sync employs:
 
 @article{Absil2007Trust,
 title = {Trust-Region Methods on {Riemannian} Manifolds},
@@ -22,7 +24,7 @@ year = {2007},
 month = jul,
 }
 
-If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt MATLAB toolbox, which SE-Sync requires:
+If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt toolbox, which provides our MATLAB implementation of RTR:
 
 @article{Boumal2014Manopt,
   title={{Manopt}, a {MATLAB} Toolbox for Optimization on Manifolds.},
@@ -33,6 +35,8 @@ If you use the MATLAB implementation of SE-Sync, please also cite the following 
   pages={1455--1459},
   year={2014}
 }
+
+==== Copyright and License ====
 
 The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016 by David M. Rosen, and are distributed under the terms of the GNU General Public License (GPL) version 3 (or later).  Please see the files LICENSE.txt and COPYING.txt for more information.
 
