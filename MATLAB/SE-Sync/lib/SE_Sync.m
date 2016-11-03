@@ -183,7 +183,7 @@ end
 if isfield(Manopt_opts, 'rel_func_tol')
     disp(sprintf(' Stopping tolerance for relative function decrease: %g', Manopt_opts.rel_func_tol));
 else
-    Manopt_opts.rel_func_tol = 1e-5;
+    Manopt_opts.rel_func_tol = 1e-6;
     disp(sprintf(' Setting stopping tolerance for relative function decrease to: %g [default]', Manopt_opts.rel_func_tol));
 end
 
