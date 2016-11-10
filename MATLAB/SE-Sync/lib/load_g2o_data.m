@@ -78,13 +78,15 @@ while ischar(read_line)  % As long as this line is a valid character string
             I15, I25, I35, I45, I55, I56,
             I16, I26, I36, I46, I56, I66];
         
-        % Extract and store an outer approximation for the translational 
-        % measurement precision
-        tau{edge_id} = min(eig(measurement_info(1:3, 1:3)));
+        % Compute and store the optimal (information-divergence-minimizing)
+        % value of the parameter tau
         
-        % Extract and store an outer approximation for the rotational
-        % measurement precision
-        kappa{edge_id} = min(eig(measurement_info(4:6, 4:6)));
+        tau{edge_id} = 3 / trace(inv(measurement_info(1:3, 1:3)) );
+        
+        
+        % Extract and store the optimal (information-divergence-minimizing)
+        % value of the parameter kappa
+        kappa{edge_id} = 3 / (2 *trace(inv(measurement_info(4:6, 4:6))));
     
     elseif(strcmp(token, 'EDGE_SE2'))
         % 2D OBSERVATION
@@ -116,7 +118,7 @@ while ischar(read_line)  % As long as this line is a valid character string
         
         % Extract and store an outer approximation for the translational 
         % measurement precision
-        tau{edge_id} = min(eig(measurement_info(1:2, 1:2)));
+        tau{edge_id} = 2 / trace( inv(measurement_info(1:2, 1:2)));
         
         % Extract and store an outer approximation for the rotational
         % measurement precision
