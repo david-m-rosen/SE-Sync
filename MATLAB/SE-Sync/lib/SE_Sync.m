@@ -398,7 +398,9 @@ xhat.t = that;
 
 Fxhat = evaluate_objective(Rhat, problem_data);
 
-fprintf('Suboptimality bound of recovered solution xhat: %g\n\n', Fxhat - SDPval);
+fprintf('Value of SDP solution Y: %g\n', SDPval);
+fprintf('Value of rounded pose estimate xhat: %g\n', Fxhat);
+fprintf('Suboptimality bound of recovered pose estimate: %g\n\n', Fxhat - SDPval);
 total_computation_time = toc(timerVal);
 
 fprintf('Total elapsed computation time: %g seconds\n\n', total_computation_time);
