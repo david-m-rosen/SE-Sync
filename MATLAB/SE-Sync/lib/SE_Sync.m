@@ -101,6 +101,7 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   m:  The number of relative measurements
 %   d:  The dimension of the Euclidean space on which these group elements
 %       act (generally d is 2 or 3).
+%   LWtau:  The Laplacian for the translational weight graph W^tau.
 %   ConLap:  The connection Laplacian for the set of rotational
 %       measurements; see eq. (15) in the paper.
 %   A:  An oriented incidence matrix for the directed graph of

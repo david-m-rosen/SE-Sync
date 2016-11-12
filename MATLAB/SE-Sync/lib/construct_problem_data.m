@@ -31,6 +31,7 @@ function problem_data = construct_problem_data(measurements)
 %     the estimation takes place (typically d = 2 or 3).
 % n:  The number of states to be estimated.
 % m:  The number of available measurements.
+% LWtau:  The Laplacian for the translational weight graph W^tau.
 % ConLap:  The connection Laplacian for the rotational measurements (see
 %     eq. (15) in the paper.
 % A:  The oriented incidence matrix for the underlying directed graph of
@@ -57,19 +58,18 @@ problem_data.d = length(measurements.t{1});
 problem_data.n = max(max(measurements.edges));
 problem_data.m = size(measurements.edges, 1);
 
-
 % Construct connection Laplacian for the rotational measurements
 tic();
 problem_data.ConLap = construct_connection_Laplacian(measurements);
 t = toc();
-disp(sprintf('Constructed rotational connection Laplacian in %g seconds', t));
+fprintf('Constructed rotational connection Laplacian in %g seconds\n', t);
 
 % Construct the oriented incidence matrix for the underlying directed graph
 % of measurements
 tic();
 problem_data.A = construct_incidence_matrix(measurements);
 t = toc();
-disp(sprintf('Constructed oriented incidence matrix in %g seconds', t));
+fprintf('Constructed oriented incidence matrix in %g seconds\n', t);
 
 % Construct the reduced oriented incidence matrix
 problem_data.Ared = problem_data.A(1:problem_data.n-1, :);
@@ -80,16 +80,23 @@ tic();
 reducedLaplacian = problem_data.Ared * problem_data.Ared';
 problem_data.L = chol(reducedLaplacian, 'lower');
 t = toc();
-disp(sprintf('Computed lower-triangular factor of reduced incidence matrix in %g seconds', t));
+fprintf('Computed lower-triangular factor of reduced incidence matrix in %g seconds\n', t);
 
 tic();
 [T, Omega] = construct_translational_matrices(measurements);
 V = construct_V_matrix(measurements);
 t = toc();
-disp(sprintf('Constructed translational observation and measurement precision matrices in %g seconds', t));
+fprintf('Constructed translational observation and measurement precision matrices in %g seconds\n', t);
 
 problem_data.T = T;
 problem_data.Omega = Omega;
 problem_data.V = V;
+
+tic();
+LWtau = problem_data.A * problem_data.Omega * problem_data.A';
+t = toc();
+fprintf('Constructed Laplacian for the rotational weight graph in %g seconds\n', t);
+
+problem_data.LWtau = LWtau;
 end
 
