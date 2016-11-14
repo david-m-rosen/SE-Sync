@@ -1,5 +1,5 @@
-function QX = Qproduct(X, problem_data)
-%function QX = Qproduct(X, problem_data)
+function QX = Qproduct(X, problem_data, use_Cholesky)
+%function QX = Qproduct(X, problem_data, use_Cholesky)
 %
 %This function computes and returns the matrix product P = Q*M, where 
 %
@@ -23,6 +23,10 @@ function QX = Qproduct(X, problem_data)
 
 %TRANSLATIONAL TERM
 
+if nargin < 3
+    use_Cholesky = true;
+end
+
 %We begin by computing the translational term:
 %
 % Qtau = T' * Pi * Omega * Pi * T * M
@@ -32,12 +36,11 @@ function QX = Qproduct(X, problem_data)
 % right to left
 
 P1 = problem_data.T*X;  
-P2 = cycle_space_projection(P1, problem_data.Ared, problem_data.L);
+P2 = cycle_space_projection(P1, problem_data.Ared, problem_data.L, use_Cholesky);
 P3 = problem_data.Omega * P2;
-P4 = cycle_space_projection(P3, problem_data.Ared, problem_data.L);
+P4 = cycle_space_projection(P3, problem_data.Ared, problem_data.L, use_Cholesky);
 Qtau = problem_data.T' * P4;
 
-%Now multiply the rows of
 
 QX = problem_data.ConLap*X + Qtau;
 

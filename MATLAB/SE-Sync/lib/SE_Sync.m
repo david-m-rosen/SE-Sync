@@ -53,6 +53,11 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   min_eig_lower_bound:  Lower bound for the minimum eigenvalue in order to
 %      consider the matrix Q - Lambda to be positive semidefinite.  Typical
 %      values here should be small-magnitude negative numbers, e.g. -10^-4
+%   Cholesky:  A Boolean value indicating whether to compute orthogonal
+%      projections onto the cycle space of G using a cached Cholesky
+%      factorization of Ared*Ared' or by applying an orthogonal (QR)
+%      decomposition.  The former method may be faster, but the latter is
+%      more numerically stable.
 %
 % Y0:  [Optional]  An initial point on the manifold St(d, r)^n at which to
 %      initialize the first Riemannian optimization problem.  If this
@@ -165,6 +170,18 @@ else
     fprintf(' Setting lower bound for minimum eigenvalue in test for positive semidefiniteness to: %g [default]\n', SE_Sync_opts.min_eig_lower_bound);
 end
 
+
+if ~isfield(SE_Sync_opts, 'Cholesky')
+    fprintf(' Using Cholesky decomposition to compute orthogonal projections onto the cycle space of G [default]\n');
+    SE_Sync_opts.Cholesky = true;
+else
+    if SE_Sync_opts.Cholesky
+        fprintf(' Using Cholesky decomposition to compute orthogonal projections onto the cycle space of G\n');
+    else
+        fprintf(' Using QR decomposition to compute orthogonal projections onto the cycle space of G\n');
+    end
+end
+
 fprintf('\n');
 
 % Manopt settings:
@@ -253,9 +270,9 @@ end
 fprintf('\nSolving Riemannian optimization problems using Manopt''s "%s" solver\n\n', solver_name);
 
 % Set cost function handles
-manopt_data.cost = @(Y) evaluate_objective(Y', problem_data);
-manopt_data.egrad = @(Y) Euclidean_gradient(Y', problem_data)';
-manopt_data.ehess = @(Y, Ydot) Euclidean_Hessian_vector_product(Y', Ydot', problem_data)';
+manopt_data.cost = @(Y) evaluate_objective(Y', problem_data, SE_Sync_opts.Cholesky);
+manopt_data.egrad = @(Y) Euclidean_gradient(Y', problem_data, SE_Sync_opts.Cholesky)';
+manopt_data.ehess = @(Y, Ydot) Euclidean_Hessian_vector_product(Y', Ydot', problem_data, SE_Sync_opts.Cholesky)';
 
 % We optimize over the manifold M := St(d, r)^N, the N-fold product of the
 % (Stiefel) manifold of orthonormal d-frames in R^r.
@@ -313,11 +330,11 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     % 2nd-order optimality conditions
     
     % Compute Lagrange multiplier matrix Lambda corresponding to Yplus
-    Lambda = compute_Lambda(Yopt, problem_data);
+    Lambda = compute_Lambda(Yopt, problem_data, SE_Sync_opts.Cholesky);
     
     % Compute minimum eigenvalue/eigenvector pair for Q - Lambda
     tic();
-    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, SE_Sync_opts.eig_comp_rel_tol);
+    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, SE_Sync_opts.eig_comp_rel_tol, SE_Sync_opts.Cholesky);
     min_eig_comp_time = toc();
     
     % Store the minimum eigenvalue and elapsed computation times
@@ -396,7 +413,7 @@ fprintf('Elapsed computation time: %g seconds\n\n', translation_recovery_time);
 xhat.R = Rhat;
 xhat.t = that;
 
-Fxhat = evaluate_objective(Rhat, problem_data);
+Fxhat = evaluate_objective(Rhat, problem_data, SE_Sync_opts.Cholesky);
 
 fprintf('Value of SDP solution Y: %g\n', SDPval);
 fprintf('Value of rounded pose estimate xhat: %g\n', Fxhat);
