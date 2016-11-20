@@ -39,7 +39,7 @@ elseif ng0 < problem_data.n
     end
 end
 
-% Finally, round each element of R to an element of SO(d)
+% Finally, project each element of R to SO(d)
 for i = 1:problem_data.n
     R(:, problem_data.d * (i-1) + 1 : problem_data.d *i) = project_to_SOd( R(:, problem_data.d * (i-1) + 1 : problem_data.d *i) );
 end
