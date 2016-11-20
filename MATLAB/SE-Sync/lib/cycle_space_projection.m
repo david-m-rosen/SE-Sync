@@ -20,31 +20,18 @@ function P = cycle_space_projection(M, Ared, L, Cholesky)
 
 % Copyright (C) 2016 by David M. Rosen
 
-if( (nargin < 3) | ((nargin == 4 & ~Cholesky)))
-    % Use QR decomposition to compute product X = (Ared * Ared')^{-1} * Ared * M
-    %
-    % Note that since Ared is full-rank, this corresponds to the solution
-    % of the linear least-squares problem:
-    %
-    % || Ared' X - M ||_2
-    %
-    % via the normal equations
-    
-    X = Ared' \ M;
-else
-    % Compute the product
-    %
-    % X = (Ared * Ared')^{-1} * Ared * M
-    %  = L^{-T} * L^{-1} * Ared * M
-    %
-    % via backsubstitution using the cached Cholesky factor L
-    
-    Y1 = Ared*M;
-    Y2 = L \ Y1;
-    X = L' \ Y2;
-end
+% Instead of computing P directly, we will instead compute its orthogonal
+% complement, using the fact that ker(A)^\perp = image(A^T).  Therefore,
+% the orthogonal complement of P is the vector realizing the minimum
+% distance in:
+%
+% min_y || A^T y - x ||_2
 
-P = M - Ared' * X;
+Y = Ared' \ M;
+
+V = Ared' * Y;
+
+P = M - V;
 
 end
 

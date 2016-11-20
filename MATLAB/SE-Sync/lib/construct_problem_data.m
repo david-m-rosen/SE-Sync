@@ -38,8 +38,8 @@ function problem_data = construct_problem_data(measurements)
 %     measurements (see eq. (7) in the paper).
 % Ared:  The reduced incidence matrix obtained by removing the final 
 %     row of A.
-% L:  The lower-triangular factor of a thin LQ decomposition of the reduced
-%     incidence matrix Ared (see eq. (40) in the paper).
+% L:  The lower-triangular Cholesky factor of the reduced translational
+%     weight graph Laplacian.
 % Omega:  The diagonal matrix of translational matrix precisions (see eq.
 %     (23) in the paper).
 % T:  The sparse matrix of translational observations definedin equation 
@@ -74,14 +74,6 @@ fprintf('Constructed oriented incidence matrix in %g seconds\n', t);
 % Construct the reduced oriented incidence matrix
 problem_data.Ared = problem_data.A(1:problem_data.n-1, :);
 
-% Construct the lower-triangular factor for the reduced oriented incidence
-% matrix
-tic();
-reducedLaplacian = problem_data.Ared * problem_data.Ared';
-problem_data.L = chol(reducedLaplacian, 'lower');
-t = toc();
-fprintf('Computed lower-triangular factor of reduced incidence matrix in %g seconds\n', t);
-
 tic();
 [T, Omega] = construct_translational_matrices(measurements);
 V = construct_V_matrix(measurements);
@@ -92,11 +84,28 @@ problem_data.T = T;
 problem_data.Omega = Omega;
 problem_data.V = V;
 
+
+% Construct the Laplacian for the translational weight graph
 tic();
 LWtau = problem_data.A * problem_data.Omega * problem_data.A';
 t = toc();
-fprintf('Constructed Laplacian for the rotational weight graph in %g seconds\n', t);
-
+fprintf('Constructed Laplacian for the translational weight graph in %g seconds\n', t);
 problem_data.LWtau = LWtau;
+
+
+% Construct the Cholesky factor for the reduced translational weight graph
+% Laplacian
+tic();
+problem_data.L = chol(LWtau(1:end-1, 1:end-1), 'lower');
+t = toc();
+fprintf('Computed lower-triangular factor of reduced translational weight graph Laplacian in %g seconds\n', t);
+
+% Cache a couple of various useful products
+fprintf('Caching additional product matrices ... \n');
+
+problem_data.sqrt_Omega = spdiags(sqrt(spdiags(Omega)), 0, problem_data.m, problem_data.m);
+problem_data.sqrt_Omega_AredT = problem_data.sqrt_Omega * problem_data.Ared';
+problem_data.sqrt_Omega_T = problem_data.sqrt_Omega * problem_data.T;
+
 end
 

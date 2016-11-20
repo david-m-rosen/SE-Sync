@@ -113,8 +113,8 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %       measurements; see eq. (7) in the paper
 %   Ared:  The reduced oriented incidence matrix obtained by removing the
 %       final row of A.
-%   L:  A sparse lower-triangular factor of a thin LQ decomposition of
-%       Ared; see eq. (40) in the paper
+%   L:  A sparse lower-triangular Cholesky factor of the reduced Laplacian
+%       of the translational weight graph
 %   T:  The sparse matrix of translational observations defined in eq. (24)
 %       in the paper
 %   Omega:  The diagonal matrix of translational measurement precisions;
@@ -172,13 +172,13 @@ end
 
 
 if ~isfield(SE_Sync_opts, 'Cholesky')
-    fprintf(' Using Cholesky decomposition to compute orthogonal projections onto the cycle space of G [default]\n');
+    fprintf(' Using Cholesky decomposition to compute orthogonal projection [default]\n');
     SE_Sync_opts.Cholesky = true;
 else
     if SE_Sync_opts.Cholesky
-        fprintf(' Using Cholesky decomposition to compute orthogonal projections onto the cycle space of G\n');
+        fprintf(' Using Cholesky decomposition to compute orthogonal projection\n');
     else
-        fprintf(' Using QR decomposition to compute orthogonal projections onto the cycle space of G\n');
+        fprintf(' Using QR decomposition to compute orthogonal projection\n');
     end
 end
 
@@ -239,9 +239,9 @@ end
 %% Construct problem data matrices from input
 fprintf('\n\nINITIALIZATION:\n\n');
 disp('Constructing auxiliary data matrices from raw measurements...');
-tic();
+aux_time_start = tic();
 problem_data = construct_problem_data(measurements);
-auxiliary_matrix_construction_time = toc();
+auxiliary_matrix_construction_time = toc(aux_time_start);
 fprintf('Auxiliary data matrix construction finished.  Elapsed computation time: %g seconds\n', auxiliary_matrix_construction_time);
 
 %% INITIALIZATION

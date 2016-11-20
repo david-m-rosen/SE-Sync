@@ -1,48 +1,31 @@
 function QX = Qproduct(X, problem_data, use_Cholesky)
-%function QX = Qproduct(X, problem_data, use_Cholesky)
+% function QX = Qproduct(X, problem_data, use_Cholesky)
 %
-%This function computes and returns the matrix product P = Q*M, where 
+% This function computes and returns the matrix product P = Q*X, where 
 %
-%Q = ConLap + T'* Pi * diag(Omega) * Pi * T
+% Q = L(G^rho) + Q^tau
 %
-%is the quadratic form that defines the objective function for the
-%pose-graph optimization problem.  The arguments to this function are:
-%
-% -ConLap:  The (sparse) connection Laplacian for the subgraph of rotational
-% observations
-% -Ared:  The (sparse) reduced reduced adjacency matrix for the underlying
-% (unweighted) pose graph
-% -L:  The (sparse) lower-triangular Cholesky factor for the reduced
-% (unweighted) graph Laplacian LapRed = (Ared * Ared')
-% -T:  The (sparse) matrix constructed from the raw translational
-% observations
-% -Omega: The (sparse) matrix whose main diagonal contains the precisions
-% of the translational measurements
+% is the quadratic form that defines the objective function for the
+% pose-graph optimization problem.
 
 % Copyright (C) 2016 by David M. Rosen
-
-%TRANSLATIONAL TERM
 
 if nargin < 3
     use_Cholesky = true;
 end
 
-%We begin by computing the translational term:
+% We begin by computing the translational term:
 %
-% Qtau = T' * Pi * Omega * Pi * T * M
+% Qtau = T' * Omega^(1/2) * Pi * Omega^(1/2) * T * X
 %
 % In order to avoid having to store and/or manipulate prohibitively large
 % dense matrices, we compute this product by working associatively from
 % right to left
 
-P1 = problem_data.T*X;  
-P2 = cycle_space_projection(P1, problem_data.Ared, problem_data.L, use_Cholesky);
-P3 = problem_data.Omega * P2;
-P4 = cycle_space_projection(P3, problem_data.Ared, problem_data.L, use_Cholesky);
-Qtau = problem_data.T' * P4;
+QtauX = problem_data.sqrt_Omega_T' * orthogonal_projection(problem_data.sqrt_Omega_T * X, problem_data, use_Cholesky);
 
 
-QX = problem_data.ConLap*X + Qtau;
+QX = problem_data.ConLap*X + QtauX;
 
 end
 
