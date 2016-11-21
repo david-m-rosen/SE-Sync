@@ -12,43 +12,42 @@ clc;
 %% Import SE-Sync
 run('../import_SE_Sync.m');  % It's that easy :-)!
 
-% Add helper code for loading files, plotting output, etc.
-addpath(strcat(pwd, '/lib'));
-
 
 %% Select dataset to run
-% 3D datasets
-prefix_3d = '../../data/3D/';
+data_dir = '../../data/';  % Relative path to directory containing example datasets
 
-sphere2500 = strcat(prefix_3d, 'sphere2500vertigo');
-sphere_a = strcat(prefix_3d,  'sphere_bignoise_vertex3');
-torus = strcat(prefix_3d, 'torus3D');
-grid = strcat(prefix_3d, 'grid3D');
-garage = strcat(prefix_3d, 'parking-garage');
-cubicle = strcat(prefix_3d, 'cubicle');
+% 3D datasets
+sphere2500 = 'sphere2500';
+torus = 'torus3D';
+grid = 'grid3D';
+garage = 'parking-garage';
+cubicle = 'cubicle';
+rim = 'rim';
 
 % 2D datasets
-prefix_2d = '../../data/2D/';
+CSAIL = 'CSAIL';
+manhattan = 'manhattan';
+city10000 = 'city10000';
+intel = 'intel';
+ais = 'ais2klinik';
 
-m3500 =   strcat(prefix_2d, 'm3500');
-city10000 = strcat(prefix_2d, 'city10000_vertigo');
-intel = strcat(prefix_2d, 'intel_suger');
-ais = strcat(prefix_2d, 'ais2klinik_suger');
-eth = strcat(prefix_2d, 'ETHCampus_suger');
 
 % Pick the dataset to run here
-g2o_file = strcat(sphere2500, '.g2o');
+file = sphere2500;
+
+g2o_file = strcat(data_dir, file, '.g2o');
 
 %% Read in .g2o file
 tic();
-disp(sprintf('Loading file: %s ...', g2o_file));
+fprintf('Loading file: %s ...\n', g2o_file);
 measurements = load_g2o_data(g2o_file);  
 t = toc();
 num_poses = max(max(measurements.edges));
 num_measurements = length(measurements.kappa);
-disp(sprintf('Processed input file %s in %g seconds', g2o_file, t));
-disp(sprintf('Number of poses: %d', num_poses));
-disp(sprintf('Number of measurements: %d\n', num_measurements));
+d = length(measurements.t{1});
+fprintf('Processed input file %s in %g seconds\n', g2o_file, t);
+fprintf('Number of poses: %d\n', num_poses);
+fprintf('Number of measurements: %d\n', num_measurements);
 
 %% Set Manopt options (if desired)
 Manopt_opts.tolgradnorm = 1e-2;  % Stopping tolerance for norm of Riemannian gradient
@@ -65,16 +64,23 @@ SE_Sync_opts.r0 = 5;  % Initial maximum-rank parameter at which to start the Rie
 SE_Sync_opts.rmax = 10;  % Maximum maximum-rank parameter at which to terminate the Riemannian Staircase
 SE_Sync_opts.eig_comp_rel_tol = 1e-4;  % Relative tolerance for the minimum-eigenvalue computation used to test for second-order optimality with MATLAB's eigs() function
 SE_Sync_opts.min_eig_lower_bound = -1e-3;  % Minimum eigenvalue threshold for accepting a maxtrix as numerically positive-semidefinite
+SE_Sync_opts.Cholesky = false;  % Select whether to use Cholesky or QR decomposition to compute orthogonal projections
+
+use_chordal_initialization = true;  % Select whether to use the chordal initialization, or a random starting point
 
 %% Run SE-Sync
 
-% Pass explict settings for SE-Sync and/or Manopt
-%[SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measurements, Manopt_opts, SE_Sync_opts);
+% Pass explict settings for SE-Sync and/or Manopt, and use chordal
+% initialization
+fprintf('Computing chordal initialization...\n');
+R = chordal_initialization(measurements);
+Y0 = vertcat(R, zeros(SE_Sync_opts.r0 - d, num_poses*d));
+[SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measurements, Manopt_opts, SE_Sync_opts, Y0);
 
 % ... or ...
 
 % Use default settings for everything
-[SDPval, Yopt, xhat, Fxhat, se_sync_info, problem_data] = SE_Sync(measurements);
+%[SDPval, Yopt, xhat, Fxhat, se_sync_info, problem_data] = SE_Sync(measurements);
 
 %% Plot resulting solution
 plot_loop_closures = true;
@@ -86,5 +92,5 @@ else
 end
 axis tight;
 
-%view(-90, 90);  % For plotting 3D but nearly-planar datasets
+%view(90, -90);  % For plotting 3D but nearly-planar datasets
 
