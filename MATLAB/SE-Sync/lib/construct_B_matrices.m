@@ -51,7 +51,6 @@ end
 
 B3 = sparse(B3_rows, B3_cols, B3_vals, d^2*m, d^2*n);
 
-
 if nargout > 1
     
     % B2 matrix:

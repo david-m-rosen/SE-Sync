@@ -27,11 +27,17 @@ function [Rchordal, tchordal] = chordal_initialization(measurements)
 %  -tchordal [optional]:  A d x n block matrix containing the estimated
 %     positions.
 
+% Copyright (C) 2016 by David M. Rosen
+
 d = length(measurements.t{1});
 n = max(max(measurements.edges));
 m = size(measurements.edges, 1);
 
-[B1, B2, B3] = construct_B_matrices(measurements);
+if nargout > 1
+    [B3, B2, B1] = construct_B_matrices(measurements);
+else
+    B3 = construct_B_matrices(measurements);
+end
 
 
 % First, estimate the rotations using *only* the rotational observations
