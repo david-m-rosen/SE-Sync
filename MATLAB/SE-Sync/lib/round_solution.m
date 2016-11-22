@@ -7,7 +7,7 @@ function [R, singular_values, determinants] = round_solution(Yopt, problem_data)
 % Copyright (C) 2016 by David M. Rosen
 
 
-[r, trash] = size(Yopt);
+r = size(Yopt, 1);
 
 [U, Xi, V] = svd(Yopt, 'econ');
 singular_values = diag(Xi)';
@@ -25,9 +25,11 @@ for k = 1:problem_data.n
 end
 ng0 = sum(determinants > 0);
 
+reflector = diag([ones(1, problem_data.d - 1), -1]);  % Orthogonal matrix that we can use for reversing the orientations of the orthogonal matrix subblocks of R
+
 if ng0 == 0
     % This solution converged to a reflection of the correct solution
-    R = -R;
+    R = reflector*R;
     determinants = -determinants;
 elseif ng0 < problem_data.n
     disp('WARNING: SOLUTION HAS INCONSISTENT ORIENTATIONS!');
@@ -36,6 +38,7 @@ elseif ng0 < problem_data.n
     % them
     if ng0 < problem_data.n / 2
         determinants = -determinants;
+        R = reflector * R;
     end
 end
 
