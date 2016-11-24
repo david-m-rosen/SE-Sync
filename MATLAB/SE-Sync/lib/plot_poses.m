@@ -1,5 +1,5 @@
 function f = plot_poses(t_hat, Rhat, edges, lc_linestyle, lc_alpha)
-%function plot_poses(t_hat, Rhat, edges)
+%function f = plot_poses(t_hat, Rhat, edges, lc_linestyle, lc_alpha)
 %
 % Given translational and rotation state estimates returned by SE_Sync,
 % this function plots the corresponding solution, applying the gauge
