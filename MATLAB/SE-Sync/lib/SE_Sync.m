@@ -203,7 +203,7 @@ end
 if isfield(Manopt_opts, 'rel_func_tol')
     fprintf(' Stopping tolerance for relative function decrease: %g\n', Manopt_opts.rel_func_tol);
 else
-    Manopt_opts.rel_func_tol = 1e-6;
+    Manopt_opts.rel_func_tol = 1e-5;
     fprintf(' Setting stopping tolerance for relative function decrease to: %g [default]\n', Manopt_opts.rel_func_tol);
 end
 
