@@ -1,6 +1,6 @@
-function [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, tol, use_Cholesky)
+function [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, tol, use_Cholesky)
 %
-%function [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, tol, use_Cholesky)
+%function [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, tol, use_Cholesky)
 %
 % Given the Lagrange multiplier Lambda corresponding to a critical point
 % Yopt of the low-rank Riemannian optimization problem, this function
@@ -11,11 +11,11 @@ function [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, tol, use
 
 % Copyright (C) 2016 by David M. Rosen
 
-if nargin < 3
+if nargin < 4
     tol = 1e-5;  % default value
 end
 
-if nargin < 4
+if nargin < 5
     use_Cholesky = true;
 end
 
@@ -39,7 +39,15 @@ lambda_max = eigs(QminusLambda, problem_data.d*problem_data.n, 1, 'LA', eigs_opt
 QminusLambda_shifted = @(x) QminusLambda(x) + lambda_max*x;
 
 % Now compute the minimum eigenvalue of Q - Lambda + lambda_max_est * I
-eigs_opts.tol = tol;  %This should be a reasonably sharp estimate
+eigs_opts.tol = tol;  %T his should be a reasonably sharp estimate
+
+if nargin >= 3
+    % In the typical case that exactness holds, the minimum eigenvector will
+    % be 0, with corresponding eigenvectors the columns of Yopt', so use
+    % these as an initial guess
+    eigs_opts.v0 = Yopt(1, :)';  % In the typical case that
+end
+
 [v, shifted_lambda_min] = eigs(QminusLambda_shifted, problem_data.d*problem_data.n, 1, 'SA', eigs_opts);
 lambda_min = shifted_lambda_min - lambda_max;
 

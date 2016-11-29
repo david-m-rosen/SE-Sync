@@ -334,7 +334,7 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     
     % Compute minimum eigenvalue/eigenvector pair for Q - Lambda
     tic();
-    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, SE_Sync_opts.eig_comp_rel_tol, SE_Sync_opts.Cholesky);
+    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, SE_Sync_opts.eig_comp_rel_tol, SE_Sync_opts.Cholesky);
     min_eig_comp_time = toc();
     
     % Store the minimum eigenvalue and elapsed computation times
