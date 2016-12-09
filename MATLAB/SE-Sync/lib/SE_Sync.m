@@ -58,6 +58,9 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %      factorization of Ared*Ared' or by applying an orthogonal (QR)
 %      decomposition.  The former method may be faster, but the latter is
 %      more numerically stable.
+%   init:  A string specifying the initialization procedure to use if no
+%      initial point Y0 is passed.  Options are 'chordal' or 'random'.  If
+%      no option is specified, 'chordal' is used as a default
 %
 % Y0:  [Optional]  An initial point on the manifold St(d, r)^n at which to
 %      initialize the first Riemannian optimization problem.  If this
@@ -80,7 +83,11 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   bits of information about the execution of the SE-Sync algorithm.  The
 %   fields are:
 %   mat_contruct_times:  The elapsed time needed to construct the auxiliary
-%   system matrices contained in 'problem_data'
+%     system matrices contained in 'problem_data'
+%   problem_data:  The auxiliary data matrices constructed for this
+%     problem.
+%   init_time:  The elapsed time needed to compute the initial point for
+%     the Riemannian Staircase.
 %   optimization_times:  A vector containing the elapsed computation times
 %     for solving the optimization problem at each level of the Riemannian
 %     Staircase.
@@ -182,9 +189,24 @@ else
     end
 end
 
+if ~isfield(SE_Sync_opts, 'init')
+    fprintf(' Initialization method: chordal [default]\n');
+    SE_Sync_opts.init = 'chordal';
+else
+    if strcmp(SE_Sync_opts.init, 'chordal')
+        fprintf(' Initialization method: chordal\n');
+    elseif strcmp(SE_Sync_opts.init, 'random');
+        fprintf(' Initialization method: random\n');
+    else
+        error(sprintf('Initialization option "%s" not recognized!  (Supported options are "chordal" or "random"\n', SE_Sync_opts.init));
+    end
+end
+
+
+
 fprintf('\n');
 
-% Manopt settings:
+%% Manopt settings:
 
 if nargin < 2
     disp('Using default settings for Manopt:');
@@ -242,7 +264,9 @@ disp('Constructing auxiliary data matrices from raw measurements...');
 aux_time_start = tic();
 problem_data = construct_problem_data(measurements);
 auxiliary_matrix_construction_time = toc(aux_time_start);
-fprintf('Auxiliary data matrix construction finished.  Elapsed computation time: %g seconds\n', auxiliary_matrix_construction_time);
+fprintf('Auxiliary data matrix construction finished.  Elapsed computation time: %g seconds\n\n', auxiliary_matrix_construction_time);
+
+
 
 %% INITIALIZATION
 
@@ -256,8 +280,33 @@ SDPLRvals = zeros(1, max_num_iters);
 min_eig_times = zeros(1, max_num_iters);
 min_eig_vals = zeros(1, max_num_iters);
 
-
 % Set up Manopt problem
+
+% We optimize over the manifold M := St(d, r)^N, the N-fold product of the
+% (Stiefel) manifold of orthonormal d-frames in R^r.
+manopt_data.M = stiefelstackedfactory(problem_data.n, problem_data.d, SE_Sync_opts.r0);
+
+% Check if an initial point was supplied
+if nargin < 4
+    if strcmp(SE_Sync_opts.init, 'chordal')
+        fprintf('Computing chordal initialization...\n');
+        init_time_start = tic();
+        Rchordal = chordal_initialization(measurements);
+        Y0 = vertcat(Rchordal, zeros(SE_Sync_opts.r0 - problem_data.d, problem_data.d * problem_data.n));
+        init_time = toc(init_time_start);
+    else  % Use randomly-sampled initialization
+        fprintf('Randomly sampling an initial point on St(%d,%d)^%d ...\n', problem_data.d, SE_Sync_opts.r0, problem_data.n);
+        init_time_start = tic();
+        % Sample a random point on the Stiefel manifold as an initial guess
+        Y0 = manopt_data.M.rand()';
+        init_time = toc(init_time_start);
+    end
+    fprintf('Elapsed computation time: %g seconds\n', init_time);
+else
+    fprintf('Using user-supplied initial point Y0 in Riemannian Staircase\n\n');
+    init_time = 0;
+end
+
 % Check if a solver was explicitly supplied
 if(~isfield(Manopt_opts, 'solver'))
     % Use the trust-region solver by default
@@ -274,9 +323,6 @@ manopt_data.cost = @(Y) evaluate_objective(Y', problem_data, SE_Sync_opts.Choles
 manopt_data.egrad = @(Y) Euclidean_gradient(Y', problem_data, SE_Sync_opts.Cholesky)';
 manopt_data.ehess = @(Y, Ydot) Euclidean_Hessian_vector_product(Y', Ydot', problem_data, SE_Sync_opts.Cholesky)';
 
-% We optimize over the manifold M := St(d, r)^N, the N-fold product of the
-% (Stiefel) manifold of orthonormal d-frames in R^r.
-manopt_data.M = stiefelstackedfactory(problem_data.n, problem_data.d, SE_Sync_opts.r0);
 
 % Set additional stopping criterion for Manopt: stop if the relative
 % decrease in function value between successive iterates drops below the
@@ -286,15 +332,6 @@ if(strcmp(solver_name, 'trustregions'))
 end
 
 
-
-% Check if an initial point was supplied
-if nargin < 4
-    fprintf('Initializing Riemannian Staircase with randomly-sampled initial point on St(%d,%d)^%d\n\n', problem_data.d, SE_Sync_opts.r0, problem_data.n);
-    % Sample a random point on the Stiefel manifold as an initial guess
-    Y0 = manopt_data.M.rand()';
-else
-    fprintf('Using user-supplied initial point Y0 in Riemannian Staircase\n\n');
-end
 
 % Counter to keep track of how many iterations of the Riemannian Staircase
 % have been performed
@@ -424,6 +461,8 @@ fprintf('Total elapsed computation time: %g seconds\n\n', total_computation_time
 
 % Output info
 SE_Sync_info.mat_construct_times = auxiliary_matrix_construction_time;
+SE_Sync_info.problem_data = problem_data;
+SE_Sync_info.init_time = init_time;
 SE_Sync_info.SDPLRvals = SDPLRvals(1:iter);
 SE_Sync_info.optimization_times = optimization_times(1:iter);
 SE_Sync_info.min_eig_vals = min_eig_vals(1:iter);
