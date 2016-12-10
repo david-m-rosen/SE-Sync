@@ -84,8 +84,6 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   fields are:
 %   mat_contruct_times:  The elapsed time needed to construct the auxiliary
 %     system matrices contained in 'problem_data'
-%   problem_data:  The auxiliary data matrices constructed for this
-%     problem.
 %   init_time:  The elapsed time needed to compute the initial point for
 %     the Riemannian Staircase.
 %   optimization_times:  A vector containing the elapsed computation times
@@ -462,7 +460,6 @@ fprintf('Total elapsed computation time: %g seconds\n\n', total_computation_time
 
 % Output info
 SE_Sync_info.mat_construct_times = auxiliary_matrix_construction_time;
-SE_Sync_info.problem_data = problem_data;
 SE_Sync_info.init_time = init_time;
 SE_Sync_info.SDPLRvals = SDPLRvals(1:iter);
 SE_Sync_info.optimization_times = optimization_times(1:iter);
