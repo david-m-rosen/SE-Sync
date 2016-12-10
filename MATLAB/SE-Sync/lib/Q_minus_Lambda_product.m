@@ -1,7 +1,7 @@
-function Q_minus_Lambda_x = Q_minus_Lambda_product(x, Lambda, problem_data, use_Cholesky )
-%function Q_minus_Lambda_x = Q_minus_Lambda_product(x, Lambda, problem_data, use_Cholesky )
+function Q_minus_Lambda_X = Q_minus_Lambda_product(X, Lambda, problem_data, use_Cholesky)
+%function Q_minus_Lambda_x = Q_minus_Lambda_product(X, Lambda, problem_data, use_Cholesky)
 %
-% This function computes and returns the matrix-vector product (Q - Lambda)*x.
+% This function computes and returns the product (Q - Lambda)*X.
 
 % Copyright (C) 2016 by David M. Rosen
 
@@ -9,15 +9,14 @@ if nargin < 4
     use_Cholesky = true;
 end
 
-Lambda_x = zeros(size(x));
+Lambda_X = zeros(problem_data.d*problem_data.n, size(X, 2));
 
 for i = 1:problem_data.n
-    cmin = problem_data.d*(i-1) + 1;
-    cmax = problem_data.d*(i-1) + problem_data.d;
-    Lambda_x(cmin:cmax) = Lambda(:, cmin:cmax) * x(cmin:cmax);
+    rmin = problem_data.d*(i-1) + 1;
+    rmax = problem_data.d*(i-1) + problem_data.d;
+    Lambda_X(rmin:rmax, :) = Lambda(:, rmin:rmax) * X(rmin:rmax, :);
 end
 
-Q_minus_Lambda_x = Qproduct(x, problem_data, use_Cholesky) - Lambda_x;
+Q_minus_Lambda_X = Qproduct(X, problem_data, use_Cholesky) - Lambda_X;
 
 end
-

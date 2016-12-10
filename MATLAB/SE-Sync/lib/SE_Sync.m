@@ -56,8 +56,8 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   Cholesky:  A Boolean value indicating whether to compute orthogonal
 %      projections onto the cycle space of G using a cached Cholesky
 %      factorization of Ared*Ared' or by applying an orthogonal (QR)
-%      decomposition.  The former method may be faster, but the latter is
-%      more numerically stable.
+%      decomposition.  The former method may be faster on smaller problems, 
+%      but the latter is more numerically stable [default: false]
 %   init:  A string specifying the initialization procedure to use if no
 %      initial point Y0 is passed.  Options are 'chordal' or 'random'.  If
 %      no option is specified, 'chordal' is used as a default
@@ -179,8 +179,8 @@ end
 
 
 if ~isfield(SE_Sync_opts, 'Cholesky')
-    fprintf(' Using Cholesky decomposition to compute orthogonal projection [default]\n');
-    SE_Sync_opts.Cholesky = true;
+    fprintf(' Using QR decomposition to compute orthogonal projection [default]\n');
+    SE_Sync_opts.Cholesky = false;
 else
     if SE_Sync_opts.Cholesky
         fprintf(' Using Cholesky decomposition to compute orthogonal projection\n');
@@ -452,7 +452,8 @@ xhat.t = that;
 
 Fxhat = evaluate_objective(Rhat, problem_data, SE_Sync_opts.Cholesky);
 
-fprintf('Value of SDP solution Y: %g\n', SDPval);
+fprintf('Value of SDP solution F(Y): %g\n', SDPval);
+fprintf('Norm of Riemannian gradient grad F(Y): %g\n', manopt_info(end).gradnorm);
 fprintf('Value of rounded pose estimate xhat: %g\n', Fxhat);
 fprintf('Suboptimality bound of recovered pose estimate: %g\n\n', Fxhat - SDPval);
 total_computation_time = toc(timerVal);
@@ -471,21 +472,6 @@ SE_Sync_info.manopt_info = manopt_info;
 SE_Sync_info.total_computation_time = total_computation_time;
 
 fprintf('\n===== END SE-SYNC =====\n');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 end

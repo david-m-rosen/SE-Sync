@@ -1,13 +1,12 @@
-function [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, tol, use_Cholesky)
-%
-%function [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, tol, use_Cholesky)
+function [lambdas, V] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, tol, use_Cholesky, num_eigs)
+%function [lambdas, V] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, tol, use_Cholesky, num_eigs)
 %
 % Given the Lagrange multiplier Lambda corresponding to a critical point
 % Yopt of the low-rank Riemannian optimization problem, this function
-% computes and returns the minimum eigenvalue lambda_min of the matrix 
-% Q - Lambda, together with an eigenvector v corresponding to this
-% eigenvalue.  Here 'tol' refers to the relative tolerance of the minimum
-% eigenvalue computation using MATLAB's 'eigs' function
+% computes and returns the num_eigs smallest eigenvalues of the matrix 
+% Q - Lambda, together with their corresponding eigenvectors V. Here 'tol' 
+% refers to the relative tolerance of the minimum eigenvalue computation 
+% using MATLAB's 'eigs' function.
 
 % Copyright (C) 2016 by David M. Rosen
 
@@ -17,6 +16,10 @@ end
 
 if nargin < 5
     use_Cholesky = true;
+end
+
+if nargin < 6
+    num_eigs = 1;
 end
 
 % First, estimate the maximum eigenvalue of Q - Lambda (this should be its
@@ -42,14 +45,26 @@ QminusLambda_shifted = @(x) QminusLambda(x) + lambda_max*x;
 eigs_opts.tol = tol;  %T his should be a reasonably sharp estimate
 
 if nargin >= 3
-    % In the typical case that exactness holds, the minimum eigenvector will
-    % be 0, with corresponding eigenvectors the columns of Yopt', so use
-    % these as an initial guess
-    eigs_opts.v0 = Yopt(1, :)';  % In the typical case that
+    % In the (typical) case that exactness holds, the minimum eigenvector
+    % will be 0, with corresponding eigenvectors the columns of Yopt', so
+    % we would like to use a guess close to this.  However, we would not
+    % like to use /exactly/ this guess, because we know that (Q - Lambda)Y'
+    % = 0 implies that Y' lies in the null space of Q - Lambda, and
+    % therefore an iterative algorithm will get "stuck" if we start
+    % /exactly/ there.  Therefore, we will "fuzz" this initial guess by
+    % adding a randomly-sampled perturbation that is small in norm relative
+    % to the first column of Yopt; this enables us to excite modes other
+    % than Yopt itself (thereby escaping from this subspace in the 'bad
+    % case' that Yopt is not the minimum eigenvalue subspace), while still
+    % remaining close enough that we can converge to this answer quickly in
+    % the 'good' case
+    
+    relative_perturbation = .03;
+    eigs_opts.v0 = Yopt(1, :)' + (relative_perturbation / sqrt(problem_data.d))*randn(problem_data.n * problem_data.d, 1);
 end
 
-[v, shifted_lambda_min] = eigs(QminusLambda_shifted, problem_data.d*problem_data.n, 1, 'SA', eigs_opts);
-lambda_min = shifted_lambda_min - lambda_max;
+[V, shifted_lambda_min] = eigs(QminusLambda_shifted, problem_data.d*problem_data.n, num_eigs, 'SA', eigs_opts);
+lambdas = shifted_lambda_min - lambda_max*eye(num_eigs);
 
 end
 
