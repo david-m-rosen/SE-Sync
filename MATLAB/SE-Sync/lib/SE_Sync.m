@@ -164,7 +164,7 @@ end
 if isfield(SE_Sync_opts, 'eig_comp_rel_tol')
     fprintf(' Relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness: %g\n', SE_Sync_opts.eig_comp_rel_tol);
 else
-    SE_Sync_opts.eig_comp_rel_tol = 1e-4;
+    SE_Sync_opts.eig_comp_rel_tol = 1e-5;
     fprintf(' Setting relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness to: %g [default]\n', SE_Sync_opts.eig_comp_rel_tol);
 end
 
@@ -472,4 +472,3 @@ fprintf('\n===== END SE-SYNC =====\n');
 
 
 end
-
