@@ -1,14 +1,24 @@
 SE-Sync is a certifiably correct algorithm for synchronization over the special Euclidean group, a common problem arising in the context of 2D and 3D geometric estimation (e.g. pose-graph SLAM and camera motion estimation).
 
-We are making this software freely available in the hope that it will be useful to others.  If you use SE-Sync in your own work, please cite our paper: 
+We are making this software freely available in the hope that it will be useful to others.  If you use SE-Sync in your own work, please cite our papers:
 
-@article{Rosen2016SESync,
+@inproceedings{Rosen2016Certifiably,
 title = {A Certifiably Correct Algorithm for Synchronization over the Special {Euclidean} Group},
 author = {Rosen, D.M. and Carlone, L. and Bandeira, A.S. and Leonard, J.J.},
 booktitle = {Intl. Workshop on the Algorithmic Foundations of Robotics (WAFR)},
 month = dec,
 year = {2016},
 address = {San Francisco, CA},
+}
+
+@techreport{Rosen2016SESync,
+title = {{SE-Sync}: A Certifiably Correct Algorithm for Synchronization over the Special {Euclidean} Group},
+author = {Rosen, D.M. and Carlone, L. and Bandeira, A.S. and Leonard, J.J.},
+institution = {Computer Science and Artificial Intelligence Laboratory, Massachusetts Institute of Technology},
+address = {Cambridge, MA},
+number = {MIT-CSAIL-TR-2017-002},
+year = {2017},
+month = feb,
 }
 
 and the following paper of Absil et al., which describes the Riemannian trust-region (RTR) method that SE-Sync employs:
