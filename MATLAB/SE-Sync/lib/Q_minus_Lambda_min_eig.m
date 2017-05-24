@@ -22,8 +22,8 @@ if nargin < 6
     num_eigs = 1;
 end
 
-% First, estimate the maximum eigenvalue of Q - Lambda (this should be its
-% norm in the typical case)
+% First, estimate the largest-magnitude eigenvalue of Q - Lambda; the
+% absolute value of this is its L2 norm
 eigs_opts.issym = true;
 eigs_opts.isreal = true;
 
@@ -31,18 +31,18 @@ eigs_opts.isreal = true;
 QminusLambda = @(x) Q_minus_Lambda_product(x, Lambda, problem_data, use_Cholesky);
 
 eigs_opts.tol = 100*tol;  %This estimate needn't be particularly sharp...
-lambda_max = eigs(QminusLambda, problem_data.d*problem_data.n, 1, 'LA', eigs_opts);
+sigma = abs(eigs(QminusLambda, problem_data.d*problem_data.n, 1, 'LM', eigs_opts));
 
-% We shift the spectrum of Q - Lambda by adding lambda_max_est*I; this
-% improves the condition number (to ~2 in the typical case)
+% We shift the spectrum of Q - Lambda by adding 2*sigma*I; this
+% improves the condition number (to ~3 in the typical case)
 % *without* perturbing any of the eigenspaces in Q - Lambda; this has the
 % effect of producing MUCH faster convergence when running the Lanczos
 % algorithm
 %
-QminusLambda_shifted = @(x) QminusLambda(x) + lambda_max*x;
+QminusLambda_shifted = @(x) QminusLambda(x) + 2*sigma*x;
 
-% Now compute the minimum eigenvalue of Q - Lambda + lambda_max_est * I
-eigs_opts.tol = tol;  %T his should be a reasonably sharp estimate
+% Now compute the minimum eigenvalue of Q - Lambda + 2 * sigma * I
+eigs_opts.tol = tol;  % This should be a reasonably sharp estimate
 
 if nargin >= 3
     % In the (typical) case that exactness holds, the minimum eigenvector
@@ -64,7 +64,7 @@ if nargin >= 3
 end
 
 [V, shifted_lambda_min] = eigs(QminusLambda_shifted, problem_data.d*problem_data.n, num_eigs, 'SA', eigs_opts);
-lambdas = shifted_lambda_min - lambda_max*eye(num_eigs);
+lambdas = shifted_lambda_min - 2*sigma*eye(num_eigs);
 
 end
 
