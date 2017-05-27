@@ -50,6 +50,8 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   eig_comp_rel_tol:  Relative tolerance for the minimum-eigenvalue
 %      computation needed to verify second-order optimality using MATLAB's
 %      eigs command (typical values here are on the order of 10^-5)
+%   eig_comp_max_iters:  The maximum number of Lanczos iterations to
+%      perform when computing the minimum eigenvalue
 %   min_eig_lower_bound:  Lower bound for the minimum eigenvalue in order to
 %      consider the matrix Q - Lambda to be positive semidefinite.  Typical
 %      values here should be small-magnitude negative numbers, e.g. -10^-4
@@ -164,8 +166,15 @@ end
 if isfield(SE_Sync_opts, 'eig_comp_rel_tol')
     fprintf(' Relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness: %g\n', SE_Sync_opts.eig_comp_rel_tol);
 else
-    SE_Sync_opts.eig_comp_rel_tol = 1e-5;
+    SE_Sync_opts.eig_comp_rel_tol = 1e-6;
     fprintf(' Setting relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness to: %g [default]\n', SE_Sync_opts.eig_comp_rel_tol);
+end
+
+if isfield(SE_Sync_opts, 'eig_comp_max_iters')
+    fprintf(' Maximum number of iterations to perform for minimum eigenvalue computation in test for positive semidefiniteness: %g\n', SE_Sync_opts.eig_comp_max_iters);
+else
+    SE_Sync_opts.eig_comp_max_iters = 500;
+    fprintf(' Maximum number of iterations to perform for minimum eigenvalue computation in test for positive semidefiniteness: %g [default]\n', SE_Sync_opts.eig_comp_max_iters);
 end
 
 if isfield(SE_Sync_opts, 'min_eig_lower_bound')
@@ -342,7 +351,7 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     % Starting at Y0, use Manopt's truncated-Newton trust-region method to
     % descend to a first-order critical point.
     
-    fprintf('RIEMANNIAN STAIRCASE (level r = %d):\n', r);
+    fprintf('\nRIEMANNIAN STAIRCASE (level r = %d):\n', r);
     
     [YoptT, Fval, manopt_info, Manopt_opts] = manoptsolve(manopt_data, Y0', Manopt_opts);
     Yopt = YoptT';
@@ -369,7 +378,7 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     
     % Compute minimum eigenvalue/eigenvector pair for Q - Lambda
     tic();
-    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, SE_Sync_opts.eig_comp_rel_tol, SE_Sync_opts.Cholesky);
+    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, SE_Sync_opts.eig_comp_rel_tol, SE_Sync_opts.eig_comp_max_iters, SE_Sync_opts.Cholesky);
     min_eig_comp_time = toc();
     
     % Store the minimum eigenvalue and elapsed computation times
