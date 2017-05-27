@@ -397,12 +397,6 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
         disp('Computing escape direction...');
         Ydot = vertcat(zeros(r, problem_data.d * problem_data.n), v');
         
-        % Compute the directional derivative of F at Yplus along Ydot
-        dF0 = trace(Euclidean_gradient(Yplus, problem_data)*Ydot');
-        if dF0 > 0
-            Ydot = -Ydot;
-        end
-        
         % Augment the dimensionality of the Stiefel manifolds in
         % preparation for the next iteration
         
