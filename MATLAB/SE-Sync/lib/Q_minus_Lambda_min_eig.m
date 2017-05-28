@@ -46,7 +46,7 @@ if(lambda_lm < 0)
 else
     % The largest-magnitude eigenvalue is positive, and therefore the
     % maximum eigenvalue.  Therefore, after shifting the spectrum of Q -
-    % Lambda by -lambda_lm (by forming Q - Lambda - lambda_max*I), the
+    % Lambda by -2*lambda_lm (by forming Q - Lambda - 2*lambda_max*I), the
     % shifted spectrum will line in the interval [lambda_min(A) - 2*
     % lambda_max(A), -lambda_max*A]; in particular, the largest-magnitude eigenvalue of
     % Q - Lambda - 2*lambda_max*I is lambda_min - 2*lambda_max, with
@@ -57,22 +57,10 @@ else
     QminusLambda_shifted = @(x) QminusLambda(x) - 2*lambda_lm*x;
     
     if nargin >= 3
-        % In the (typical) case that exactness holds, the minimum eigenvector
+        % In the case that exactness holds, the minimum eigenvector
         % will be 0, with corresponding eigenvectors the columns of Yopt', so
-        % we would like to use a guess close to this.  However, we would not
-        % like to use /exactly/ this guess, because we know that (Q - Lambda)Y'
-        % = 0 implies that Y' lies in the null space of Q - Lambda, and
-        % therefore an iterative algorithm will get "stuck" if we start
-        % /exactly/ there.  Therefore, we will "fuzz" this initial guess by
-        % adding a randomly-sampled perturbation that is small in norm relative
-        % to the first column of Yopt; this enables us to excite modes other
-        % than Yopt itself (thereby escaping from this subspace in the 'bad
-        % case' that Yopt is not the minimum eigenvalue subspace), while still
-        % remaining close enough that we can converge to this answer quickly in
-        % the 'good' case
-        
-        relative_perturbation = .03;
-        eigs_opts.v0 = Yopt(1, :)' + (relative_perturbation / sqrt(problem_data.d))*randn(problem_data.n * problem_data.d, 1);
+        % we would like to use this as an initial guess.
+        eigs_opts.v0 = Yopt(1, :)';
     end
     
     [v_min, shifted_lambda_min, flag] = eigs(QminusLambda_shifted, problem_data.d*problem_data.n, 1, 'LM', eigs_opts);

@@ -34,7 +34,7 @@ year = {2007},
 month = jul,
 }
 
-If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt toolbox, which provides the MATLAB implementation we use for RTR:
+If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt toolbox, which provides the MATLAB implementation of RTR that the SE-Sync toolbox uses:
 
 @article{Boumal2014Manopt,
   title={{Manopt}, a {MATLAB} Toolbox for Optimization on Manifolds.},
