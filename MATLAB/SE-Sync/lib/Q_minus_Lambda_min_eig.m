@@ -57,10 +57,28 @@ else
     QminusLambda_shifted = @(x) QminusLambda(x) - 2*lambda_lm*x;
     
     if nargin >= 3
-        % In the case that exactness holds, the minimum eigenvector
-        % will be 0, with corresponding eigenvectors the columns of Yopt', so
-        % we would like to use this as an initial guess.
-        eigs_opts.v0 = Yopt(1, :)';
+        % If Ystar is a critical point of F, then Ystar^T is also in the 
+        % null space of Q - Lambda(Ystar) (cf. Lemma 6 of the tech report), 
+        % and therefore its rows are eigenvectors corresponding to the 
+        % eigenvalue 0.  In the case that the relaxation is exact, this is 
+        % the *minimum* eigenvalue, and therefore the rows of Ystar are 
+        % exactly the eigenvectors that we're looking for.  On the other 
+        % hand, if the relaxation is *not* exact, then Q - Lambda(Ystar)
+        % has at least one strictly negative eigenvalue, and the rows of 
+        % Ystar are *unstable fixed points* for the Lanczos iterations.  
+        % Thus, we will take a slightly "fuzzed" version of the first row 
+        % of Ystar as an initialization for the Lanczos iterations; this 
+        % allows for rapid convergence in the case that the relaxation is 
+        % exact (since are starting close to a solution), while 
+        % simultaneously allowing the iterations to escape from this fixed 
+        % point in the case that the relaxation is not exact.
+        
+        v = Yopt(1, :)';
+        
+        % Determine the standard deviation necessary such that a vector of
+        % n*d iid elements sampled from N(0, sigma^2) will perturb v by ~3%
+        sigma = .03 * norm(v) / (problem_data.n * problem_data.d); 
+        eigs_opts.v0 = v + sigma*randn(problem_data.n * problem_data.d, 1);
     end
     
     [v_min, shifted_lambda_min, flag] = eigs(QminusLambda_shifted, problem_data.d*problem_data.n, 1, 'LM', eigs_opts);
