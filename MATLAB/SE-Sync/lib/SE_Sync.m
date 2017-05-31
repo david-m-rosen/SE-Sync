@@ -49,12 +49,12 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   rmax:  The maximum value of the maximum-rank parameter r.
 %   eig_comp_rel_tol:  Relative tolerance for the minimum-eigenvalue
 %      computation needed to verify second-order optimality using MATLAB's
-%      eigs command (typical values here are on the order of 10^-5)
+%      eigs command (typical values here are on the order of 10^-8)
 %   eig_comp_max_iters:  The maximum number of Lanczos iterations to
 %      perform when computing the minimum eigenvalue
-%   min_eig_lower_bound:  Lower bound for the minimum eigenvalue in order to
-%      consider the matrix Q - Lambda to be positive semidefinite.  Typical
-%      values here should be small-magnitude negative numbers, e.g. -10^-4
+%   min_eig_num_tol:  Lower bound for the minimum eigenvalue in 
+%      order to consider the matrix Q - Lambda to be positive semidefinite.
+%      Typical values here should be small-magnitude numbers, e.g. 10^-4
 %   Cholesky:  A Boolean value indicating whether to compute orthogonal
 %      projections onto the cycle space of G using a cached Cholesky
 %      factorization of Ared*Ared' or by applying an orthogonal (QR)
@@ -177,11 +177,11 @@ else
     fprintf(' Maximum number of iterations to perform for minimum eigenvalue computation in test for positive semidefiniteness: %g [default]\n', SE_Sync_opts.eig_comp_max_iters);
 end
 
-if isfield(SE_Sync_opts, 'min_eig_lower_bound')
-    fprintf(' Lower bound for minimum eigenvalue in test for positive semidefiniteness: %g\n', SE_Sync_opts.min_eig_lower_bound);
+if isfield(SE_Sync_opts, 'min_eig_num_tol')
+    fprintf(' Tolerance for accepting an eigenvalue as numerically nonnegative in optimality verification: %g\n', SE_Sync_opts.min_eig_num_tol);
 else
-    SE_Sync_opts.min_eig_lower_bound = -1e-3;
-    fprintf(' Setting lower bound for minimum eigenvalue in test for positive semidefiniteness to: %g [default]\n', SE_Sync_opts.min_eig_lower_bound);
+    SE_Sync_opts.min_eig_num_tol = 1e-4;
+    fprintf(' Tolerance for accepting an eigenvalue as numerically nonnegative in optimality verification: %g [default]\n', SE_Sync_opts.min_eig_num_tol);
 end
 
 
@@ -385,7 +385,7 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     min_eig_vals(iter) = lambda_min;
     min_eig_times(iter) = min_eig_comp_time;
     
-    if( lambda_min > SE_Sync_opts.min_eig_lower_bound)
+    if( lambda_min > -SE_Sync_opts.min_eig_num_tol)
         % Yopt is a second-order critical point
         fprintf('Found second-order critical point! (minimum eigenvalue = %g, elapsed computation time %g seconds)\n', lambda_min, min_eig_comp_time);
         break;
@@ -415,9 +415,15 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
         % saddle point and obtain the initial iterate for the next level in
         % the Staircase
         
+        % Compute a scaling factor alpha such that the scaled step
+        % alpha*Ydot' should produce a trial point Ytest whose gradient has
+        % a norm 100 times greater than the gradient tolerance stopping
+        % criterion currently being used in the RTR optimization routine
+        alpha = Manopt_opts.tolgradnorm / (norm(v) * abs(lambda_min));
+        
         disp('Line searching along escape direction to escape saddle point...');
         tic();
-        [stepsize, Y0T] = linesearch_decrease(manopt_data, Yplus', Ydot', SDPLRval);
+        [stepsize, Y0T] = linesearch_decrease(manopt_data, Yplus', alpha * Ydot', SDPLRval);
         line_search_time = toc();
         Y0 = Y0T';
         fprintf('Line search completed (elapsed computation time %g seconds)\n', line_search_time);
