@@ -56,7 +56,7 @@ ${SESync_SOURCE_DIR}/SESync.cpp
 )
 
 # Build the SE-Sync library
-add_library(SESync ${SESync_HDRS} ${SESync_SRCS})
+add_library(SESync SHARED ${SESync_HDRS} ${SESync_SRCS})
 target_link_libraries(SESync roptlib ${SuiteSparse_LIBS})
 
 # Build the example executable
