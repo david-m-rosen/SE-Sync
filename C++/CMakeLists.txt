@@ -34,6 +34,7 @@ add_subdirectory(ROPTLIB)
 
 set(SESync_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/include)
 set(SESync_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/src)
+set(SESync_EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 
 # Expose the include directories for this project
 set(SESYNC_INCLUDE_DIRS ${SESync_INCLUDE_DIR} ${EIGEN_INCLUDE_DIR} ${SPECTRA_INCLUDE_DIR} ${SUITESPARSE_INCLUDE_DIR} ${ROPTLIB_INCLUDE_DIRECTORIES} CACHE INTERNAL "")
@@ -52,7 +53,6 @@ set(SESync_SRCS
 ${SESync_SOURCE_DIR}/SESync_utils.cpp
 ${SESync_SOURCE_DIR}/SESyncProblem.cpp
 ${SESync_SOURCE_DIR}/SESync.cpp
-${SESync_SOURCE_DIR}/main.cpp
 )
 
 # Build the SE-Sync library
@@ -60,6 +60,6 @@ add_library(SESync ${SESync_HDRS} ${SESync_SRCS})
 target_link_libraries(SESync roptlib ${SuiteSparse_LIBS})
 
 # Build the example executable
-add_executable(se-sync ${SESync_SOURCE_DIR}/main.cpp)
+add_executable(se-sync ${SESync_EXAMPLES_DIR}/main.cpp)
 target_link_libraries(se-sync SESync ${SuiteSparse_LIBS})
 

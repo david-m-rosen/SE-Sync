@@ -34,7 +34,7 @@ year = {2007},
 month = jul,
 }
 
-If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt toolbox, which provides the MATLAB implementation of RTR that the SE-Sync toolbox uses:
+If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt toolbox, which provides the MATLAB implementation of RTR that the SE-Sync toolbox employs:
 
 @article{Boumal2014Manopt,
   title={{Manopt}, a {MATLAB} Toolbox for Optimization on Manifolds.},
@@ -46,15 +46,30 @@ If you use the MATLAB implementation of SE-Sync, please also cite the following 
   year={2014}
 }
 
+If you use the C++ implementation of SE-Sync, please also cite the following reference for the ROPTLIB library, which provides the C++ implementation of RTR that the SE-Sync C++ library employs:
+
+@techreport{Huang16ROPTLIB,
+title = {{ROPTLIB}: An Object-Oriented {C++} Library for Optimization on {Riemannian} Manifolds},
+author = {Huang, W. and Absil, P.-A. and Gallivan, K.A. and Hand, P.},
+institution = {Florida State University},
+number = {FSU16-14},
+year = {2016},
+}
+
+
 ==== Copyright and License ====
 
-The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016 by David M. Rosen, and are distributed under the terms of the GNU General Public License (GPL) version 3 (or later).  Please see the files LICENSE.txt and COPYING.txt for more information.
+The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016 - 2017 by David M. Rosen, and are distributed under the terms of the GNU General Public License (GPL) version 3 (or later).  Please see the files LICENSE.txt and COPYING.txt for more information.
 
 Contact: dmrosen@mit.edu
 
 
 ==== Getting Started ====
 
+MATLAB:
+
 To use the MATLAB implementation of SE-Sync, simply place the 'MATLAB' folder in any convenient (permanent) location, and then run the script MATLAB/import_SE_Sync.m.  Congrats!  SE-Sync is now ready to go :-).  For a minimal working example, see MATLAB/examples/main.m
 
+C++:
 
+The C++ implementation of SE-Sync can be built and exported as a CMake project.  For a minimal working example, see C++/examples/main, which provides a simple command-line utility for processing .g2o files.

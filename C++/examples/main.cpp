@@ -18,12 +18,6 @@ int main(int argc, char** argv)
          << endl;
 
     SESyncOpts opts;
-    //opts.tolgradnorm = 0;
-    //opts.rel_func_decrease_tol = 1e-10;
-    //opts.use_chordal_initialization = false;
-    //opts.use_Cholesky = false;
-    //opts.eig_comp_tol = 1e-12;
-    //opts.num_Lanczos_vectors = 50;
     opts.verbose = true; // Print output to stdout
 
     SESyncResult results = SESync::SESync(measurements, opts);
