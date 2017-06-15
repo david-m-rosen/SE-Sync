@@ -45,10 +45,6 @@ ${CMAKE_CURRENT_SOURCE_DIR}/cwrapper/lapack
 CACHE INTERNAL ""
 )
 
-# Expose this project's includes and dependencies to other CMake projects
-include_directories(${ROPTLIB_INCLUDE_DIRECTORIES})
-
-
 # COMPILE THE ROPTLIB LIBRARY
 add_library(roptlib SHARED
 Manifolds/Element.cpp Manifolds/LinearOPE.cpp Manifolds/Manifold.cpp Manifolds/ProductElement.cpp Manifolds/ProductManifold.cpp Manifolds/SharedSpace.cpp Manifolds/SmartSpace.cpp 
@@ -92,6 +88,7 @@ Problems/StieSparseBrockett/StieSparseBrockett.cpp
 Problems/StieSumBrockett/StieSumBrockett.cpp 
 Problems/WeightedLowrank/WeightedLowRank.cpp 
 Solvers/LRBFGS.cpp Solvers/LRBFGSLPSub.cpp Solvers/LRTRSR1.cpp Solvers/MRankAdaptive.cpp Solvers/QuasiNewton.cpp Solvers/RBFGS.cpp Solvers/RBFGSLPSub.cpp Solvers/RBroydenFamily.cpp Solvers/RCG.cpp Solvers/RGS.cpp Solvers/RNewton.cpp Solvers/RSD.cpp Solvers/RTRNewton.cpp Solvers/RTRSD.cpp Solvers/RTRSR1.cpp Solvers/RWRBFGS.cpp Solvers/Solvers.cpp Solvers/SolversLS.cpp Solvers/SolversLSLPSub.cpp Solvers/SolversTR.cpp)
+target_include_directories(roptlib PUBLIC ${ROPTLIB_INCLUDE_DIRECTORIES})
 target_link_libraries(roptlib ${LAPACK} ${BLAS} ${M})
 
 # COMPILE EXECUTABLES
@@ -107,3 +104,5 @@ target_link_libraries(TestProduct roptlib)
 # Compile the simple product test program from ROPTLIB
 add_executable(TestProductBrockett test/TestProductExample.cpp test/TestProductExample.cpp)
 target_link_libraries(TestProductBrockett roptlib)
+
+export(TARGETS roptlib FILE ROPTLIB.cmake)

@@ -38,7 +38,7 @@ set(SESync_EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 
 # Expose the include directories for this project
 set(SESYNC_INCLUDE_DIRS ${SESync_INCLUDE_DIR} ${EIGEN_INCLUDE_DIR} ${SPECTRA_INCLUDE_DIR} ${SUITESPARSE_INCLUDE_DIR} ${ROPTLIB_INCLUDE_DIRECTORIES} CACHE INTERNAL "")
-include_directories(${SESync_INCLUDE_DIR} ${EIGEN_INCLUDE_DIR} ${SPECTRA_INCLUDE_DIR} ${SUITESPARSE_INCLUDE_DIR} ${ROPTLIB_INCLUDE_DIRECTORIES})
+include_directories()
 
 
 # Get the set of SE-Sync header and source files
@@ -57,9 +57,13 @@ ${SESync_SOURCE_DIR}/SESync.cpp
 
 # Build the SE-Sync library
 add_library(SESync SHARED ${SESync_HDRS} ${SESync_SRCS})
+target_include_directories(SESync PUBLIC ${SESync_INCLUDE_DIR} ${EIGEN_INCLUDE_DIR} ${SPECTRA_INCLUDE_DIR} ${SUITESPARSE_INCLUDE_DIR} ${ROPTLIB_INCLUDE_DIRECTORIES})
 target_link_libraries(SESync roptlib ${SuiteSparse_LIBS})
 
 # Build the example executable
 add_executable(se-sync ${SESync_EXAMPLES_DIR}/main.cpp)
+target_include_directories(se-sync PUBLIC ${SESync_INCLUDE_DIR} ${EIGEN_INCLUDE_DIR} ${SPECTRA_INCLUDE_DIR} ${SUITESPARSE_INCLUDE_DIR} ${ROPTLIB_INCLUDE_DIRECTORIES})
 target_link_libraries(se-sync SESync ${SuiteSparse_LIBS})
 
+# Export the SESync and ROPTLIB libraries to make them available to other CMake projects
+export(TARGETS roptlib SESync FILE SESync.cmake)
