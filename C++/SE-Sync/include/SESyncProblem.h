@@ -15,15 +15,13 @@
 #include <Eigen/SPQRSupport>
 #include <Eigen/Sparse>
 
+#include "SESync_types.h"
+
 #include "Problem.h"
 #include "ProductManifold.h"
 #include "Stiefel.h"
 
 namespace SESync {
-
-typedef Eigen::MatrixXd Matrix;
-typedef Eigen::DiagonalMatrix<double, Eigen::Dynamic> DiagonalMatrix;
-typedef Eigen::SparseMatrix<double> SparseMatrix;
 
 /** The type of the sparse Cholesky factorization to use in the computation of
  * the orthogonal projection operation */
@@ -200,7 +198,7 @@ public:
         double _sigma;
 
         QMinusLambdaProdFunctor(const SESyncProblem* prob,
-            const Eigen::MatrixXd& Ystar, double sigma = 0)
+            const Matrix& Ystar, double sigma = 0)
             : _problem(prob)
             , _rows(prob->dimension() * prob->num_poses())
             , _cols(prob->dimension() * prob->num_poses())

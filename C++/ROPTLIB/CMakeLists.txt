@@ -2,12 +2,15 @@
 
 # PROJECT CONFIGURATION
 cmake_minimum_required(VERSION 3.1)
-project(ROPTLIB)
+
+set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel.")
+
+project(ROPTLIB C CXX)
 set(CMAKE_CXX_STANDARD 11)  # We require C++ 11
 add_compile_options(-march=native) # Enable faster instruction sets
 
 # Build type
-SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel.")
+
 # Directory for built libraries
 set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/lib CACHE PATH "The directory in which to place libraries built by this project")
 # Directory for built executables

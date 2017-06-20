@@ -10,6 +10,8 @@
 
 #include <Eigen/Dense>
 
+#include "SESync_types.h"
+
 #include "RelativePoseMeasurement.h"
 
 namespace SESync {
@@ -120,7 +122,7 @@ struct SESyncResult {
     double SDPval;
 
     /** A minimizer Yopt \in St(r,d)^n of the rank-restricted relaxation */
-    Eigen::MatrixXd Yopt;
+    Matrix Yopt;
 
     /** The norm of the Riemannian gradient at Yopt */
     double gradnorm;
@@ -129,16 +131,16 @@ struct SESyncResult {
     double lambda_min;
 
     /** The corresponding eigenvector of the minimum eigenvalue */
-    Eigen::VectorXd v_min;
+    Vector v_min;
 
     /** The optimal value of the reprojected solution */
     double Fxhat;
 
     /** The reprojected rotational state estimates Rhat \in SO(d)^n */
-    Eigen::MatrixXd Rhat;
+    Matrix Rhat;
 
     /** The optimal translational estimates corresponding to the rotational estimate Rhat */
-    Eigen::MatrixXd that;
+    Matrix that;
 
     SESyncStatus status;
 };
@@ -148,7 +150,7 @@ struct SESyncResult {
  */
 SESyncResult SESync(const std::vector<RelativePoseMeasurement>& measurements,
     const SESyncOpts& options = SESyncOpts(),
-    const Eigen::MatrixXd& Y0 = Eigen::MatrixXd());
+    const Matrix& Y0 = Matrix());
 } // namespace SESync
 
 #endif // _SESYNC_H_

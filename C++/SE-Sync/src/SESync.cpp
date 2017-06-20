@@ -1,6 +1,7 @@
 #include <chrono>
 #include <functional>
 
+#include "SESync_types.h"
 #include "SESync.h"
 #include "SESyncProblem.h"
 #include "SESync_utils.h"

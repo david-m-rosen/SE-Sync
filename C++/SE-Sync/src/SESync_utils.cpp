@@ -143,7 +143,7 @@ read_g2o_file(const std::string& filename, size_t& num_poses)
     return measurements;
 }
 
-Eigen::SparseMatrix<double> construct_rotational_connection_Laplacian(
+SparseMatrix construct_rotational_connection_Laplacian(
     const std::vector<SESync::RelativePoseMeasurement>& measurements)
 {
 
@@ -197,13 +197,13 @@ Eigen::SparseMatrix<double> construct_rotational_connection_Laplacian(
     num_poses++; // Account for 0-based indexing
 
     // Construct and return a sparse matrix from these triplets
-    Eigen::SparseMatrix<double> LGrho(d * num_poses, d * num_poses);
+   SparseMatrix LGrho(d * num_poses, d * num_poses);
     LGrho.setFromTriplets(triplets.begin(), triplets.end());
 
     return LGrho;
 }
 
-Eigen::SparseMatrix<double>
+SparseMatrix
 construct_oriented_incidence_matrix(const measurements_t& measurements)
 {
     std::vector<Eigen::Triplet<double> > triplets;
@@ -221,19 +221,18 @@ construct_oriented_incidence_matrix(const measurements_t& measurements)
     }
     num_poses++; // Account for zero-based indexing
 
-    Eigen::SparseMatrix<double> A(num_poses, measurements.size());
+    SparseMatrix A(num_poses, measurements.size());
     A.setFromTriplets(triplets.begin(), triplets.end());
     return A;
 }
 
-Eigen::DiagonalMatrix<double, Eigen::Dynamic>
-construct_translational_precision_matrix(const measurements_t& measurements)
+DiagonalMatrix construct_translational_precision_matrix(const measurements_t& measurements)
 {
 
     // Allocate output matrix
-    Eigen::DiagonalMatrix<double, Eigen::Dynamic> Omega(measurements.size());
+    DiagonalMatrix Omega(measurements.size());
 
-    Eigen::DiagonalMatrix<double, Eigen::Dynamic>::DiagonalVectorType& diagonal = Omega.diagonal();
+    DiagonalMatrix::DiagonalVectorType& diagonal = Omega.diagonal();
 
     for (size_t m = 0; m < measurements.size(); m++)
         diagonal[m] = measurements[m].tau;
@@ -241,7 +240,7 @@ construct_translational_precision_matrix(const measurements_t& measurements)
     return Omega;
 }
 
-Eigen::SparseMatrix<double>
+SparseMatrix
 construct_translational_data_matrix(const measurements_t& measurements)
 {
 
@@ -264,13 +263,13 @@ construct_translational_data_matrix(const measurements_t& measurements)
     }
     num_poses++; // Account for zero-based indexing
 
-    Eigen::SparseMatrix<double> T(measurements.size(), d * num_poses);
+    SparseMatrix T(measurements.size(), d * num_poses);
     T.setFromTriplets(triplets.begin(), triplets.end());
 
     return T;
 }
 
-void construct_B_matrices(const std::vector<RelativePoseMeasurement>& measurements, Eigen::SparseMatrix<double>& B1, Eigen::SparseMatrix<double>& B2, Eigen::SparseMatrix<double>& B3)
+void construct_B_matrices(const std::vector<RelativePoseMeasurement>& measurements, SparseMatrix& B1, SparseMatrix& B2, SparseMatrix& B3)
 {
     // Clear input matrices
     B1.setZero();
@@ -354,8 +353,8 @@ void construct_B_matrices(const std::vector<RelativePoseMeasurement>& measuremen
     B3.setFromTriplets(triplets.begin(), triplets.end());
 }
 
-Eigen::MatrixXd chordal_initialization_eig(
-    const Eigen::SparseMatrix<double>& rotational_connection_Laplacian,
+Matrix chordal_initialization_eig(
+    const SparseMatrix& rotational_connection_Laplacian,
     unsigned int d, unsigned int max_iterations, double precision)
 {
     Spectra::SparseSymMatProd<double> op(rotational_connection_Laplacian);
@@ -371,7 +370,7 @@ Eigen::MatrixXd chordal_initialization_eig(
     return round_solution(eigensolver.eigenvectors().transpose(), d);
 }
 
-Eigen::MatrixXd chordal_initialization(unsigned int d, const Eigen::SparseMatrix<double>& B3)
+Matrix chordal_initialization(unsigned int d, const SparseMatrix& B3)
 {
     unsigned int d2 = d * d;
     unsigned int num_poses = B3.cols() / d2;
@@ -385,7 +384,7 @@ Eigen::MatrixXd chordal_initialization(unsigned int d, const Eigen::SparseMatrix
     ///
     /// c = B3(1:d^2) * vec(I_3)
 
-    Eigen::SparseMatrix<double> B3red = B3.rightCols((num_poses - 1) * d2);
+   SparseMatrix B3red = B3.rightCols((num_poses - 1) * d2);
     B3red.makeCompressed(); // Must be in compressed format to use Eigen::SparseQR!
 
     // Vectorization of I_d
@@ -395,7 +394,7 @@ Eigen::MatrixXd chordal_initialization(unsigned int d, const Eigen::SparseMatrix
     Eigen::VectorXd cR = B3.leftCols(d2) * Id_vec;
 
     Eigen::VectorXd rvec;
-    Eigen::SPQR<Eigen::SparseMatrix<double> > QR(B3red);
+    Eigen::SPQR<SparseMatrix> QR(B3red);
     rvec = -QR.solve(cR);
 
     Eigen::MatrixXd Rchordal(d, d * num_poses);
@@ -407,7 +406,7 @@ Eigen::MatrixXd chordal_initialization(unsigned int d, const Eigen::SparseMatrix
     return Rchordal;
 }
 
-Eigen::MatrixXd recover_translations(const Eigen::SparseMatrix<double>& B1, const Eigen::SparseMatrix<double>& B2, const Eigen::MatrixXd& R)
+Matrix recover_translations(const SparseMatrix &B1, const SparseMatrix &B2, const Matrix &R)
 {
     unsigned int d = R.rows();
     unsigned int n = R.cols() / d;
@@ -425,12 +424,12 @@ Eigen::MatrixXd recover_translations(const Eigen::SparseMatrix<double>& B1, cons
     Eigen::Map<Eigen::VectorXd> rvec((double*)R.data(), d * d * n);
 
     // Form the matrix comprised of the right (n-1) block columns of B1
-    Eigen::SparseMatrix<double> B1red = B1.rightCols(d * (n - 1));
+    SparseMatrix B1red = B1.rightCols(d * (n - 1));
 
     Eigen::VectorXd c = B2 * rvec;
 
     // Solve
-    Eigen::SPQR<Eigen::SparseMatrix<double> > QR(B1red);
+    Eigen::SPQR< SparseMatrix > QR(B1red);
     Eigen::VectorXd tred = -QR.solve(c);
 
     // Reshape this result into a d x (n-1) matrix
@@ -445,10 +444,10 @@ Eigen::MatrixXd recover_translations(const Eigen::SparseMatrix<double>& B1, cons
     return t;
 }
 
-Eigen::MatrixXd project_to_SOd(const Eigen::MatrixXd& M)
+Matrix project_to_SOd(const Matrix& M)
 {
     // Compute the SVD of M
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(M, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    Eigen::JacobiSVD<Matrix> svd(M, Eigen::ComputeFullU | Eigen::ComputeFullV);
 
     double detU = svd.matrixU().determinant();
     double detV = svd.matrixV().determinant();
@@ -462,10 +461,10 @@ Eigen::MatrixXd project_to_SOd(const Eigen::MatrixXd& M)
     }
 }
 
-Eigen::MatrixXd round_solution(const Eigen::MatrixXd& Y, unsigned int d)
+Matrix round_solution(const Matrix& Y, unsigned int d)
 {
     // First, compute a thin SVD of Y
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(Y, Eigen::ComputeThinV);
+    Eigen::JacobiSVD<Matrix> svd(Y, Eigen::ComputeThinV);
 
     Eigen::VectorXd sigmas = svd.singularValues();
     // Construct a diagonal matrix comprised of the first d singular values
