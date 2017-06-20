@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 11)  # We require C++ 11
 ### CMake Cache (build configuration) variables -- these are set interactively in the CMake GUI, and cached in CMakeCache ###
 
 # Build type
-SET(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel.")
+SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel.")
 # Directory for built libraries
 set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/lib CACHE PATH "The directory in which to place libraries built by this project")
 # Directory for built executables
@@ -25,6 +25,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/eigen/cmake" CACHE STRING "The CMake 
 # SESYNC DEPENDENCIES
 
 # FIND EIGEN3
+set( ENV{EIGEN3_ROOT_DIR} ${CMAKE_SOURCE_DIR}/eigen)
 find_package(Eigen3 3.3 REQUIRED)
 if(EIGEN3_FOUND)
 message(STATUS "Found Eigen3 library (version ${EIGEN3_VERSION_STRING})")
@@ -69,6 +70,8 @@ ${SESync_SOURCE_DIR}/SESync_utils.cpp
 ${SESync_SOURCE_DIR}/SESyncProblem.cpp
 ${SESync_SOURCE_DIR}/SESync.cpp
 )
+
+message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode\n")
 
 # Build the SE-Sync library
 add_library(SESync SHARED ${SESync_HDRS} ${SESync_SRCS})
