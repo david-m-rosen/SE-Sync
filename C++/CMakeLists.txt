@@ -21,6 +21,11 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "The direc
 # BUILD CONFIGURATIONS
 option(CMAKE_VERBOSE_MAKEFILE "Generate verbose makefiles?" OFF)
 
+set(CODE_PROFILING OFF CACHE BOOL "Turn on code profiling?")
+if(${CODE_PROFILING})
+message(STATUS "Turning on code profiling for SE-Sync")
+endif()
+
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/eigen/cmake" CACHE STRING "The CMake module path used for this project")
 
@@ -90,6 +95,9 @@ message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode\n")
 add_library(SESync SHARED ${SESync_HDRS} ${SESync_SRCS})
 target_include_directories(SESync PUBLIC ${SESYNC_INCLUDES})
 target_link_libraries(SESync roptlib ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
+if(${CODE_PROFILING})
+set_target_properties(SESync PROPERTIES COMPILE_FLAGS "-pg -g" LINK_FLAGS "-pg -g")
+endif()
 
 # Uncomment these lines to enable support for OpenMP
 #if(OPENMP_FOUND)
@@ -103,6 +111,9 @@ target_link_libraries(SESync roptlib ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SP
 add_executable(se-sync ${SESync_EXAMPLES_DIR}/main.cpp)
 target_include_directories(se-sync PUBLIC ${SESYNC_INCLUDES})
 target_link_libraries(se-sync SESync ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
+if(${CODE_PROFILING})
+set_target_properties(se-sync PROPERTIES COMPILE_FLAGS "-pg -g" LINK_FLAGS "-pg -g")
+endif()
 
 # Uncomment these lines to enable support for OpenMP
 #if(OPENMP_FOUND)

@@ -19,6 +19,12 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "The direc
 # BUILD CONFIGURATIONS
 option(CMAKE_VERBOSE_MAKEFILE "Generate verbose makefiles?" OFF)
 
+set(CODE_PROFILING OFF CACHE BOOL "Turn on code profiling?")
+if(${CODE_PROFILING})
+message(STATUS "Turning on code profiling for ROPTLIB")
+endif()
+
+
 # ROPTLIB requires lapack, blas, and m libraries
 find_library(LAPACK lapack DOC "LAPACK library to link against")
 find_library(BLAS blas DOC "BLAS library to link against")
@@ -96,19 +102,22 @@ Problems/WeightedLowrank/WeightedLowRank.cpp
 Solvers/LRBFGS.cpp Solvers/LRBFGSLPSub.cpp Solvers/LRTRSR1.cpp Solvers/MRankAdaptive.cpp Solvers/QuasiNewton.cpp Solvers/RBFGS.cpp Solvers/RBFGSLPSub.cpp Solvers/RBroydenFamily.cpp Solvers/RCG.cpp Solvers/RGS.cpp Solvers/RNewton.cpp Solvers/RSD.cpp Solvers/RTRNewton.cpp Solvers/RTRSD.cpp Solvers/RTRSR1.cpp Solvers/RWRBFGS.cpp Solvers/Solvers.cpp Solvers/SolversLS.cpp Solvers/SolversLSLPSub.cpp Solvers/SolversTR.cpp)
 target_include_directories(roptlib PUBLIC ${ROPTLIB_INCLUDE_DIRECTORIES})
 target_link_libraries(roptlib ${LAPACK} ${BLAS} ${M})
+if(${CODE_PROFILING})
+set_target_properties(roptlib PROPERTIES COMPILE_FLAGS "-pg -g" LINK_FLAGS "-pg -g")
+endif()
 
 # COMPILE EXECUTABLES
 
 # Compile the simple test program from ROPTLIB
-add_executable(TestSimpleExample test/TestSimpleExample.cpp)
-target_link_libraries(TestSimpleExample roptlib)
+#add_executable(TestSimpleExample test/TestSimpleExample.cpp)
+#target_link_libraries(TestSimpleExample roptlib)
 
 # Compile the simple product test program from ROPTLIB
-add_executable(TestProduct test/TestProduct.h test/TestProduct.cpp)
-target_link_libraries(TestProduct roptlib)
+#add_executable(TestProduct test/TestProduct.h test/TestProduct.cpp)
+#target_link_libraries(TestProduct roptlib)
 
 # Compile the simple product test program from ROPTLIB
-add_executable(TestProductBrockett test/TestProductExample.cpp test/TestProductExample.cpp)
-target_link_libraries(TestProductBrockett roptlib)
+#add_executable(TestProductBrockett test/TestProductExample.cpp test/TestProductExample.cpp)
+#target_link_libraries(TestProductBrockett roptlib)
 
 export(TARGETS roptlib FILE ROPTLIB.cmake)
