@@ -4,6 +4,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(SESync)
 set(CMAKE_CXX_STANDARD 11)  # We require C++ 11
+add_compile_options(-march=native) # Enable faster instruction sets
 
 
 ### CMake Cache (build configuration) variables -- these are set interactively in the CMake GUI, and cached in CMakeCache ###
