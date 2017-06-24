@@ -15,7 +15,9 @@
 #include <Eigen/SPQRSupport>
 #include <Eigen/Sparse>
 
+#include "RelativePoseMeasurement.h"
 #include "SESync_types.h"
+#include "SESync_utils.h"
 
 #include "Problem.h"
 #include "ProductManifold.h"
@@ -94,6 +96,15 @@ class SESyncProblem : public ROPTLIB::Problem {
  public:
   /** Default constructor; doesn't actually do anything */
   SESyncProblem() {}
+
+  /** Constructor using a vector of relative pose measurements */
+  SESyncProblem(
+      const std::vector<SESync::RelativePoseMeasurement>& measurements) {
+    set_problem_data(construct_rotational_connection_Laplacian(measurements),
+                     construct_oriented_incidence_matrix(measurements),
+                     construct_translational_data_matrix(measurements),
+                     construct_translational_precision_matrix(measurements));
+  }
 
   /** This function constructs the special Euclidean synchronization problem
 *from the passed data matrices */
