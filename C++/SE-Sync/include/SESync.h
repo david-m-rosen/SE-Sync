@@ -76,7 +76,7 @@ struct SESyncOpts {
   /** Default constructor; all arguments are optional, with 'reasonable' default
  * values */
   SESyncOpts(double gradient_norm_tolerance = 1e-2,
-             double relative_function_decrease_tolerance = 1e-6,
+             double relative_function_decrease_tolerance = 1e-5,
              unsigned int max_RTR_iters = 100, unsigned int max_tCG_iters = 500,
              unsigned int init_RS_level = 5, unsigned int max_RS_level = 7,
              double eigenvalue_computation_tolerance = 1e-10,
@@ -86,17 +86,14 @@ struct SESyncOpts {
              bool Cholesky = true, bool verbose_output = false)
       : tolgradnorm(gradient_norm_tolerance),
         rel_func_decrease_tol(relative_function_decrease_tolerance),
-        max_RTR_iterations(max_RTR_iters),
-        max_tCG_iterations(max_tCG_iters),
-        r0(init_RS_level),
-        rmax(max_RS_level),
+        max_RTR_iterations(max_RTR_iters), max_tCG_iterations(max_tCG_iters),
+        r0(init_RS_level), rmax(max_RS_level),
         eig_comp_tol(eigenvalue_computation_tolerance),
         max_eig_iterations(max_eigenvalue_iterations),
         min_eig_num_tol(eigenvalue_numerical_tolerance),
         num_Lanczos_vectors(num_vectors),
         use_chordal_initialization(chordal_initialization),
-        use_Cholesky(Cholesky),
-        verbose(verbose_output) {}
+        use_Cholesky(Cholesky), verbose(verbose_output) {}
 };
 
 /** These enumerations describe the termination status of the SE-Sync algorithm
@@ -152,9 +149,9 @@ struct SESyncResult {
 /** Given a vector of relative pose measurements specifying a special Euclidean
  * synchronization problem, performs synchronization using the SESync algorithm
  */
-SESyncResult SESync(const std::vector<RelativePoseMeasurement>& measurements,
-                    const SESyncOpts& options = SESyncOpts(),
-                    const Matrix& Y0 = Matrix());
-}  // namespace SESync
+SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
+                    const SESyncOpts &options = SESyncOpts(),
+                    const Matrix &Y0 = Matrix());
+} // namespace SESync
 
-#endif  // _SESYNC_H_
+#endif // _SESYNC_H_
