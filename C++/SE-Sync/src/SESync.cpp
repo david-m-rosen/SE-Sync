@@ -19,7 +19,12 @@ bool gradient_norm_stopping_criterion(ROPTLIB::Variable *x, ROPTLIB::Vector *gf,
                                       const ROPTLIB::Solvers *solver) {
   const SESyncProblem *SESync_problem_ptr =
       static_cast<const SESyncProblem *>(problem);
-  return ngf < SESync_problem_ptr->RTR_gradient_norm_tolerance;
+
+  return ((ngf < SESync_problem_ptr->RTR_gradient_norm_tolerance) ||
+          (((solver->GetPreviousIterateVal() - f) /
+                (fabs(solver->GetPreviousIterateVal()) + 1e-6) <
+            solver->Tolerance) &&
+           (solver->GetIter() > 1)));
 }
 
 SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
