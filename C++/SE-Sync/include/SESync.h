@@ -139,6 +139,22 @@ struct SESyncResult {
   /** The reprojected rotational state estimates Rhat \in SO(d)^n */
   Matrix Rhat;
 
+  /** The elapsed computation time used to compute the initialization for the
+   * Riemannian Staircase */
+  double initialization_time;
+
+  /** The sequence of function values obtained by the Riemannian Staircase as
+   * the algorithm runs */
+  std::vector<double> function_values;
+
+  /** The sequence norms of the gradients obtained by the Riemannian Staircase
+   * as the algorithm runs */
+  std::vector<double> gradient_norm_values;
+
+  /** The elapsed computation time since the start of the Riemannian Staircase
+   * algorithm at which these values were obtained */
+  std::vector<double> elapsed_optimization_times;
+
   /** The optimal translational estimates corresponding to the rotational
    * estimate Rhat */
   Matrix that;
