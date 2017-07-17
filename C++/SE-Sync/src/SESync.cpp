@@ -240,6 +240,21 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     }
   }
 
+  auto initialization_counter =
+      std::chrono::high_resolution_clock::now() - SESync_start_time;
+  double initialization_elapsed_time =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          initialization_counter)
+          .count() /
+      1000.0;
+
+  results.initialization_time = initialization_elapsed_time;
+
+  if (options.verbose)
+    std::cout << "SE-Sync initialization finished; elapsed time: "
+              << initialization_elapsed_time << " seconds" << std::endl
+              << std::endl;
+
   if (options.verbose) {
     // Compute and display the initial objective value
     double F0 = (Y * problem.Q_product(Y.transpose())).trace();
@@ -247,8 +262,19 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   }
 
   /// RIEMANNIAN STAIRCASE
+  auto riemannian_staircase_start_time =
+      std::chrono::high_resolution_clock::now();
 
   for (unsigned int r = options.r0; r <= options.rmax; r++) {
+
+    // The elapsed time from the start of the Riemannian Staircase algorithm
+    // until the start of this iteration of RTR
+    double RTR_iteration_start_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() -
+            riemannian_staircase_start_time)
+            .count() /
+        1000.0;
 
     if (options.verbose)
       std::cout << std::endl
@@ -296,6 +322,29 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     StiefelProd2Mat(*Yopt_ropt, results.Yopt);
     results.SDPval = RTR.Getfinalfun();
     results.gradnorm = RTR.Getnormgf();
+
+    // Record some interesting info about the solving process
+
+    // Obtained function values
+    results.function_values.insert(results.function_values.end(),
+                                   RTR.GetfunSeries(),
+                                   RTR.GetfunSeries() + RTR.GetlengthSeries());
+
+    // Obtained gradient norm values
+    results.gradient_norm_values.insert(
+        results.gradient_norm_values.end(), RTR.GetgradSeries(),
+        RTR.GetgradSeries() + RTR.GetlengthSeries());
+
+    // Elapsed time since the start of the Riemannian Staircase at which these
+    // values were obtained
+    std::vector<double> RTR_iteration_function_times(
+        RTR.GettimeSeries(), RTR.GettimeSeries() + RTR.GetlengthSeries());
+    for (unsigned int i = 0; i < RTR_iteration_function_times.size(); i++)
+      RTR_iteration_function_times[i] += RTR_iteration_start_time;
+    results.elapsed_optimization_times.insert(
+        results.elapsed_optimization_times.end(),
+        RTR_iteration_function_times.begin(),
+        RTR_iteration_function_times.end());
 
     if (options.verbose) {
       // Display some output to the user
