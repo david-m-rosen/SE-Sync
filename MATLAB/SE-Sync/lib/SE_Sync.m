@@ -40,6 +40,12 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   miniter:  Minimum number of outer iterations (update steps).
 %   maxiter:  Maximum number of outer iterations (update steps).
 %   maxtime:  Maximum permissible elapsed computation time (in seconds).
+%   preconditioner: A string specifying an (optional) preconditioner to use
+%      when computing approximately solving for the trust-region update
+%      step using truncated conjugate-gradient.  Possible values are:
+%      - 'Jacobi':  Use a simple diagonal Jacobi preconditioner [default]
+%      - 'ichol':  Use a zero-fill incomplete Cholesky preconditioner
+%      - 'none':  Do not precondition  
 %
 % SE_Sync_opts [optional]:  A MATLAB struct determining the behavior of the
 %       SE-Sync algorithm.  This struct contains the following [optional]
@@ -129,7 +135,7 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   V:  The sparse translational data matrix defined in eq. (16) in the
 %       paper.
 
-% Copyright (C) 2016 by David M. Rosen
+% Copyright (C) 2016, 2017 by David M. Rosen
 
 
 fprintf('\n\n========== SE-Sync ==========\n\n');
@@ -261,6 +267,24 @@ if isfield(Manopt_opts, 'maxtime')
     fprintf(' Maximum permissible elapsed computation time [sec]: %g\n', Manopt_opts.maxtime);
 end
 
+if ~isfield(Manopt_opts, 'preconditioner')
+    fprintf(' Using Jacobi preconditioner [default] \n');
+    Manopt_opts.preconditioner = 'Jacobi';
+else
+    if(strcmp(Manopt_opts.preconditioner, 'Jacobi'))
+        fprintf(' Using Jacobi preconditioner\n');
+    elseif(strcmp(Manopt_opts.preconditioner, 'ichol'))
+        fprintf(' Using incomplete zero-fill Cholesky preconditioner \n');
+    elseif(strcmp(Manopt_opts.preconditioner, 'none'))
+        fprintf(' Using unpreconditioned truncated conjugate gradient\n');
+    else
+        error(sprintf('Initialization option "%s" not recognized!  (Supported options are "Jacobi" or "none"\n', Manopt_opts.preconditioner));
+    end
+end
+
+        
+
+
 
 
 
@@ -273,7 +297,47 @@ problem_data = construct_problem_data(measurements);
 auxiliary_matrix_construction_time = toc(aux_time_start);
 fprintf('Auxiliary data matrix construction finished.  Elapsed computation time: %g seconds\n\n', auxiliary_matrix_construction_time);
 
-
+%% Compute preconditioning function, if desired
+if isfield(Manopt_opts, 'preconditioner')
+    precon_construction_start_time = tic();
+    
+    if(strcmp(Manopt_opts.preconditioner, 'Jacobi'))
+        disp('Constructing Jacobi preconditioner...');
+        J = problem_data.ConLap;
+        
+        % Extract diagonal elements
+        D = spdiags(J, 0);
+        
+        % Invert these
+        Dinv = 1 ./ D;
+        
+        % Construct diagonal matrix with this size
+        Pinv = spdiags(Dinv, 0, problem_data.d * problem_data.n, problem_data.d * problem_data.n);
+        
+        % Set preconditioning function
+        manopt_data.precon = @(x,u) Pinv * u;
+    else if (strcmp(Manopt_opts.preconditioner, 'ichol'))
+            J = problem_data.ConLap;
+            
+            % Regularize this matrix by adding a very small positive
+            % multiple of the identity to account for the fact that the
+            % rotational connection Laplacian is singular
+            ichol_opts.diagcomp = 1e-3;
+            
+            % Compute incomplete zero-fill 
+            L = ichol(J, ichol_opts);
+            LT = L';
+            
+            manopt_data.precon = @(x,u) LT \ (L \ u);   
+    end
+    
+    if(~strcmp(Manopt_opts.preconditioner, 'none'))
+        precon_construction_end_time = toc(precon_construction_start_time);
+        fprintf('Preconditioner construction finished.  Elapsed computation time: %g seconds\n\n', precon_construction_end_time);
+    end
+end
+        
+    
 
 %% INITIALIZATION
 
