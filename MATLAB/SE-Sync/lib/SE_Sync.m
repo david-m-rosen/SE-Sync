@@ -44,6 +44,7 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %      when computing approximately solving for the trust-region update
 %      step using truncated conjugate-gradient.  Possible values are:
 %      - 'Jacobi':  Use a simple diagonal Jacobi preconditioner [default]
+%      - 'ichol':  Use a zero-fill incomplete Cholesky preconditioner
 %      - 'none':  Do not precondition  
 %
 % SE_Sync_opts [optional]:  A MATLAB struct determining the behavior of the
@@ -272,13 +273,15 @@ if ~isfield(Manopt_opts, 'preconditioner')
 else
     if(strcmp(Manopt_opts.preconditioner, 'Jacobi'))
         fprintf(' Using Jacobi preconditioner\n');
+    elseif(strcmp(Manopt_opts.preconditioner, 'ichol'))
+        fprintf(' Using incomplete zero-fill Cholesky preconditioner \n');
     elseif(strcmp(Manopt_opts.preconditioner, 'none'))
         fprintf(' Using unpreconditioned truncated conjugate gradient\n');
     else
         error(sprintf('Initialization option "%s" not recognized!  (Supported options are "Jacobi" or "none"\n', Manopt_opts.preconditioner));
     end
 end
-    
+
         
 
 
@@ -313,6 +316,19 @@ if isfield(Manopt_opts, 'preconditioner')
         
         % Set preconditioning function
         manopt_data.precon = @(x,u) Pinv * u;
+    else if (strcmp(Manopt_opts.preconditioner, 'ichol'))
+            J = problem_data.ConLap;
+            
+            % Regularize this matrix by adding a very small positive
+            % multiple of the identity to account for the fact that the
+            % rotational connection Laplacian is singular
+            ichol_opts.diagcomp = 1e-3;
+            
+            % Compute incomplete zero-fill 
+            L = ichol(J, ichol_opts);
+            LT = L';
+            
+            manopt_data.precon = @(x,u) LT \ (L \ u);   
     end
     
     if(~strcmp(Manopt_opts.preconditioner, 'none'))
