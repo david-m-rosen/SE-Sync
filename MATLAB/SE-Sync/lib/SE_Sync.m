@@ -297,12 +297,12 @@ problem_data = construct_problem_data(measurements);
 auxiliary_matrix_construction_time = toc(aux_time_start);
 fprintf('Auxiliary data matrix construction finished.  Elapsed computation time: %g seconds\n\n', auxiliary_matrix_construction_time);
 
-%% Compute preconditioning function, if desired
+%% Construct (Euclidean) preconditioning function handle, if desired
 if isfield(Manopt_opts, 'preconditioner')
     precon_construction_start_time = tic();
     
     if(strcmp(Manopt_opts.preconditioner, 'Jacobi'))
-        disp('Constructing Jacobi preconditioner...');
+        fprintf('Constructing Jacobi preconditioner... ');
         J = problem_data.ConLap;
         
         % Extract diagonal elements
@@ -315,29 +315,31 @@ if isfield(Manopt_opts, 'preconditioner')
         Pinv = spdiags(Dinv, 0, problem_data.d * problem_data.n, problem_data.d * problem_data.n);
         
         % Set preconditioning function
-        manopt_data.precon = @(x,u) Pinv * u;
-    else if (strcmp(Manopt_opts.preconditioner, 'ichol'))
-            J = problem_data.ConLap;
-            
-            % Regularize this matrix by adding a very small positive
-            % multiple of the identity to account for the fact that the
-            % rotational connection Laplacian is singular
-            ichol_opts.diagcomp = 1e-3;
-            
-            % Compute incomplete zero-fill 
-            L = ichol(J, ichol_opts);
-            LT = L';
-            
-            manopt_data.precon = @(x,u) LT \ (L \ u);   
+        precon = @(u) Pinv * u;
+    elseif (strcmp(Manopt_opts.preconditioner, 'ichol'))
+        fprintf('Constructing incomplete Cholesky preconditioner... ');
+        
+        J = problem_data.ConLap;
+        
+        % Regularize this matrix by adding a very small positive
+        % multiple of the identity to account for the fact that the
+        % rotational connection Laplacian is singular
+        ichol_opts.diagcomp = 1e-3;
+        
+        % Compute incomplete zero-fill
+        L = ichol(J, ichol_opts);
+        LT = L';
+        
+        precon = @(u) LT \ (L \ u);
     end
     
     if(~strcmp(Manopt_opts.preconditioner, 'none'))
         precon_construction_end_time = toc(precon_construction_start_time);
-        fprintf('Preconditioner construction finished.  Elapsed computation time: %g seconds\n\n', precon_construction_end_time);
+        fprintf('Elapsed computation time: %g seconds\n\n', precon_construction_end_time);
     end
 end
-        
-    
+
+
 
 %% INITIALIZATION
 
@@ -393,6 +395,11 @@ fprintf('\nSolving Riemannian optimization problems using Manopt''s "%s" solver\
 manopt_data.cost = @(Y) evaluate_objective(Y', problem_data, SE_Sync_opts.Cholesky);
 manopt_data.egrad = @(Y) Euclidean_gradient(Y', problem_data, SE_Sync_opts.Cholesky)';
 manopt_data.ehess = @(Y, Ydot) Euclidean_Hessian_vector_product(Y', Ydot', problem_data, SE_Sync_opts.Cholesky)';
+
+% Set preconditioning function, if desired
+if(exist('precon', 'var'))
+    manopt_data.precon = @(x,u) manopt_data.M.proj(x, precon(u));
+end
 
 
 % Set additional stopping criterion for Manopt: stop if the relative
@@ -474,6 +481,10 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
         % preparation for the next iteration
         
         manopt_data.M = stiefelstackedfactory(problem_data.n, problem_data.d, r+1);
+        % Update preconditioning function, if it's used
+        if(exist('precon', 'var'))
+            manopt_data.precon = @(x,u) manopt_data.M.proj(x, precon(u));
+        end
         
         % Perform line search along the escape direction Ydot to escape the
         % saddle point and obtain the initial iterate for the next level in
