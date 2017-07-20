@@ -41,8 +41,8 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   maxiter:  Maximum number of outer iterations (update steps).
 %   maxtime:  Maximum permissible elapsed computation time (in seconds).
 %   preconditioner: A string specifying an (optional) preconditioner to use
-%      when computing approximately solving for the trust-region update
-%      step using truncated conjugate-gradient.  Possible values are:
+%      when computing inexact Newton steps via the truncated conjugate
+%      gradient algorithm.  Possible values are:
 %      - 'Jacobi':  Use a simple diagonal Jacobi preconditioner [default]
 %      - 'ichol':  Use a zero-fill incomplete Cholesky preconditioner
 %      - 'none':  Do not precondition  
@@ -268,15 +268,15 @@ if isfield(Manopt_opts, 'maxtime')
 end
 
 if ~isfield(Manopt_opts, 'preconditioner')
-    fprintf(' Using Jacobi preconditioner [default] \n');
+    fprintf(' Using Jacobi preconditioner for truncated conjugate gradient inexact Newton step computations [default]\n');
     Manopt_opts.preconditioner = 'Jacobi';
 else
     if(strcmp(Manopt_opts.preconditioner, 'Jacobi'))
-        fprintf(' Using Jacobi preconditioner\n');
+        fprintf(' Using Jacobi preconditioner for truncated conjugate gradient inexact Newton step computations\n');
     elseif(strcmp(Manopt_opts.preconditioner, 'ichol'))
-        fprintf(' Using incomplete zero-fill Cholesky preconditioner \n');
+        fprintf(' Using incomplete zero-fill Cholesky preconditioner for truncated conjugate gradient inexact Newton step computations\n');
     elseif(strcmp(Manopt_opts.preconditioner, 'none'))
-        fprintf(' Using unpreconditioned truncated conjugate gradient\n');
+        fprintf(' Using unpreconditioned truncated conjugate gradient for inexact Newton step computations\n');
     else
         error(sprintf('Initialization option "%s" not recognized!  (Supported options are "Jacobi" or "none"\n', Manopt_opts.preconditioner));
     end
