@@ -319,7 +319,7 @@ if isfield(Manopt_opts, 'preconditioner')
     elseif (strcmp(Manopt_opts.preconditioner, 'ichol'))
         fprintf('Constructing incomplete Cholesky preconditioner... ');
         
-        J = problem_data.ConLap;
+        LGrho = problem_data.ConLap;
         
         % Regularize this matrix by adding a very small positive
         % multiple of the identity to account for the fact that the
@@ -327,7 +327,7 @@ if isfield(Manopt_opts, 'preconditioner')
         ichol_opts.diagcomp = 1e-3;
         
         % Compute incomplete zero-fill
-        L = ichol(J, ichol_opts);
+        L = ichol(LGrho, ichol_opts);
         LT = L';
         
         precon = @(u) LT \ (L \ u);
