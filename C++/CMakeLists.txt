@@ -7,7 +7,7 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are
 project(SESync C CXX)
 
 set(CMAKE_CXX_STANDARD 11)  # We require C++ 11
-add_compile_options(-march=native) # Enable faster instruction sets
+#add_compile_options(-march=native) # Enable faster instruction sets
 
 ### CMake Cache (build configuration) variables -- these are set interactively in the CMake GUI, and cached in CMakeCache ###
 
@@ -80,12 +80,14 @@ ${SESync_INCLUDE_DIR}/RelativePoseMeasurement.h
 ${SESync_INCLUDE_DIR}/SESync_types.h
 ${SESync_INCLUDE_DIR}/SESync_utils.h
 ${SESync_INCLUDE_DIR}/SESyncProblem.h
+${SESync_INCLUDE_DIR}/SESyncRTRNewton.h
 ${SESync_INCLUDE_DIR}/SESync.h
 )
 
 set(SESync_SRCS
 ${SESync_SOURCE_DIR}/SESync_utils.cpp
 ${SESync_SOURCE_DIR}/SESyncProblem.cpp
+${SESync_SOURCE_DIR}/SESyncRTRNewton.cpp
 ${SESync_SOURCE_DIR}/SESync.cpp
 )
 

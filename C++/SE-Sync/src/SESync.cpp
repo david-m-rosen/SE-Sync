@@ -6,8 +6,7 @@
 #include "SESync_types.h"
 #include "SESync_utils.h"
 
-#include "RTRNewton.h"
-#include "SolversLS.h"
+#include "SESyncRTRNewton.h"
 
 namespace SESync {
 
@@ -295,7 +294,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     Mat2StiefelProd(Y, Yinit_ropt);
 
     /// Set up RTR solver!
-    ROPTLIB::RTRNewton RTR(&problem, &Yinit_ropt);
+    SESyncRTRNewton RTR(&problem, &Yinit_ropt);
 
     // Set stopping criteria
     RTR.Stop_Criterion = ROPTLIB::StopCrit::FUN_REL;
