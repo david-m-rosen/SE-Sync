@@ -22,7 +22,7 @@ struct SESyncOpts {
   /// OPTIMIZATION STOPPING CRITERIA
 
   /** Stopping tolerance for the norm of the Riemannian gradient */
-  double tolgradnorm;
+  double grad_norm_tol;
 
   /** Stopping criterion based upon the relative decrease in function value */
   double rel_func_decrease_tol;
@@ -84,7 +84,7 @@ struct SESyncOpts {
              double eigenvalue_numerical_tolerance = 1e-5,
              unsigned int num_vectors = 20, bool chordal_initialization = true,
              bool Cholesky = true, bool verbose_output = false)
-      : tolgradnorm(gradient_norm_tolerance),
+      : grad_norm_tol(gradient_norm_tolerance),
         rel_func_decrease_tol(relative_function_decrease_tolerance),
         max_RTR_iterations(max_RTR_iters), max_tCG_iterations(max_tCG_iters),
         r0(init_RS_level), rmax(max_RS_level),

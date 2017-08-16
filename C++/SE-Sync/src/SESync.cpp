@@ -10,22 +10,6 @@
 
 namespace SESync {
 
-/** Helper function; trigger the stopping criterion based upon the gradient norm
- * tolerance stored in the SESyncProblem object*/
-bool gradient_norm_stopping_criterion(ROPTLIB::Variable *x, ROPTLIB::Vector *gf,
-                                      double f, double ngf, double ngf0,
-                                      const ROPTLIB::Problem *problem,
-                                      const ROPTLIB::Solvers *solver) {
-  const SESyncProblem *SESync_problem_ptr =
-      static_cast<const SESyncProblem *>(problem);
-
-  return ((ngf < SESync_problem_ptr->RTR_gradient_norm_tolerance) ||
-          (((solver->GetPreviousIterateVal() - f) /
-                (fabs(solver->GetPreviousIterateVal()) + 1e-6) <
-            solver->Tolerance) &&
-           (solver->GetIter() > 1)));
-}
-
 SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
                     const SESyncOpts &options, const Eigen::MatrixXd &Y0) {
 
@@ -72,7 +56,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
     std::cout << "ROPTLIB settings:" << std::endl;
     std::cout << " Stopping tolerance for norm of Riemannian gradient: "
-              << options.tolgradnorm << std::endl;
+              << options.grad_norm_tol << std::endl;
     std::cout << " Stopping tolerance for relative function decrease: "
               << options.rel_func_decrease_tol << std::endl;
     std::cout << " Maximum number of trust-region iterations: "
@@ -171,7 +155,6 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   auto problem_construction_start_time =
       std::chrono::high_resolution_clock::now();
   SESyncProblem problem(LGrho, A, T, Omega, options.use_Cholesky);
-  problem.RTR_gradient_norm_tolerance = options.tolgradnorm;
   auto problem_construction_counter =
       std::chrono::high_resolution_clock::now() -
       problem_construction_start_time;
@@ -206,9 +189,6 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
         std::cout << "Computing chordal initialization ... ";
 
       auto chordal_init_start_time = std::chrono::high_resolution_clock::now();
-      // Matrix Rinit = chordal_initialization(LGrho,
-      // problem.dimension(),options.max_eig_iterations, 100 *
-      // options.eig_comp_tol);
       Matrix Rinit = chordal_initialization(problem.dimension(), B3);
       auto chordal_init_counter =
           std::chrono::high_resolution_clock::now() - chordal_init_start_time;
@@ -294,17 +274,9 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     Mat2StiefelProd(Y, Yinit_ropt);
 
     /// Set up RTR solver!
-    SESyncRTRNewton RTR(&problem, &Yinit_ropt);
+    SESyncRTRNewton RTR(&problem, &Yinit_ropt, options.grad_norm_tol,
+                        options.rel_func_decrease_tol);
 
-    // Set stopping criteria
-    RTR.Stop_Criterion = ROPTLIB::StopCrit::FUN_REL;
-    RTR.Tolerance = options.rel_func_decrease_tol;
-    // Note that this custom stopping criterion is called before, and IN
-    // ADDITION TO, the relative function decrease tolerance; thus, by setting
-    // both, we enforce stopping base both upon gradient norm AND relative
-    // function decrease
-
-    RTR.StopPtr = &gradient_norm_stopping_criterion;
     RTR.Max_Iteration = options.max_RTR_iterations;
     RTR.maximum_Delta = 1e4;
     RTR.Debug = (options.verbose ? ROPTLIB::DEBUGINFO::ITERRESULT
@@ -400,7 +372,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
       // at a trial point whose gradient is large enough to avoid triggering the
       // RTR gradient norm tolerance stopping condition, according to the local
       // second-order model
-      double alpha = 2 * 100 * options.tolgradnorm / fabs(results.lambda_min);
+      double alpha = 2 * 100 * options.grad_norm_tol / fabs(results.lambda_min);
       double alpha_min = 1e-6; // Minimum stepsize
 
       //            // First, double-check that the eigenvalue computation
@@ -497,7 +469,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
             2 * problem.Q_product(YtestMat.transpose()).norm();
 
         if ((FYtest < results.SDPval) &&
-            (FYtest_gradnorm > options.tolgradnorm))
+            (FYtest_gradnorm > options.grad_norm_tol))
           escape_success = true;
       } while (!escape_success && (alpha > alpha_min));
       if (escape_success) {
