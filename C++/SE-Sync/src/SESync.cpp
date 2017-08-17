@@ -63,8 +63,17 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
               << options.max_RTR_iterations << std::endl;
     std::cout << " Maximum number of truncated conjugate gradient iterations "
                  "per outer iteration: "
-              << options.max_tCG_iterations << std::endl
-              << std::endl;
+              << options.max_tCG_iterations << std::endl;
+    std::cout
+        << " Preconditioning the truncated conjugate gradient method using ";
+    if (options.precon == None)
+      std::cout << "the identity preconditioner";
+    else if (options.precon == Jacobi)
+      std::cout << "Jacobi preconditioning";
+    else
+      std::cout << "incomplete Cholesky preconditioning";
+
+    std::cout << std::endl << std::endl;
   }
 
   /// ALGORITHM START
@@ -154,7 +163,8 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
   auto problem_construction_start_time =
       std::chrono::high_resolution_clock::now();
-  SESyncProblem problem(LGrho, A, T, Omega, options.use_Cholesky);
+  SESyncProblem problem(LGrho, A, T, Omega, options.use_Cholesky,
+                        options.precon);
   auto problem_construction_counter =
       std::chrono::high_resolution_clock::now() -
       problem_construction_start_time;
@@ -296,12 +306,18 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
     // Record some interesting info about the solving process
 
-    // Obtained function values
+    // Number of iterations in the RTR algorithm
+    results.RTR_iterations.push_back(RTR.GetIter());
+
+    // Number of Hessian-vector multiplications
+    results.Hessian_multiplications.push_back(RTR.GetnH());
+
+    // Sequence of function values
     results.function_values.insert(results.function_values.end(),
                                    RTR.GetfunSeries(),
                                    RTR.GetfunSeries() + RTR.GetlengthSeries());
 
-    // Obtained gradient norm values
+    // Sequence of gradient norm values
     results.gradient_norm_values.insert(
         results.gradient_norm_values.end(), RTR.GetgradSeries(),
         RTR.GetgradSeries() + RTR.GetlengthSeries());
@@ -374,36 +390,6 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
       // second-order model
       double alpha = 2 * 100 * options.grad_norm_tol / fabs(results.lambda_min);
       double alpha_min = 1e-6; // Minimum stepsize
-
-      //            // First, double-check that the eigenvalue computation
-      //            converged with sufficient accuracy ...
-      //            Eigen::VectorXd QminusLambda_vmin(results.v_min.size());
-      //            SESyncProblem::QMinusLambdaProdFunctor
-      //            QminusLambda(&problem, results.Yopt);
-      //            QminusLambda.perform_op(results.v_min.data(),
-      //            QminusLambda_vmin.data());
-      //            double rayleigh_quotient =
-      //            results.v_min.dot(QminusLambda_vmin);
-
-      //            // If the rayleigh quotient has the wrong sign, or if the
-      //            Rayleigh quotient is more than an order of magnitude off of
-      //            the estimate, the eigenvector is likely not accurate enough
-      //            to enable us to escape the saddle
-      //            if (rayleigh_quotient > 0 || fabs(rayleigh_quotient /
-      //            results.lambda_min) < .1) {
-      //                results.status = EIG_IMPRECISION;
-      //                if (options.verbose) {
-      //                    std::cout << "WARNING!  Eigencomputation is not
-      //                    sufficiently accurate to enable escape from saddle
-      //                    point!" << std::endl;
-      //                    std::cout << "Estimated eigenvalue: " <<
-      //                    results.lambda_min << std::endl;
-      //                    std::cout << "Rayleigh quotient: " <<
-      //                    rayleigh_quotient << std::endl
-      //                              << std::endl;
-      //                }
-      //                break;
-      //            }
 
       if (options.verbose) {
         std::cout << "Saddle point detected (minimum eigenvalue = "

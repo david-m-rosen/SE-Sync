@@ -25,6 +25,9 @@
 
 namespace SESync {
 
+// Forward declaration to avoid having circular includes
+class SESyncRTRNewton;
+
 /** The type of the sparse Cholesky factorization to use in the computation of
  * the orthogonal projection operation */
 typedef Eigen::CholmodDecomposition<SparseMatrix> SparseCholeskyFactorization;
@@ -32,6 +35,10 @@ typedef Eigen::CholmodDecomposition<SparseMatrix> SparseCholeskyFactorization;
 /** The type of the QR decomposition to use in the computation of the orthogonal
  * projection operation */
 typedef Eigen::SPQR<SparseMatrix> SparseQRFactorization;
+
+/** the type of the incomplete Cholesky decomposition we will use for
+ * preconditioning the conjugate gradient iterations in the RTR method */
+typedef Eigen::IncompleteCholesky<double> IncompleteCholeskyFactorization;
 
 class SESyncProblem : public ROPTLIB::Problem {
 private:
@@ -81,6 +88,16 @@ private:
  * decompositions for computing the orthogonal projection */
   bool use_Cholesky;
 
+  /** The preconditioning strategy to use when running the Riemannian
+   * trust-region algorithm */
+  Preconditioner preconditioner;
+
+  // Diagonal Jacobi preconditioner
+  DiagonalMatrix JacobiPreconditioner;
+
+  // Incomplete Cholesky Preconditioner
+  IncompleteCholeskyFactorization *iChol = nullptr;
+
   /** The rank of the rank-restricted relaxation */
   unsigned int r = 0;
 
@@ -112,11 +129,12 @@ public:
                 const SparseMatrix &oriented_incidence_matrix,
                 const SparseMatrix &translational_data_matrix,
                 const DiagonalMatrix &translational_precisions_matrix,
-                bool Cholesky = true) {
+                bool Cholesky = true,
+                const Preconditioner &precon = IncompleteCholesky) {
     // This is just a passthrough to the initialization function
     set_problem_data(rotational_connection_Laplacian, oriented_incidence_matrix,
                      translational_data_matrix, translational_precisions_matrix,
-                     Cholesky);
+                     Cholesky, precon);
   }
 
   /** This function initializes the special Euclidean synchronization problem
@@ -125,7 +143,8 @@ public:
                         const SparseMatrix &oriented_incidence_matrix,
                         const SparseMatrix &translational_data_matrix,
                         const DiagonalMatrix &translational_precisions_matrix,
-                        bool Cholesky = true);
+                        bool Cholesky = true,
+                        const Preconditioner &precon = IncompleteCholesky);
 
   /** Set the maximum rank of the rank-restricted semidefinite relaxation */
   void set_relaxation_rank(unsigned int rank);
@@ -190,6 +209,9 @@ public:
 
     if (QR)
       delete QR;
+
+    if (iChol)
+      delete iChol;
   }
 
   /** This is a lightweight struct used in conjunction with Spectra to compute
@@ -231,11 +253,9 @@ public:
     }
   };
 
-  //  /** Hacky workaround: store the gradient norm tolerance for the RTR
-  //   * optimization here, so that we can access it through a plain C-style
-  //   * callback that passes an ROPTLIB::Problem* instance as an argument */
-
-  //  double RTR_gradient_norm_tolerance;
+  // Declare the specialization of the RTR Newton method to be a friend so we
+  // can directly access private/protected datas
+  friend SESyncRTRNewton;
 };
 }
 #endif // _SESYNCPROBLEM_H_

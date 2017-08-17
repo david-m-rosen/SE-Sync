@@ -70,6 +70,10 @@ struct SESyncOpts {
    * orthogonal projection */
   bool use_Cholesky;
 
+  /** The preconditioning strategy to use in the Riemannian trust-region
+   * algorithm*/
+  Preconditioner precon;
+
   /** Whether to print output as the algorithm runs */
   bool verbose;
 
@@ -83,7 +87,9 @@ struct SESyncOpts {
              unsigned int max_eigenvalue_iterations = 10000,
              double eigenvalue_numerical_tolerance = 1e-5,
              unsigned int num_vectors = 20, bool chordal_initialization = true,
-             bool Cholesky = true, bool verbose_output = false)
+             bool Cholesky = true,
+             const Preconditioner &preconditioner = IncompleteCholesky,
+             bool verbose_output = false)
       : grad_norm_tol(gradient_norm_tolerance),
         rel_func_decrease_tol(relative_function_decrease_tolerance),
         max_RTR_iterations(max_RTR_iters), max_tCG_iterations(max_tCG_iters),
@@ -93,7 +99,8 @@ struct SESyncOpts {
         min_eig_num_tol(eigenvalue_numerical_tolerance),
         num_Lanczos_vectors(num_vectors),
         use_chordal_initialization(chordal_initialization),
-        use_Cholesky(Cholesky), verbose(verbose_output) {}
+        use_Cholesky(Cholesky), precon(preconditioner),
+        verbose(verbose_output) {}
 };
 
 /** These enumerations describe the termination status of the SE-Sync algorithm
@@ -143,16 +150,24 @@ struct SESyncResult {
    * Riemannian Staircase */
   double initialization_time;
 
+  /** The number of iterations performed by the Riemannian Trust Region
+   * optimization method at each level of the Riemannian Staircase */
+  std::vector<unsigned int> RTR_iterations;
+
   /** The sequence of function values obtained by the Riemannian Staircase as
    * the algorithm runs */
   std::vector<double> function_values;
 
-  /** The sequence norms of the gradients obtained by the Riemannian Staircase
-   * as the algorithm runs */
+  /** The sequence of norms of the gradients obtained by the Riemannian
+   * Staircase as the algorithm runs */
   std::vector<double> gradient_norm_values;
 
+  /** The number of Hessian-vector multiplications performed by the Riemannian
+   * Trust Region algorithm at each level of the Riemannian Staircase */
+  std::vector<unsigned int> Hessian_multiplications;
+
   /** The elapsed computation time since the start of the Riemannian Staircase
-   * algorithm at which these values were obtained */
+   * algorithm at which the returned function values were obtained */
   std::vector<double> elapsed_optimization_times;
 
   /** The optimal translational estimates corresponding to the rotational
