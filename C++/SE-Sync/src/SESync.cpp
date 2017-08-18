@@ -288,6 +288,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
                         options.rel_func_decrease_tol);
 
     RTR.Max_Iteration = options.max_RTR_iterations;
+    RTR.Max_Inner_Iter = options.max_tCG_iterations;
     RTR.maximum_Delta = 1e4;
     RTR.Debug = (options.verbose ? ROPTLIB::DEBUGINFO::ITERRESULT
                                  : ROPTLIB::DEBUGINFO::NOOUTPUT);
