@@ -7,7 +7,7 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are
 project(SESync C CXX)
 
 set(CMAKE_CXX_STANDARD 11)  # We require C++ 11
-add_compile_options(-march=native) # Enable faster instruction sets
+#add_compile_options(-march=native) # Enable faster instruction sets
 
 ### CMake Cache (build configuration) variables -- these are set interactively in the CMake GUI, and cached in CMakeCache ###
 
