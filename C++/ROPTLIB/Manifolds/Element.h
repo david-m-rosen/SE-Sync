@@ -21,6 +21,11 @@ SmartSpace --> Element
 /*Define the namespace*/
 namespace ROPTLIB{
 
+  /*Variable and Vector, used throughout the ROPTLIB library, are just Element*/
+  class Element;
+  typedef Element Variable;
+  typedef Element Vector;
+
 	/*Declaration of SharedSpace. SharedSpace has been defined somewhere.
 	Element is the based class of points in manifolds, tangent vectors in tangent spaces.
 	The SharedSpace can be attached to an object of Element. */
