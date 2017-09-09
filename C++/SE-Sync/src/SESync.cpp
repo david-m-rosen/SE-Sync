@@ -1,4 +1,4 @@
-#include <chrono>
+#include "stopwatch.h"
 #include <functional>
 
 #include "SESync.h"
@@ -25,6 +25,10 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
   SESyncResult results;
   results.status = RS_ITER_LIMIT;
+
+  // Define stopwatch objects to measure performance of the algorithm
+  util::stopwatch_collection sw_collection; // all the stopwatches to define
+  util::stopwatch* sw; // a convenient pointer to use through the program
 
   if (options.verbose) {
     std::cout << "========= SE-Sync ==========" << std::endl << std::endl;
@@ -77,7 +81,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   }
 
   /// ALGORITHM START
-  auto SESync_start_time = std::chrono::high_resolution_clock::now();
+  sw_collection.add("SESync")->start();
 
   /// INITIALIZATION
   if (options.verbose) {
@@ -88,101 +92,59 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   // Construct rotational connection Laplacian
   if (options.verbose)
     std::cout << " Constructing rotational connection Laplacian L(G^rho) ... ";
-  auto LGrho_start_time = std::chrono::high_resolution_clock::now();
+  sw = sw_collection.add("construct_LGrho"); sw->start();
   LGrho = construct_rotational_connection_Laplacian(measurements);
-  auto LGrho_counter =
-      std::chrono::high_resolution_clock::now() - LGrho_start_time;
-  double LGrho_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(LGrho_counter)
-          .count() /
-      1000.0;
-  if (options.verbose)
-    std::cout << "elapsed computation time: " << LGrho_elapsed_time
-              << " seconds" << std::endl;
+  sw->stop();
+  if (options.verbose) sw->print();
 
   // Construct oriented incidence matrix
   if (options.verbose)
     std::cout << " Constructing oriented incidence matrix A ... ";
-  auto A_start_time = std::chrono::high_resolution_clock::now();
+  sw = sw_collection.add("construct_A"); sw->start();
   A = construct_oriented_incidence_matrix(measurements);
-  auto A_counter = std::chrono::high_resolution_clock::now() - A_start_time;
-  double A_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(A_counter).count() /
-      1000.0;
-  if (options.verbose)
-    std::cout << "elapsed computation time: " << A_elapsed_time << " seconds"
-              << std::endl;
+  sw->stop();
+  if (options.verbose) sw->print();
 
   // Construct translational measurement precision matrix
   if (options.verbose)
     std::cout << " Constructing translational measurement precision matrix "
                  "Omega ... ";
-  auto Omega_start_time = std::chrono::high_resolution_clock::now();
+  sw = sw_collection.add("construct_Omega"); sw->start();
   Omega = construct_translational_precision_matrix(measurements);
-  auto Omega_counter =
-      std::chrono::high_resolution_clock::now() - Omega_start_time;
-  double Omega_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(Omega_counter)
-          .count() /
-      1000.0;
-  if (options.verbose)
-    std::cout << "elapsed computation time: " << Omega_elapsed_time
-              << " seconds" << std::endl;
+  sw->stop();
+  if (options.verbose) sw->print();
 
   // Construct translational data matrix
   if (options.verbose)
     std::cout << " Constructing translational data matrix T ... ";
-  auto T_start_time = std::chrono::high_resolution_clock::now();
+  sw = sw_collection.add("construct_T"); sw->start();
   T = construct_translational_data_matrix(measurements);
-  auto T_counter = std::chrono::high_resolution_clock::now() - T_start_time;
-  double T_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(T_counter).count() /
-      1000.0;
-  if (options.verbose)
-    std::cout << "elapsed computation time: " << T_elapsed_time << " seconds"
-              << std::endl;
+  sw->stop();
+  if (options.verbose) sw->print();
 
   // Construct measurement matrices B1, B2, B3
   if (options.verbose)
     std::cout << " Constructing measurement matrices B1, B2, B3 ... ";
-  auto B_start_time = std::chrono::high_resolution_clock::now();
+  sw = sw_collection.add("construct_B"); sw->start();
   construct_B_matrices(measurements, B1, B2, B3);
-  auto B_counter = std::chrono::high_resolution_clock::now() - B_start_time;
-  double B_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(B_counter).count() /
-      1000.0;
-  if (options.verbose)
-    std::cout << "elapsed computation time: " << B_elapsed_time << " seconds"
-              << std::endl
-              << std::endl;
+  sw->stop();
+  if (options.verbose) sw->print();
 
   /// Construct SESync problem instance
 
   if (options.verbose)
     std::cout << "Constructing SE-Sync problem instance ... ";
-
-  auto problem_construction_start_time =
-      std::chrono::high_resolution_clock::now();
+  sw = sw_collection.add("construct_problem"); sw->start();
   SESyncProblem problem(LGrho, A, T, Omega, options.use_Cholesky,
                         options.precon);
-  auto problem_construction_counter =
-      std::chrono::high_resolution_clock::now() -
-      problem_construction_start_time;
-  auto problem_construction_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          problem_construction_counter)
-          .count() /
-      1000.0;
-  if (options.verbose)
-    std::cout << "elapsed computation time: "
-              << problem_construction_elapsed_time << " seconds" << std::endl
-              << std::endl;
+  sw->stop();
+  if (options.verbose) sw->print();
 
   // Set initial relaxation rank
   problem.set_relaxation_rank(options.r0);
 
   /// Construct initial iterate
-
+  sw = sw_collection.add("initialization");
   if (Y0.size() != 0) {
     if (options.verbose)
       std::cout << "Using user-supplied initial iterate Y0" << std::endl;
@@ -192,24 +154,18 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     assert((Y0.rows() == options.r0) &&
            (Y0.cols() == problem.dimension() * problem.num_poses()));
 
+    sw->start();
     Y = Y0;
+    sw->stop();
   } else {
     if (options.use_chordal_initialization) {
       if (options.verbose)
         std::cout << "Computing chordal initialization ... ";
 
-      auto chordal_init_start_time = std::chrono::high_resolution_clock::now();
+      sw->start();
       Matrix Rinit = chordal_initialization(problem.dimension(), B3);
-      auto chordal_init_counter =
-          std::chrono::high_resolution_clock::now() - chordal_init_start_time;
-      double chordal_init_elapsed_time =
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              chordal_init_counter)
-              .count() /
-          1000.0;
-      if (options.verbose)
-        std::cout << "elapsed computation time: " << chordal_init_elapsed_time
-                  << " seconds" << std::endl;
+      sw->stop();
+      if (options.verbose) sw->print();
 
       Y.resize(options.r0, problem.dimension() * problem.num_poses());
       Y.setZero();
@@ -222,21 +178,16 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
       ROPTLIB::StieVariable St(options.r0, problem.dimension());
       ROPTLIB::ProductElement Yinit(1, &St, problem.num_poses());
+      sw->start();
       Yinit.RandInManifold();
 
       Y.resize(options.r0, problem.dimension() * problem.num_poses());
       StiefelProd2Mat(Yinit, Y);
+      sw->stop();
     }
   }
 
-  auto initialization_counter =
-      std::chrono::high_resolution_clock::now() - SESync_start_time;
-  double initialization_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          initialization_counter)
-          .count() /
-      1000.0;
-
+  double initialization_elapsed_time = sw->time();
   results.initialization_time = initialization_elapsed_time;
 
   if (options.verbose)
@@ -251,19 +202,14 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   }
 
   /// RIEMANNIAN STAIRCASE
-  auto riemannian_staircase_start_time =
-      std::chrono::high_resolution_clock::now();
-
+  util::stopwatch* sw_staircase = sw_collection.add("staircase");
+  sw_staircase->start();
   for (unsigned int r = options.r0; r <= options.rmax; r++) {
 
     // The elapsed time from the start of the Riemannian Staircase algorithm
     // until the start of this iteration of RTR
-    double RTR_iteration_start_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::high_resolution_clock::now() -
-            riemannian_staircase_start_time)
-            .count() /
-        1000.0;
+    sw_staircase->stop();
+    double RTR_iteration_start_time = sw->time();
 
     if (options.verbose)
       std::cout << std::endl
@@ -345,19 +291,15 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
       std::cout << "Checking second order optimality ... " << std::endl;
     }
 
-    // Compute the minimum eigenvalue lambda and corresponding eigenvector of Q
-    // - Lambda
-    auto eig_start_time = std::chrono::high_resolution_clock::now();
+    // Compute the minimum eigenvalue lambda and corresponding eigenvector
+    // of (Q - Lambda)
+    sw = sw_collection.add("eig"); sw->start();
     bool eigenvalue_convergence = problem.compute_Q_minus_Lambda_min_eig(
         results.Yopt, results.lambda_min, results.v_min,
         options.max_eig_iterations, options.eig_comp_tol,
         options.num_Lanczos_vectors);
-    auto eig_counter =
-        std::chrono::high_resolution_clock::now() - eig_start_time;
-    double eig_elapsed_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(eig_counter)
-            .count() /
-        1000.0;
+    sw->stop();
+    double eig_elapsed_time = sw->time();
 
     /// Tests for eigenvalue precision
     if (!eigenvalue_convergence) {
@@ -471,6 +413,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
       }
     } // if (saddle point)
   }   // Riemannian Staircase
+  sw_staircase->stop(); // Record total Riemannian staircase time
 
   /// POST-PROCESSING
 
@@ -503,19 +446,10 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
   if (options.verbose)
     std::cout << std::endl << "Rounding solution ... ";
-
-  auto rounding_start_time = std::chrono::high_resolution_clock::now();
+  sw = sw_collection.add("rounding"); sw->start();
   results.Rhat = round_solution(results.Yopt, problem.dimension());
-  auto rounding_counter =
-      std::chrono::high_resolution_clock::now() - rounding_start_time;
-  double rounding_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(rounding_counter)
-          .count() /
-      1000.0;
-
-  if (options.verbose)
-    std::cout << "elapsed computation time: " << rounding_elapsed_time
-              << " seconds" << std::endl;
+  sw->stop();
+  if (options.verbose) sw->print();
 
   results.Fxhat =
       (results.Rhat * problem.Q_product(results.Rhat.transpose())).trace();
@@ -523,32 +457,20 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   if (options.verbose)
     std::cout << "Recovering translational state estimates ... ";
 
-  auto translations_recovery_start_time =
-      std::chrono::high_resolution_clock::now();
+  sw = sw_collection.add("translations_recovery"); sw->start();
   results.that = recover_translations(
       B1, B2, results.Rhat.block(0, 0, problem.dimension(), problem.dimension())
                       .inverse() *
                   results.Rhat);
-  auto translations_recovery_counter =
-      std::chrono::high_resolution_clock::now() -
-      translations_recovery_start_time;
-  double translations_recovery_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          translations_recovery_counter)
-          .count() /
-      1000.0;
+  sw->stop();
+  if (options.verbose) sw->print();
 
-  if (options.verbose)
-    std::cout << "elapsed computation time: "
-              << translations_recovery_elapsed_time << " seconds" << std::endl
-              << std::endl;
+  // Measure overall SESync algorithm time
+  sw = sw_collection["SESync"]; sw->stop();
+  double SESync_elapsed_time = sw->time();
 
-  auto SESync_counter =
-      std::chrono::high_resolution_clock::now() - SESync_start_time;
-  double SESync_elapsed_time =
-      std::chrono::duration_cast<std::chrono::milliseconds>(SESync_counter)
-          .count() /
-      1000.0;
+  // Store all the measured times for further evaluation and benchmarking
+  results.times = sw_collection.readTimes();
 
   if (options.verbose) {
     std::cout << "Value of SDP solution F(Y): " << results.SDPval << std::endl;

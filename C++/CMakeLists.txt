@@ -82,6 +82,7 @@ ${SESync_INCLUDE_DIR}/SESync_utils.h
 ${SESync_INCLUDE_DIR}/SESyncProblem.h
 ${SESync_INCLUDE_DIR}/SESyncRTRNewton.h
 ${SESync_INCLUDE_DIR}/SESync.h
+${SESync_INCLUDE_DIR}/stopwatch.h
 )
 
 set(SESync_SRCS

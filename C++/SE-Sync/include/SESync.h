@@ -171,6 +171,9 @@ struct SESyncResult {
    * algorithm at which the returned function values were obtained */
   std::vector<double> elapsed_optimization_times;
 
+  /** A collection with all measured times in the algorithm */
+  std::map<std::string,double> times;
+
   /** The optimal translational estimates corresponding to the rotational
    * estimate Rhat */
   Matrix that;
