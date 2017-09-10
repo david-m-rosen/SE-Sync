@@ -16,6 +16,13 @@ int main(int argc, char** argv)
     cout << "Loaded " << measurements.size() << " measurements between "
          << num_poses << " poses from file " << argv[1] << endl
          << endl;
+    if (measurements.size()==0)
+    {
+      cout << "ERR: No measurements were read!"
+           << " Are you sure the file exists?" << endl;
+      exit(1);
+    }
+
 
     SESyncOpts opts;
     opts.verbose = true; // Print output to stdout
