@@ -1,12 +1,12 @@
 # dmrosen 18-May-2017
 
 # PROJECT CONFIGURATION
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 2.8)
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel.")
 
 project(SESync C CXX)
 
-set(CMAKE_CXX_STANDARD 11)  # We require C++ 11
+set (CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}") # We require C++ 11
 #add_compile_options(-march=native) # Enable faster instruction sets
 
 ### CMake Cache (build configuration) variables -- these are set interactively in the CMake GUI, and cached in CMakeCache ###
