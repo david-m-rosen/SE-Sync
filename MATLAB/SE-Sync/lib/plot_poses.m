@@ -33,7 +33,7 @@ if D == 3
     
     % Plot odometric links
     f = figure();
-    plot3(x, y, z, '-b');
+    plot3(x, y, z, '.b');
     axis equal;
     hold on;
     
@@ -54,7 +54,7 @@ elseif D == 2
     
     % Plot odometric links
     f = figure();
-    plot(x, y, '-b');
+    plot(x, y, '.b');
     axis equal;
     hold on;
     
