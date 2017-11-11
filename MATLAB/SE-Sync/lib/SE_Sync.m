@@ -105,6 +105,10 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %     Riemannian optimization problem to first-order.
 %   min_eig_vals:  A vector containing the corresponding minimum
 %      eigenvalues.
+%   Yvals:  A cell array containing the sequence of iterates obtained by
+%      the Riemannian Staircase
+%   gradnorms:  Norms of the gradients at the sequence of iterates obtained
+%      by the Riemannian Staircase
 %   total_computation_time:  The elapsed computation time of the complete
 %      SE-Sync algorithm
 %   manopt_info:  The info struct returned by the Manopt solver for the
@@ -353,6 +357,8 @@ optimization_times = zeros(1, max_num_iters);
 SDPLRvals = zeros(1, max_num_iters);
 min_eig_times = zeros(1, max_num_iters);
 min_eig_vals = zeros(1, max_num_iters);
+gradnorms = [];
+Yvals = {};
 
 % Set up Manopt problem
 
@@ -410,6 +416,8 @@ if(strcmp(solver_name, 'trustregions'))
     Manopt_opts.stopfun = @(manopt_problem, x, info, last) relative_func_decrease_stopfun(manopt_problem, x, info, last, Manopt_opts.rel_func_tol);
 end
 
+% Log the sequence of iterates visited by the Riemannian Staircase
+Manopt_opts.statsfun = @log_iterates;
 
 
 % Counter to keep track of how many iterations of the Riemannian Staircase
@@ -433,6 +441,9 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     SDPLRvals(iter) = SDPLRval;
     optimization_times(iter) = manopt_info(end).time;
     
+    % Store gradient norm and state traces
+    gradnorms = [gradnorms, manopt_info.gradnorm];
+    Yvals = [Yvals, {manopt_info.Yvals}];
     
     % Augment Yopt by padding with an additional row of zeros; this
     % preserves Yopt's first-order criticality while ensuring that it is
@@ -552,6 +563,8 @@ SE_Sync_info.min_eig_vals = min_eig_vals(1:iter);
 SE_Sync_info.min_eig_times = min_eig_times(1:iter);
 SE_Sync_info.manopt_info = manopt_info;
 SE_Sync_info.total_computation_time = total_computation_time;
+SE_Sync_info.Yvals = Yvals;
+SE_Sync_info.gradnorms = gradnorms;
 
 fprintf('\n===== END SE-SYNC =====\n');
 
