@@ -33,7 +33,7 @@ if D == 3
     
     % Plot odometric links
     f = figure();
-    plot3(x, y, z, '.b');
+    plot3(x, y, z, '-b');
     axis equal;
     hold on;
     
@@ -42,15 +42,19 @@ if D == 3
         for k = 1:size(edges, 1)
             id1 = edges(k, 1);
             id2 = edges(k, 2);
-            lc_plot = plot3(t_hat_anchored(1, [id1 id2]), t_hat_anchored(2, [id1 id2]), t_hat_anchored(3, [id1 id2]), lc_linestyle, 'Linewidth', 1);
-            lc_plot.Color(4) = lc_alpha;  % Set transparency of loop closure edges
+            
+            if abs(id1 - id2) > 1
+                % This is a loop closure measurement
+                lc_plot = plot3(t_hat_anchored(1, [id1 id2]), t_hat_anchored(2, [id1 id2]), t_hat_anchored(3, [id1 id2]), lc_linestyle, 'Linewidth', 1);
+                lc_plot.Color(4) = lc_alpha;  % Set transparency of loop closure edges
+            end
         end
     end
 elseif D == 2
     
     % Plot odometric links
     f = figure();
-    plot(x, y, '.b');
+    plot(x, y, '-b');
     axis equal;
     hold on;
     
@@ -59,8 +63,12 @@ elseif D == 2
         for k = 1:size(edges, 1)
             id1 = edges(k, 1);
             id2 = edges(k, 2);
-            lc_plot = plot(t_hat_anchored(1, [id1 id2]), t_hat_anchored(2, [id1 id2]), lc_linestyle);
-            lc_plot.Color(4) = lc_alpha;  % Set transparency of loop closure edges
+            
+            if abs(id1 - id2) > 1
+                % This is a loop closure measurement
+                lc_plot = plot(t_hat_anchored(1, [id1 id2]), t_hat_anchored(2, [id1 id2]), lc_linestyle);
+                lc_plot.Color(4) = lc_alpha;  % Set transparency of loop closure edges
+            end
         end
     end
     
