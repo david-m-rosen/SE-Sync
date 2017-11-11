@@ -53,9 +53,6 @@ function [SDPval, Yopt, xhat, Fxhat, SE_Sync_info, problem_data] = SE_Sync(measu
 %   r0:  The initial value of the maximum-rank parameter r at which to
 %      start the Riemannian Staircase
 %   rmax:  The maximum value of the maximum-rank parameter r.
-%   eig_comp_rel_tol:  Relative tolerance for the minimum-eigenvalue
-%      computation needed to verify second-order optimality using MATLAB's
-%      eigs command (typical values here are on the order of 10^-8)
 %   eig_comp_max_iters:  The maximum number of Lanczos iterations to
 %      perform when computing the minimum eigenvalue
 %   min_eig_num_tol:  Lower bound for the minimum eigenvalue in 
@@ -173,17 +170,17 @@ else
     fprintf(' Setting final level of Riemannian Staircase to %d [default]\n', SE_Sync_opts.rmax);
 end
 
-if isfield(SE_Sync_opts, 'eig_comp_rel_tol')
-    fprintf(' Relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness: %g\n', SE_Sync_opts.eig_comp_rel_tol);
-else
-    SE_Sync_opts.eig_comp_rel_tol = 1e-8;
-    fprintf(' Setting relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness to: %g [default]\n', SE_Sync_opts.eig_comp_rel_tol);
-end
+% if isfield(SE_Sync_opts, 'eig_comp_rel_tol')
+%     fprintf(' Relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness: %g\n', SE_Sync_opts.eig_comp_rel_tol);
+% else
+%     SE_Sync_opts.eig_comp_rel_tol = 1e-8;
+%     fprintf(' Setting relative tolerance for minimum eigenvalue computation in test for positive semidefiniteness to: %g [default]\n', SE_Sync_opts.eig_comp_rel_tol);
+% end
 
 if isfield(SE_Sync_opts, 'eig_comp_max_iters')
     fprintf(' Maximum number of iterations to perform for minimum eigenvalue computation in test for positive semidefiniteness: %g\n', SE_Sync_opts.eig_comp_max_iters);
 else
-    SE_Sync_opts.eig_comp_max_iters = 500;
+    SE_Sync_opts.eig_comp_max_iters = 2000;
     fprintf(' Maximum number of iterations to perform for minimum eigenvalue computation in test for positive semidefiniteness: %g [default]\n', SE_Sync_opts.eig_comp_max_iters);
 end
 
@@ -263,7 +260,7 @@ end
 if isfield(Manopt_opts, 'maxiter')
     fprintf(' Maximum number of trust-region iterations: %d\n', Manopt_opts.maxiter);
 else
-    Manopt_opts.maxiter = 300;
+    Manopt_opts.maxiter = 500;
     fprintf(' Setting maximum number of trust-region iterations to: %d [default]\n', Manopt_opts.maxiter);
 end
 
@@ -461,7 +458,7 @@ for r = SE_Sync_opts.r0 : SE_Sync_opts.rmax
     
     % Compute minimum eigenvalue/eigenvector pair for Q - Lambda
     tic();
-    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, SE_Sync_opts.eig_comp_rel_tol, SE_Sync_opts.eig_comp_max_iters, SE_Sync_opts.Cholesky);
+    [lambda_min, v] = Q_minus_Lambda_min_eig(Lambda, problem_data, Yopt, SE_Sync_opts.min_eig_num_tol, SE_Sync_opts.eig_comp_max_iters, SE_Sync_opts.Cholesky);
     min_eig_comp_time = toc();
     
     % Store the minimum eigenvalue and elapsed computation times

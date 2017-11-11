@@ -5,8 +5,7 @@ function [lambda_min, v_min, flag] = Q_minus_Lambda_min_eig(Lambda, problem_data
 % Yopt of the low-rank Riemannian optimization problem, this function
 % computes and returns the minimum (algebraically smallest) eigenvalue
 % of the matrix Q - Lambda, together with a corresponding eigenvector v.
-% Here 'tol'  refers to the relative tolerance of the minimum eigenvalue computation
-% using MATLAB's 'eigs' function.
+% Here 'tol' refers to the (absolute!) tolerance of the minimum eigenvalue computation
 
 % Copyright (C) 2016 by David M. Rosen
 
@@ -25,7 +24,7 @@ end
 % First, estimate the largest-magnitude eigenvalue of Q - Lambda
 eigs_opts.issym = true;
 eigs_opts.isreal = true;
-eigs_opts.tol = tol;
+eigs_opts.tol = 1e-3;  % Find largest eigenvalue to an accuracy of .1%
 
 
 % This function returns the product (Q - Lambda)*x
@@ -80,6 +79,9 @@ else
         sigma = .03 * norm(v) / (problem_data.n * problem_data.d); 
         eigs_opts.v0 = v + sigma*randn(problem_data.n * problem_data.d, 1);
     end
+    
+    % Find minimum eigenvalue to within an absolute tolerance of 'tol'
+    eigs_opts.tol = tol / lambda_lm;
     
     [v_min, shifted_lambda_min, flag] = eigs(QminusLambda_shifted, problem_data.d*problem_data.n, 1, 'LM', eigs_opts);
     lambda_min = shifted_lambda_min + 2*lambda_lm;
