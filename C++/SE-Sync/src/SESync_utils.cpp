@@ -322,6 +322,7 @@ void construct_B_matrices(
 
   for (unsigned int e = 0; e < measurements.size(); e++) {
     i = measurements[e].i;
+    sqrttau = sqrt(measurements[e].tau);
     for (unsigned int k = 0; k < d; k++)
       for (unsigned int r = 0; r < d; r++)
         triplets.emplace_back(d * e + r, d2 * i + d * k + r,
