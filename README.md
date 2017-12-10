@@ -3,7 +3,7 @@
 
 **SE-Sync** is a *certifiably correct* algorithm for synchronization over the special Euclidean group, a common problem arising in the context of 2D and 3D geometric estimation (for example, [pose-graph SLAM](http://domino.informatik.uni-freiburg.de/teaching/ws11/robotics2/pdfs/ls-slam-tutorial.pdf),  camera motion estimation, and sensor network localization).  
 
-A detailed description of the algorithm and its implementation can be found in our [technical report](https://dspace.mit.edu/handle/1721.1/106885).
+A detailed description of the algorithm and its implementation can be found in our [technical report](https://github.com/david-m-rosen/SE-Sync/blob/master/SE-Sync%20-%20A%20Certifiably%20Correct%20Algorithm%20for%20Synchronization%20over%20the%20Special%20Euclidean%20Group.pdf).
 
 
 
@@ -19,7 +19,7 @@ The C++ implementation of SE-Sync can be built and exported as a CMake project. 
 
 ## References
 
-We are making this software freely available in the hope that it will be useful to others. If you use SE-Sync in your own work, please cite our papers:
+We are making this software freely available in the hope that it will be useful to others. If you use SE-Sync in your own work, please cite [our](https://github.com/david-m-rosen/SE-Sync/blob/master/A%20Certifiably%20Correct%20Algorithm%20for%20Synchronization%20over%20the%20Special%20Euclidean%20Group.pdf) [papers](https://github.com/david-m-rosen/SE-Sync/blob/master/SE-Sync%20-%20A%20Certifiably%20Correct%20Algorithm%20for%20Synchronization%20over%20the%20Special%20Euclidean%20Group.pdf):
 
 ```
 @inproceedings{Rosen2016Certifiably,
@@ -42,7 +42,7 @@ month = feb,
 }
 ```
 
-and the following paper of Absil et al., which describes the Riemannian trust-region (RTR) method that SE-Sync employs:
+and the following [paper](https://pdfs.semanticscholar.org/90b8/a3b089509dfea2fb83b2e49d77a443b2a3f7.pdf) of Absil et al., which describes the Riemannian trust-region (RTR) method that SE-Sync employs:
 
 ```
 @article{Absil2007Trust,
@@ -57,7 +57,7 @@ month = jul,
 }
 ```
 
-If you use the MATLAB implementation of SE-Sync, please also cite the following reference for the Manopt toolbox, which provides the MATLAB implementation of RTR that the SE-Sync toolbox employs:
+If you use the MATLAB implementation of SE-Sync, please also cite the following [reference](http://www.jmlr.org/papers/volume15/boumal14a/boumal14a.pdf) for the [Manopt toolbox](https://www.manopt.org/), which provides the MATLAB implementation of RTR that the SE-Sync toolbox employs:
 
 ```
 @article{Boumal2014Manopt,
@@ -70,7 +70,7 @@ If you use the MATLAB implementation of SE-Sync, please also cite the following 
   year={2014}
 }
 ```
-If you use the C++ implementation of SE-Sync, please also cite the following reference for the ROPTLIB library, which provides the C++ implementation of RTR that the SE-Sync C++ library employs:
+If you use the C++ implementation of SE-Sync, please also cite the following [reference](https://www.math.fsu.edu/~whuang2/papers/ROPTLIB.htm) for the [ROPTLIB library](https://github.com/whuang08/ROPTLIB), which provides the C++ implementation of RTR that the SE-Sync C++ library employs:
 
 ```
 @techreport{Huang16ROPTLIB,
