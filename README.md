@@ -1,8 +1,9 @@
 # SE-Sync
 
-## Overview
-SE-Sync is a certifiably correct algorithm for synchronization over the special Euclidean group, a common problem arising in the context of 2D and 3D geometric estimation (e.g. pose-graph SLAM and camera motion estimation).
 
+**SE-Sync** is a *certifiably correct* algorithm for synchronization over the special Euclidean group, a common problem arising in the context of 2D and 3D geometric estimation (for example, [pose-graph SLAM](http://domino.informatik.uni-freiburg.de/teaching/ws11/robotics2/pdfs/ls-slam-tutorial.pdf),  camera motion estimation, and sensor network localization).  
+
+A detailed description of the algorithm and its implementation can be found in our [technical report](https://dspace.mit.edu/handle/1721.1/106885).
 
 
 
