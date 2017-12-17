@@ -14,9 +14,6 @@ Manifold
 #ifndef MANIFOLD_H
 #define MANIFOLD_H
 
-/*Variable and Vector are just Element*/
-#define Variable Element
-#define Vector Element
 
 //#include <cmath>
 

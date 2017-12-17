@@ -42,6 +42,14 @@ namespace ROPTLIB{
 		based on the "IsIntrApproach" in the domain manifold. */
 		virtual void HessianEta(Variable *x, Vector *etax, Vector *xix) const;
 
+		/*Compute the action of the Preconditioner for the Riemannian Hessian at
+		iterate x, i.e., `etax = Precon f(x) [xix]`. Precon f(x) [.] should be a
+		symmetric, positive-definite linear operator (w.r.t. the Riemannian metric)
+		on the tangent space at x. Ideally, it is cheap to compute and should
+		approximate the inverse of the Hessian, i.e. the composition
+		`Precon f(x) [ Hess f(x) [.] ]` should be sufficiently close to identity.*/
+		virtual void PreConditioner(Variable *x, Vector *inVec, Vector *outVec) const;
+
 		/*Compute the Riemanian  gradient of the cost function at iterate x.
 		User can override this function. Otherwise, this function will call "EucGrad" to
 		obtain the Euclidean gradient. Then convert the Euclidean gradient to Riemannian gradient.*/

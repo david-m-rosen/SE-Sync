@@ -129,6 +129,12 @@ namespace ROPTLIB{
 		Domain->ObtainIntr(x, exxix, xix);
 		delete exxix;
 		delete exetax;
+	}
+
+	void Problem::PreConditioner(Element *x, Element *inVec, Element *outVec) const
+	{
+		// default one means no preconditioner.
+		inVec->CopyTo(outVec);
 	};
 
 	void Problem::RieGrad(Variable *x, Vector *gf) const

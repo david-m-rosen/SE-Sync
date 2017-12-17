@@ -26,4 +26,9 @@ namespace ROPTLIB{
 	{
 		Prob->HessianEta(x1, Eta, result);
 	};
+
+	void RTRNewton::PreConditioner(Variable *x, Vector *Eta, Vector *result)
+	{
+		Prob->PreConditioner(x, Eta, result);
+	};
 }; /*end of ROPTLIB namespace*/

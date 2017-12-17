@@ -38,6 +38,10 @@ namespace ROPTLIB{
 	protected:
 		/*Compute result = H[Eta], where H is the Hessian*/
 		virtual void HessianEta(Vector *Eta, Vector *result);
+
+		/*Compute result = Precon[Eta], where Precon is a preconditioner for the
+		Hessian H, i.e. Precon[ H[Eta] ] \approx Id*/
+		virtual void PreConditioner(Variable *x, Vector *Eta, Vector *result);
 	};
 }; /*end of ROPTLIB namespace*/
 
