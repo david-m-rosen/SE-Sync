@@ -1,7 +1,7 @@
 # SE-Sync
 
 
-**SE-Sync** is a *certifiably correct* algorithm for synchronization over the special Euclidean group, a common problem arising in the context of 2D and 3D geometric estimation (for example, [pose-graph SLAM](http://domino.informatik.uni-freiburg.de/teaching/ws11/robotics2/pdfs/ls-slam-tutorial.pdf),  camera motion estimation, and sensor network localization).  
+**SE-Sync** is a *certifiably correct* algorithm for solving the problem of *synchronization over the special Euclidean group*: estimate the values of a set of unknown group elements given noisy measurements of a subset of their pairwise relative transforms.  This problem frequently arises in the context of 2D and 3D geometric estimation; for example, the foundational problems of [pose-graph SLAM](http://domino.informatik.uni-freiburg.de/teaching/ws11/robotics2/pdfs/ls-slam-tutorial.pdf) (in robotics), [camera motion estimation](http://cmp.felk.cvut.cz/ftp/articles/pajdla/Martinec-Pajdla-CVPR-2007.pdf) (in computer visions), and [sensor network localization](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3741000/) (in distributed sensing) all require synchronization over the special Euclidean group.
 
 A detailed description of the algorithm and its implementation can be found in our [technical report](https://github.com/david-m-rosen/SE-Sync/blob/master/SE-Sync%20-%20A%20Certifiably%20Correct%20Algorithm%20for%20Synchronization%20over%20the%20Special%20Euclidean%20Group.pdf).
 
@@ -11,11 +11,11 @@ A detailed description of the algorithm and its implementation can be found in o
 
 ### MATLAB
 
-To use the MATLAB implementation of SE-Sync, simply place the 'MATLAB' folder in any convenient (permanent) location, and then run the script MATLAB/import_SE_Sync.m.  Congrats!  SE-Sync is now ready to go :-).  For a minimal working example, see MATLAB/examples/main.m
+To use the MATLAB implementation of SE-Sync, simply place the 'MATLAB' folder in any convenient (permanent) location, and then run the script MATLAB/import_SE_Sync.m.  Congrats!  SE-Sync is now ready to go :-).  For a minimal working example, see [MATLAB/examples/main.m](https://github.com/david-m-rosen/SE-Sync/blob/master/MATLAB/examples/main.m)
 
 ### C++
 
-The C++ implementation of SE-Sync can be built and exported as a CMake project.  For a minimal working example, see C++/examples/main, which provides a simple command-line utility for processing .g2o files.
+The C++ implementation of SE-Sync can be built and exported as a CMake project.  For a minimal working example, see [C++/examples/main](https://github.com/david-m-rosen/SE-Sync/blob/master/C%2B%2B/examples/main.cpp), which provides a simple command-line utility for processing .g2o files.
 
 ## References
 
@@ -68,17 +68,6 @@ If you use the MATLAB implementation of SE-Sync, please also cite the following 
   number={1},
   pages={1455--1459},
   year={2014}
-}
-```
-If you use the C++ implementation of SE-Sync, please also cite the following [reference](https://www.math.fsu.edu/~whuang2/papers/ROPTLIB.htm) for the [ROPTLIB library](https://github.com/whuang08/ROPTLIB), which provides the C++ implementation of RTR that the SE-Sync C++ library employs:
-
-```
-@techreport{Huang16ROPTLIB,
-title = {{ROPTLIB}: An Object-Oriented {C++} Library for Optimization on {Riemannian} Manifolds},
-author = {Huang, W. and Absil, P.-A. and Gallivan, K.A. and Hand, P.},
-institution = {Florida State University},
-number = {FSU16-14},
-year = {2016},
 }
 ```
 

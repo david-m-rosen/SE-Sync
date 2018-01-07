@@ -1,5 +1,7 @@
-#include "SESync.h"
-#include "SESync_utils.h"
+#include "SESync/SESync.h"
+#include "SESync/SESync_utils.h"
+
+#include <fstream>
 
 using namespace std;
 using namespace SESync;
@@ -26,4 +28,12 @@ int main(int argc, char **argv) {
   opts.verbose = true; // Print output to stdout
 
   SESyncResult results = SESync::SESync(measurements, opts);
+
+  string filename = "poses.txt";
+
+  cout << "Saving final poses to file: " << filename << endl;
+
+  ofstream poses_file(filename);
+  poses_file << results.xhat;
+  poses_file.close();
 }

@@ -6,11 +6,7 @@
 #include <Eigen/Geometry>
 #include <Eigen/SPQRSupport>
 
-#include <MatOp/SparseSymMatProd.h> // Spectra's built-in class for handling Eigen's sparse symmetric matrix type
-#include <SymEigsSolver.h> // Spectra's symmetric eigensolver
-
-#include "SESync_utils.h"
-#include "StieVariable.h"
+#include "SESync/SESync_utils.h"
 
 namespace SESync {
 
@@ -287,8 +283,7 @@ void construct_B_matrices(
 
   unsigned int i, j; // Indices for the tail and head of the given measurement
   double sqrttau, sqrtkappa;
-  size_t max_pair; // Used for keeping track of the maximum pose that we've
-                   // encountered so far
+  size_t max_pair;
 
   /// Construct the matrix B1 from equation (69a) in the tech report
   triplets.reserve(2 * d * measurements.size());
@@ -359,21 +354,115 @@ void construct_B_matrices(
   B3.setFromTriplets(triplets.begin(), triplets.end());
 }
 
-Matrix
-chordal_initialization_eig(const SparseMatrix &rotational_connection_Laplacian,
-                           unsigned int d, unsigned int max_iterations,
-                           double precision) {
-  Spectra::SparseSymMatProd<double> op(rotational_connection_Laplacian);
-  Spectra::SymEigsSolver<double, Spectra::SELECT_EIGENVALUE::SMALLEST_ALGE,
-                         Spectra::SparseSymMatProd<double>>
-  eigensolver(&op, d, std::min<unsigned int>(
-                          10 * d, rotational_connection_Laplacian.rows()));
-  eigensolver.init();
-  eigensolver.compute(max_iterations, precision,
-                      Spectra::SELECT_EIGENVALUE::SMALLEST_ALGE);
+SparseMatrix construct_quadratic_form_data_matrix(
+    const std::vector<RelativePoseMeasurement> &measurements) {
 
-  // Reproject the blocks of this matrix onto SO(d)
-  return round_solution(eigensolver.eigenvectors().transpose(), d);
+  size_t num_poses = 0;
+  size_t d = (!measurements.empty() ? measurements[0].t.size() : 0);
+
+  std::vector<Eigen::Triplet<double>> triplets;
+
+  /// Useful quantities to cache
+  unsigned int d2 = d * d;
+
+  // Number of nonzero elements contributed to L(W^tau) by each measurement
+  unsigned int LWtau_nnz_per_measurement = 4;
+
+  // Number of nonzero elements contributed to V by each measurement
+  unsigned int V_nnz_per_measurement = 2 * d;
+
+  // Number of nonzero elements contributed to L(G^rho) by each measurement
+  unsigned int LGrho_nnz_per_measurement = 2 * d + 2 * d2;
+
+  // Number of nonzero elements contributed to Sigma by each measurement
+  unsigned int Sigma_nnz_per_measurement = d2;
+
+  // Number of nonzero elements contributed to the entire matrix M by each
+  // measurement
+  unsigned int num_nnz_per_measurement =
+      LWtau_nnz_per_measurement + 2 * V_nnz_per_measurement +
+      LGrho_nnz_per_measurement + Sigma_nnz_per_measurement;
+
+  /// Working space
+  unsigned int i, j; // Indices for the tail and head of the given measurement
+  size_t max_pair;
+
+  triplets.reserve(num_nnz_per_measurement * measurements.size());
+
+  // Scan through the set of measurements to determine the total number of poses
+  // in this problem
+  for (const SESync::RelativePoseMeasurement &measurement : measurements) {
+    max_pair = std::max<size_t>(measurement.i, measurement.j);
+    if (max_pair > num_poses)
+      num_poses = max_pair;
+  }
+  num_poses++; // Account for zero-based indexing
+
+  // Now scan through the measurements again, using knowledge of the total
+  // number of poses to compute offsets as appropriate
+
+  for (const SESync::RelativePoseMeasurement &measurement : measurements) {
+
+    i = measurement.i; // Tail of measurement
+    j = measurement.j; // Head of measurement
+
+    // Add elements for L(W^tau)
+    triplets.emplace_back(i, i, measurement.tau);
+    triplets.emplace_back(j, j, measurement.tau);
+    triplets.emplace_back(i, j, -measurement.tau);
+    triplets.emplace_back(j, i, -measurement.tau);
+
+    // Add elements for V (upper-right block)
+    for (unsigned int k = 0; k < d; k++)
+      triplets.emplace_back(i, num_poses + i * d + k,
+                            measurement.tau * measurement.t(k));
+    for (unsigned int k = 0; k < d; k++)
+      triplets.emplace_back(j, num_poses + i * d + k,
+                            -measurement.tau * measurement.t(k));
+
+    // Add elements for V' (lower-left block)
+    for (unsigned int k = 0; k < d; k++)
+      triplets.emplace_back(num_poses + i * d + k, i,
+                            measurement.tau * measurement.t(k));
+    for (unsigned int k = 0; k < d; k++)
+      triplets.emplace_back(num_poses + i * d + k, j,
+                            -measurement.tau * measurement.t(k));
+
+    // Add elements for L(G^rho)
+    // Elements of ith block-diagonal
+    for (unsigned int k = 0; k < d; k++)
+      triplets.emplace_back(num_poses + d * i + k, num_poses + d * i + k,
+                            measurement.kappa);
+
+    // Elements of jth block-diagonal
+    for (unsigned int k = 0; k < d; k++)
+      triplets.emplace_back(num_poses + d * j + k, num_poses + d * j + k,
+                            measurement.kappa);
+
+    // Elements of ij block
+    for (unsigned r = 0; r < d; r++)
+      for (unsigned int c = 0; c < d; c++)
+        triplets.emplace_back(num_poses + i * d + r, num_poses + j * d + c,
+                              -measurement.kappa * measurement.R(r, c));
+
+    // Elements of ji block
+    for (unsigned int r = 0; r < d; r++)
+      for (unsigned int c = 0; c < d; c++)
+        triplets.emplace_back(num_poses + j * d + r, num_poses + i * d + c,
+                              -measurement.kappa * measurement.R(c, r));
+
+    // Add elements for Sigma
+    for (unsigned int r = 0; r < d; r++)
+      for (unsigned int c = 0; c < d; c++)
+        triplets.emplace_back(num_poses + i * d + r, num_poses + i * d + c,
+                              measurement.tau * measurement.t(r) *
+                                  measurement.t(c));
+  }
+
+  SparseMatrix M((d + 1) * num_poses, (d + 1) * num_poses);
+  M.setFromTriplets(triplets.begin(), triplets.end());
+
+  return M;
 }
 
 Matrix chordal_initialization(unsigned int d, const SparseMatrix &B3) {
@@ -392,8 +481,8 @@ Matrix chordal_initialization(unsigned int d, const SparseMatrix &B3) {
   /// c = B3(1:d^2) * vec(I_3)
 
   SparseMatrix B3red = B3.rightCols((num_poses - 1) * d2);
-  B3red
-      .makeCompressed(); // Must be in compressed format to use Eigen::SparseQR!
+  // Must be in compressed format to use Eigen::SparseQR!
+  B3red.makeCompressed();
 
   // Vectorization of I_d
   Eigen::MatrixXd Id = Eigen::MatrixXd::Identity(d, d);
@@ -425,7 +514,8 @@ Matrix recover_translations(const SparseMatrix &B1, const SparseMatrix &B2,
   /// || B1 * t + B2 * vec(R) ||
   ///
   /// For the purposes of initialization, we can simply fix the first pose to
-  /// the origin; this corresponds to fixing the first d elements of t to 0, and
+  /// the origin; this corresponds to fixing the first d elements of t to 0,
+  /// and
   /// slicing off the first d columns of B1 to form
   ///
   /// min || B1red * tred + c) ||, where
@@ -471,83 +561,4 @@ Matrix project_to_SOd(const Matrix &M) {
     return Uprime * svd.matrixV().transpose();
   }
 }
-
-Matrix round_solution(const Matrix &Y, unsigned int d) {
-  // First, compute a thin SVD of Y
-  Eigen::JacobiSVD<Matrix> svd(Y, Eigen::ComputeThinV);
-
-  Eigen::VectorXd sigmas = svd.singularValues();
-  // Construct a diagonal matrix comprised of the first d singular values
-  Eigen::DiagonalMatrix<double, Eigen::Dynamic> Xid(d);
-  Eigen::DiagonalMatrix<double, Eigen::Dynamic>::DiagonalVectorType &diagonal =
-      Xid.diagonal();
-  for (unsigned int i = 0; i < d; i++)
-    diagonal(i) = sigmas(i);
-
-  Eigen::MatrixXd R = Xid * svd.matrixV().leftCols(d).transpose();
-
-  unsigned int n = Y.cols() / d;
-
-  Eigen::VectorXd determinants(n);
-
-  unsigned int ng0 = 0; // This will count the number of blocks whose
-  // determinants have positive sign
-  for (unsigned int i = 0; i < n; i++) {
-    // Compute the determinant of the ith dxd block of R
-    determinants(i) = R.block(0, i * d, d, d).determinant();
-    if (determinants(i) > 0)
-      ng0++;
-  }
-
-  if (ng0 < n / 2) {
-    // Less than half of the total number of blocks have the correct sign, so
-    // reverse their orientations
-
-    // Get a reflection matrix that we can use to reverse the signs of those
-    // blocks of R that have the wrong determinant
-    Eigen::MatrixXd reflector = Eigen::MatrixXd::Identity(d, d);
-    reflector(d - 1, d - 1) = -1;
-
-    R = reflector * R;
-  }
-
-  // Finally, project each dxd block of R to SO(d)
-  for (unsigned int i = 0; i < n; i++)
-    R.block(0, i * d, d, d) = project_to_SOd(R.block(0, i * d, d, d));
-
-  return R;
 }
-
-void StiefelProd2Mat(const ROPTLIB::ProductElement &product_element,
-                     Eigen::MatrixXd &Y) {
-
-  const int *sizes = product_element.GetElement(0)->Getsize();
-  unsigned int r = sizes[0];
-  unsigned int d = sizes[1];
-  unsigned int n = product_element.GetNumofElement();
-
-  for (unsigned int j = 0; j < n; j++) {
-    // Set the ith block of the output matrix
-    Y.block(0, j * d, r, d) = Eigen::Map<Eigen::MatrixXd>(
-        (double *)product_element.GetElement(j)->ObtainReadData(), r, d);
-  }
-}
-
-void Mat2StiefelProd(const Eigen::MatrixXd &Y,
-                     ROPTLIB::ProductElement &product_element) {
-  const int *sizes = product_element.GetElement(0)->Getsize();
-  unsigned int r = sizes[0];
-  unsigned int d = sizes[1];
-  unsigned int n = product_element.GetNumofElement();
-  unsigned int data_stride = r * d;
-
-  const double *matrix_data = Y.data();
-
-  for (unsigned int j = 0; j < n; j++) {
-    double *element_data =
-        product_element.GetElement(j)->ObtainWriteEntireData();
-    memcpy(element_data, matrix_data + j * data_stride,
-           sizeof(double) * data_stride);
-  }
-}
-};
