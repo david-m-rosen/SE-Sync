@@ -10,9 +10,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON) # We require C++ 14
 # Enable faster instruction sets (SIMD/AVX)
 add_compile_options(-march=native)
 
-# Set build type using a dropdown menu
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel.")
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS RelWithDebInfo Release Debug MinSizeRel)
+# Set build type to 'RelWithDebInfo' if one was not specified by the user
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
+  message(STATUS "Setting build type to ${CMAKE_BUILD_TYPE}, as none was specified\n")
+else()
+  message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode\n")
+endif()
+
+
 
 # Directory for built libraries
 set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/lib CACHE PATH "The directory in which to place the SE-Sync library built by this project")
@@ -39,7 +45,7 @@ message(STATUS "Eigen library not found!")
 endif()
 
 # FIND ADDITIONAL LIBRARIES
-# These next operations make use of the .cmake files shipped with Eigen3 
+# These next operations make use of the .cmake files shipped with Eigen3
 find_package(SPQR REQUIRED)
 find_package(Cholmod REQUIRED)
 find_package(BLAS REQUIRED)
@@ -92,8 +98,6 @@ ${SESync_SOURCE_DIR}/SESync_utils.cpp
 ${SESync_SOURCE_DIR}/SESyncProblem.cpp
 ${SESync_SOURCE_DIR}/SESync.cpp
 )
-
-message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode\n")
 
 # Build the SE-Sync library
 add_library(SESync SHARED ${SESync_HDRS} ${SESync_SRCS})
