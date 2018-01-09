@@ -13,6 +13,7 @@ add_compile_options(-march=native)
 # Set build type to 'RelWithDebInfo' if one was not specified by the user
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS RelWithDebInfo Release Debug MinSizeRel)
   message(STATUS "Setting build type to ${CMAKE_BUILD_TYPE}, as none was specified\n")
 else()
   message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode\n")
@@ -76,8 +77,11 @@ set(SESync_HDR_DIR ${SESync_INCLUDE_DIR}/SESync)
 set(SESync_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/src)
 set(SESync_EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 
-# Expose the include directories for this project
-set(SESYNC_INCLUDES ${SESync_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} ${SPQR_INCLUDES} ${CHOLMOD_INCLUDES} ${SPECTRA_INCLUDE_DIR} CACHE INTERNAL "")
+# Set the include directories for this project
+# Spectra is only used internally by the SE-Sync library
+set(SESync_PRIVATE_INCLUDES ${SPECTRA_INCLUDE_DIR} CACHE INTERNAL "")
+# The SE-Sync headers and and Eigen 3, SPQR, and Cholmod are all referenced by the header files of the SE-Sync library, hence must be PUBLICLY included (i.e. clients using the SE-Sync headers must also include these headers)
+set(SESync_INCLUDES ${SESync_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} ${SPQR_INCLUDES} ${CHOLMOD_INCLUDES} CACHE INTERNAL "")
 
 
 # SE-SYNC PROJECT
@@ -101,7 +105,8 @@ ${SESync_SOURCE_DIR}/SESync.cpp
 
 # Build the SE-Sync library
 add_library(SESync SHARED ${SESync_HDRS} ${SESync_SRCS})
-target_include_directories(SESync PUBLIC ${SESYNC_INCLUDES})
+target_include_directories(SESync PRIVATE ${SESync_PRIVATE_INCLUDES})
+target_include_directories(SESync PUBLIC ${SESync_INCLUDES})
 target_link_libraries(SESync Optimization ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
 
 # Uncomment these lines to enable support for OpenMP
