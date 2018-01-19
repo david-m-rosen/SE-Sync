@@ -67,6 +67,9 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     std::cout << "Riemannian trust-region settings:" << std::endl;
     std::cout << " Stopping tolerance for norm of Riemannian gradient: "
               << options.grad_norm_tol << std::endl;
+    std::cout << " Stopping tolerance for norm of preconditioned Riemannian "
+                 "gradient: "
+              << options.preconditioned_grad_norm_tol << std::endl;
     std::cout << " Stopping tolerance for relative function decrease: "
               << options.rel_func_decrease_tol << std::endl;
     std::cout << " Stopping tolerance for the norm of an accepted update step: "
