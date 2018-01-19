@@ -250,7 +250,8 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   // Configure optimization parameters
   Optimization::Smooth::TNTParams params;
   params.gradient_tolerance = options.grad_norm_tol;
-  params.preconditioned_gradient_tolerance = 0;
+  params.preconditioned_gradient_tolerance =
+      options.preconditioned_grad_norm_tol;
   params.relative_decrease_tolerance = options.rel_func_decrease_tol;
   params.stepsize_tolerance = options.stepsize_tol;
   params.max_iterations = options.max_iterations;

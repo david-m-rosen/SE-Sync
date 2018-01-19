@@ -24,6 +24,10 @@ struct SESyncOpts {
   /** Stopping tolerance for the norm of the Riemannian gradient */
   double grad_norm_tol = 1e-2;
 
+  /** Stopping tolerance for the norm of the preconditioned Riemannian gradient
+   */
+  double preconditioned_grad_norm_tol = 1e-3;
+
   /** Stopping criterion based upon the relative decrease in function value */
   double rel_func_decrease_tol = 1e-7;
 
