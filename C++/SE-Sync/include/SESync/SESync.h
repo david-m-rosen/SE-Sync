@@ -38,6 +38,9 @@ struct SESyncOpts {
  * perform per out iteration */
   unsigned int max_tCG_iterations = 2000;
 
+  /** Maximum elapsed computation time (in seconds) */
+  double max_computation_time = std::numeric_limits<double>::max();
+
   /// SE-SYNC PARAMETERS
 
   /** The specific formulation of the SE-Sync problem to solve */
@@ -105,7 +108,11 @@ enum SESyncStatus {
 
   /** The algorithm exhausted the maximum number of iterations of the Riemannian
      Staircase before finding an optimal solution */
-  RS_ITER_LIMIT
+  RS_ITER_LIMIT,
+
+  /** The algorithm exhausted the allotted total computation time before finding
+     an optimal solution */
+  ELAPSED_TIME
 };
 
 /** This struct contains the output of the SESync algorithm */

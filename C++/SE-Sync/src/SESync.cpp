@@ -266,6 +266,18 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     double RTR_iteration_start_time =
         Stopwatch::tock(riemannian_staircase_start_time);
 
+    /// Test temporal stopping condition
+
+    if (RTR_iteration_start_time >= options.max_computation_time) {
+      SESyncResults.status = ELAPSED_TIME;
+      break;
+    }
+
+    // Set  maximum permitted computation time for this level of the Riemannian
+    // Staircase
+    params.max_computation_time =
+        options.max_computation_time - RTR_iteration_start_time;
+
     if (options.verbose)
       std::cout << std::endl
                 << std::endl
@@ -393,12 +405,17 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
                 << std::endl;
       break;
     case SADDLE_POINT:
-      std::cout << "WARNING: Line-search was unable to escape saddle point!"
+      std::cout << "WARNING: Line search was unable to escape saddle point!"
                 << std::endl;
       break;
     case RS_ITER_LIMIT:
-      std::cout << "WARNING:  Riemannian Staircase reached the maximum level "
-                   "before finding global optimum!"
+      std::cout << "WARNING: Riemannian Staircase reached the maximum "
+                   "permitted level before finding global optimum!"
+                << std::endl;
+      break;
+    case ELAPSED_TIME:
+      std::cout << "WARNING: Algorithm exhausted the allotted computation "
+                   "time before finding global optimum!"
                 << std::endl;
       break;
     }
