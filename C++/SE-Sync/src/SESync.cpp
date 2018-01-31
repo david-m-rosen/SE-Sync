@@ -376,14 +376,16 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
       Matrix Yplus;
       bool escape_success =
           escape_saddle(problem, SESyncResults.Yopt, SESyncResults.lambda_min,
-                        SESyncResults.v_min, options.grad_norm_tol, Yplus);
+                        SESyncResults.v_min, options.grad_norm_tol,
+                        options.preconditioned_grad_norm_tol, Yplus);
 
       if (escape_success) {
         // Update initialization point for next level in the Staircase
         Y = Yplus;
       } else {
         std::cout << "WARNING!  BACKTRACKING LINE SEARCH FAILED TO ESCAPE FROM "
-                     "SADDLE POINT!"
+                     "SADDLE POINT!  (Try decreasing the preconditioned "
+                     "gradient norm tolerance)"
                   << std::endl;
         SESyncResults.status = SADDLE_POINT;
         break;
@@ -472,7 +474,8 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
 bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
                    double lambda_min, const Vector &v_min,
-                   double gradient_tolerance, Matrix &Yplus) {
+                   double gradient_tolerance,
+                   double preconditioned_gradient_tolerance, Matrix &Yplus) {
 
   /** v_min is an eigenvector corresponding to a negative eigenvalue of Q -
 * Lambda, so the KKT conditions for the semidefinite relaxation are not
@@ -504,7 +507,7 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   // triggering the gradient norm tolerance stopping condition,
   // according to the local second-order model
   double alpha = 2 * 100 * gradient_tolerance / fabs(lambda_min);
-  double alpha_min = 1e-6; // Minimum stepsize
+  double alpha_min = 1e-16; // Minimum stepsize
 
   // Initialize line search
   bool escape_success = false;
@@ -520,10 +523,14 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
     // the current iterate Y, and that the gradient at Ytest is
     // sufficiently large that we will not automatically trigger the
     // gradient tolerance stopping criterion at the next iteration
-    double FY_test = problem.evaluate_objective(Ytest);
-    double FY_test_gradnorm = problem.Riemannian_gradient(Ytest).norm();
+    double FYtest = problem.evaluate_objective(Ytest);
+    Matrix grad_FYtest = problem.Riemannian_gradient(Ytest);
+    double grad_FYtest_norm = grad_FYtest.norm();
+    double preconditioned_grad_FYtest_norm =
+        problem.precondition(Ytest, grad_FYtest).norm();
 
-    if ((FY_test < FY) && (FY_test_gradnorm > gradient_tolerance))
+    if ((FYtest < FY) && (grad_FYtest_norm > gradient_tolerance) &&
+        (preconditioned_grad_FYtest_norm > preconditioned_gradient_tolerance))
       escape_success = true;
   } while (!escape_success && (alpha > alpha_min));
   if (escape_success) {

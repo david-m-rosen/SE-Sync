@@ -221,6 +221,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
  */
 bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
                    double lambda_min, const Vector &v_min,
-                   double gradient_tolerance, Matrix &Yplus);
+                   double gradient_tolerance,
+                   double preconditioned_gradient_tolerance, Matrix &Yplus);
 
 } // namespace SESync

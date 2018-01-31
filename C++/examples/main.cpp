@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
 
   SESyncOpts opts;
   opts.verbose = true; // Print output to stdout
+  opts.num_threads = 4;
 
   SESyncResult results = SESync::SESync(measurements, opts);
 
