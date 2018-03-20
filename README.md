@@ -74,6 +74,6 @@ If you use the MATLAB implementation of SE-Sync, please also cite the following 
 
 ## Copyright and License 
 
-The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016 - 2018 by David M. Rosen, and are distributed under the terms of the GNU Leser General Public License (LGPL) version 3 (or later).  Please see the [LICENSE](https://github.com/david-m-rosen/SE-Sync/blob/master/LICENSE.txt) for more information.
+The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016 - 2018 by David M. Rosen, and are distributed under the terms of the GNU Lesser General Public License (LGPL) version 3 (or later).  Please see the [LICENSE](https://github.com/david-m-rosen/SE-Sync/blob/master/LICENSE) for more information.
 
 Contact: drosen2000@gmail.com
