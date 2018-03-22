@@ -506,8 +506,8 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   // arrive at a trial point whose gradient is large enough to avoid
   // triggering the gradient norm tolerance stopping condition,
   // according to the local second-order model
-  double alpha = 2 * 100 * gradient_tolerance / fabs(lambda_min);
-  double alpha_min = 1e-16; // Minimum stepsize
+  double alpha = 2 * 1000 * gradient_tolerance / fabs(lambda_min);
+  double alpha_min = 1e-32; // Minimum stepsize
 
   // Initialize line search
   bool escape_success = false;
