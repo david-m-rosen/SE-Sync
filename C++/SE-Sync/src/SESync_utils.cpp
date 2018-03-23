@@ -282,7 +282,7 @@ void construct_B_matrices(
   unsigned int d3 = d * d * d;
 
   unsigned int i, j; // Indices for the tail and head of the given measurement
-  double sqrttau, sqrtkappa;
+  double sqrttau;
   size_t max_pair;
 
   /// Construct the matrix B1 from equation (69a) in the tech report
