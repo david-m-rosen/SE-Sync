@@ -283,6 +283,32 @@ Matrix SESyncProblem::compute_Lambda_blocks(const Matrix &Y) const {
   return Lambda_blocks;
 }
 
+SparseMatrix SESyncProblem::compute_Lambda_from_Lambda_blocks(
+    const Matrix &Lambda_blocks) const {
+
+  unsigned int offset = (form == Simplified ? 0 : n);
+
+  std::vector<Eigen::Triplet<SparseMatrix::Scalar>> elements;
+  elements.reserve(d * d * n);
+
+  for (unsigned int i = 0; i < n; i++)
+    for (unsigned int r = 0; r < d; r++)
+      for (unsigned int c = 0; c < d; c++)
+        elements.emplace_back(offset + i * d + r, offset + i * d + c,
+                              Lambda_blocks(r, i * d + c));
+
+  SparseMatrix Lambda(offset + d * n, offset + d * n);
+  Lambda.setFromTriplets(elements.begin(), elements.end());
+  return Lambda;
+}
+
+SparseMatrix SESyncProblem::compute_Lambda(const Matrix &Y) const {
+  // First, compute the diagonal blocks of Lambda
+  Matrix Lambda_blocks = compute_Lambda_blocks(Y);
+
+  return compute_Lambda_from_Lambda_blocks(Lambda_blocks);
+}
+
 bool SESyncProblem::compute_S_minus_Lambda_min_eig(
     const Matrix &Y, double &min_eigenvalue, Eigen::VectorXd &min_eigenvector,
     unsigned int max_iterations, double min_eigenvalue_nonnegativity_tolerance,

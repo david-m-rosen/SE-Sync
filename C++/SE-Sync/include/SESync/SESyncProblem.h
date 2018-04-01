@@ -266,12 +266,22 @@ public:
   Matrix round_solution(const Matrix Y) const;
 
   /** Given a critical point Y of the rank-r relaxation of the SE-Sync
-   * optimization problem, this function computes and returns a d x nd matrix
+   * optimization problem, this function computes and returns a d x dn matrix
    * comprised of dxd block elements of the associated block-diagonal Lagrange
    * multiplier matrix associated with the orthonormality constraints on the
    * generalized orientations of the poses (cf. eq. (119) in the SE-Sync tech
    * report) */
   Matrix compute_Lambda_blocks(const Matrix &Y) const;
+
+  /** Given the d x dn block matrix containing the diagonal blocks of Lambda,
+   * this function computes and returns the matrix Lambda itself */
+  SparseMatrix
+  compute_Lambda_from_Lambda_blocks(const Matrix &Lambda_blocks) const;
+
+  /** Given a critical point Y of the rank-r relaxation of the SE-Sync
+   * optimization problem, this function computes and returns the corresponding
+   * Lagrange multiplier matrix Lambda */
+  SparseMatrix compute_Lambda(const Matrix &Y) const;
 
   /** Given a critical point Y in the domain of the optimization problem, this
   *function computes the smallest eigenvalue lambda_min of S - Lambda and its

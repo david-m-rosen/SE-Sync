@@ -1,7 +1,7 @@
 /** This file provides a convenient functional interface to the SESync
 * algorithm.
 *
-*  Copyright (C) 2016, 2017 by David M. Rosen
+*  Copyright (C) 2016 - 2018 by David M. Rosen
 */
 
 #pragma once
@@ -61,7 +61,7 @@ struct SESyncOpts {
   unsigned int max_eig_iterations = 10000;
 
   /** A numerical tolerance for acceptance of the minimum eigenvalue of Q -
- * Lambda(Y*) as numerically nonnegative; this should be a small magnitude value
+ * Lambda(Y*) as numerically nonnegative; this should be a small positive value
  * e.g. 10^-4 */
   double min_eig_num_tol = 1e-5;
 
@@ -121,16 +121,30 @@ enum SESyncStatus {
 
 /** This struct contains the output of the SESync algorithm */
 struct SESyncResult {
-  /** The optimal value of the SDP relaxation */
+  /** The optimal value of the rank-restricted (dual) semidefinite relaxation
+   * Problem 9. */
   double SDPval;
 
-  /** A global minimizer Yopt of the rank-restricted semidefinite relaxation */
+  /** A global minimizer Yopt of the rank-restricted (dual) semidefinite
+   * relaxation Problem 9.  The corresponding solution of Problem 7 is
+   * Z = Y^T Y */
   Matrix Yopt;
 
   /** The norm of the Riemannian gradient at Yopt */
   double gradnorm;
 
-  /** The minimum eigenvalue of the matrix S - Lambda(Yopt) */
+  /** The Lagrange multiplier matrix Lambda corresponding to Yopt, computing
+   * according to eq. (119) in the SE-Sync tech report.  If Y is an exact
+   * solution for the rank-restricted (dual) semidefinite relaxation Problem 9,
+   * then Lambda is the solution to the primal Lagrangian relaxation Problem 6.
+   */
+  SparseMatrix Lambda;
+
+  /** The duality gap between the estimates for the primal and dual solutions
+   * Lambda and Z = Y^T Y, respectively.*/
+  double SDP_duality_gap;
+
+  /** The minimum eigenvalue of the matrix S - Lambda */
   double lambda_min;
 
   /** The corresponding eigenvector of the minimum eigenvalue */
