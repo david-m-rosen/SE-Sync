@@ -79,6 +79,10 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     std::cout << " Maximum number of truncated conjugate gradient iterations "
                  "per outer iteration: "
               << options.max_tCG_iterations << std::endl;
+    std::cout << " STPCG fractional gradient tolerance (kappa): "
+              << options.STPCG_kappa << std::endl;
+    std::cout << " STPCG target q-superlinear convergence rate (1 + theta): "
+              << (1 + options.STPCG_theta) << std::endl;
     std::cout
         << " Preconditioning the truncated conjugate gradient method using ";
     if (options.precon == None)
@@ -259,6 +263,8 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   params.stepsize_tolerance = options.stepsize_tol;
   params.max_iterations = options.max_iterations;
   params.max_TPCG_iterations = options.max_tCG_iterations;
+  params.kappa_fgr = options.STPCG_kappa;
+  params.theta = options.STPCG_theta;
   params.verbose = options.verbose;
 
   auto riemannian_staircase_start_time = Stopwatch::tick();
@@ -411,7 +417,8 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
                 << std::endl;
       break;
     case SADDLE_POINT:
-      std::cout << "WARNING: Line search was unable to escape saddle point!"
+      std::cout << "WARNING: Line search was unable to escape saddle point!  "
+                   "Solution is not globally optimal!"
                 << std::endl;
       break;
     case RS_ITER_LIMIT:
@@ -459,15 +466,27 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   // Compute the primal optimal SDP solution Lambda and its objective value
   Matrix Lambda_blocks = problem.compute_Lambda_blocks(SESyncResults.Yopt);
 
-  double trace_Lambda = 0;
+  SESyncResults.trace_Lambda = 0;
   for (unsigned int i = 0; i < problem.num_poses(); i++)
-    trace_Lambda += Lambda_blocks
-                        .block(0, i * problem.dimension(), problem.dimension(),
-                               problem.dimension())
-                        .trace();
-  SESyncResults.SDP_duality_gap = SESyncResults.SDPval - trace_Lambda;
+    SESyncResults.trace_Lambda +=
+        Lambda_blocks
+            .block(0, i * problem.dimension(), problem.dimension(),
+                   problem.dimension())
+            .trace();
+
   SESyncResults.Lambda =
       problem.compute_Lambda_from_Lambda_blocks(Lambda_blocks);
+
+  // Get the duality gap for the primal-dual pair (Y'*Y, Lambda) of SDP
+  // estimates
+
+  SESyncResults.SDP_duality_gap =
+      SESyncResults.SDPval - SESyncResults.trace_Lambda;
+
+  // Get an upper bound on the (global) suboptimality of the recovered (rounded)
+  // pose estimates
+  SESyncResults.suboptimality_upper_bound =
+      SESyncResults.Fxhat - SESyncResults.trace_Lambda;
 
   /// FINAL OUTPUT
 
@@ -477,8 +496,8 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
               << std::endl;
     std::cout << "Norm of Riemannian gradient grad F(Y): "
               << SESyncResults.gradnorm << std::endl;
-    std::cout << "Value of primal SDP solution tr(Lambda): " << trace_Lambda
-              << std::endl;
+    std::cout << "Value of primal SDP solution tr(Lambda): "
+              << SESyncResults.trace_Lambda << std::endl;
     std::cout << "Minimum eigenvalue of certificate matrix S - Lambda: "
               << SESyncResults.lambda_min << std::endl;
     std::cout << "SDP duality gap: " << SESyncResults.SDP_duality_gap
@@ -487,9 +506,10 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
     std::cout << "SE-SYNCHRONIZATION RESULTS:" << std::endl;
     std::cout << "Value of rounded pose estimates F(x): " << SESyncResults.Fxhat
               << std::endl;
-    std::cout << "Suboptimality bound of recovered pose estimate: "
-              << SESyncResults.Fxhat - SESyncResults.SDPval << std::endl
-              << std::endl;
+    std::cout
+        << "Suboptimality bound F(x) - tr(Lambda) of recovered pose estimate: "
+        << SESyncResults.suboptimality_upper_bound << std::endl
+        << std::endl;
     std::cout << "Total elapsed computation time: "
               << SESyncResults.total_computation_time << " seconds" << std::endl
               << std::endl;

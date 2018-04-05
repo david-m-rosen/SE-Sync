@@ -36,11 +36,31 @@ struct SESyncOpts {
 
   /** Maximum permitted number of (outer) iterations of the Riemannian
    * trust-region method when solving each instance of Problem 9 */
-  unsigned int max_iterations = 500;
+  unsigned int max_iterations = 1000;
 
   /** Maximum number of inner (truncated conjugate-gradient) iterations to
- * perform per out iteration */
-  unsigned int max_tCG_iterations = 2000;
+   * perform per out iteration */
+  unsigned int max_tCG_iterations = 10000;
+
+  /// These next two parameters define the stopping criteria for the truncated
+  /// preconditioned conjugate-gradient solver running in the inner loop --
+  /// they control the tradeoff between the quality of the returned
+  /// trust-region update step (as a minimizer of the local quadratic model
+  /// computed at each iterate) and the computational expense needed to generate
+  /// that update step.  You probably don't need to modify these unless you
+  /// really know what you're doing.
+
+  /** Gradient tolerance for the truncated preconditioned conjugate
+  gradient solver: stop if ||g|| < kappa * ||g_0||.  This parameter should be in
+  the range (0,1). */
+  double STPCG_kappa = .1;
+
+  /** Gradient tolerance based upon a fractional-power reduction in the norm of
+   * the gradient: stop if ||g|| < ||kappa||^{1+ theta}.  This value should be
+   * positive, and controls the asymptotic convergence rate of the
+   * truncated-Newton trust-region solver: specifically, for theta > 0, the TNT
+   * algorithm converges q-superlinearly with order (1+theta). */
+  double STPCG_theta = .5;
 
   /** Maximum elapsed computation time (in seconds) */
   double max_computation_time = std::numeric_limits<double>::max();
@@ -121,27 +141,34 @@ enum SESyncStatus {
 
 /** This struct contains the output of the SESync algorithm */
 struct SESyncResult {
-  /** The optimal value of the rank-restricted (dual) semidefinite relaxation
-   * Problem 9. */
-  double SDPval;
 
-  /** A global minimizer Yopt of the rank-restricted (dual) semidefinite
-   * relaxation Problem 9.  The corresponding solution of Problem 7 is
-   * Z = Y^T Y */
+  /** An estimate of a global minimizer Yopt of the rank-restricted dual
+   * semidefinite relaxation Problem 9 in the SE-Sync tech report.  The
+   * corresponding solution of Problem 7 is Z = Y^T Y */
   Matrix Yopt;
+
+  /** The value of the objective F(Y^T Y) = F(Z) attained by the Yopt */
+  double SDPval;
 
   /** The norm of the Riemannian gradient at Yopt */
   double gradnorm;
 
-  /** The Lagrange multiplier matrix Lambda corresponding to Yopt, computing
-   * according to eq. (119) in the SE-Sync tech report.  If Y is an exact
-   * solution for the rank-restricted (dual) semidefinite relaxation Problem 9,
-   * then Lambda is the solution to the primal Lagrangian relaxation Problem 6.
-   */
+  /** The Lagrange multiplier matrix Lambda corresponding to Yopt, computed
+   * according to eq. (119) in the SE-Sync tech report.  If Z = Y^T Y is an
+   * exact solution for the dual semidefinite relaxation Problem 7, then Lambda
+   * is the solution to the primal Lagrangian relaxation Problem 6. */
   SparseMatrix Lambda;
 
+  /** The trace of Lambda; this is the value of Lambda under the objective of
+   * the (primal) semidefinite relaxation Problem 6. */
+  double trace_Lambda;
+
   /** The duality gap between the estimates for the primal and dual solutions
-   * Lambda and Z = Y^T Y, respectively.*/
+   * Lambda and Z = Y^T Y of Problems 7 and 6, respectively; it is given by:
+   *
+   * SDP_duality_gap := F(Y^T Y) - tr(Lambda)
+   *
+   */
   double SDP_duality_gap;
 
   /** The minimum eigenvalue of the matrix S - Lambda */
@@ -155,6 +182,10 @@ struct SESyncResult {
 
   /** The rounded solution xhat = [t | R] in SE(d)^n */
   Matrix xhat;
+
+  /** Upper bound on the global suboptimality of the recovered pose estimates
+   * xhat; this is equal to F(xhat) - tr(Lambda) */
+  double suboptimality_upper_bound;
 
   /** The total elapsed computation time for the SE-Sync algorithm */
   double total_computation_time;
