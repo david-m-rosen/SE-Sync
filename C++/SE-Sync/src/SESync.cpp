@@ -124,93 +124,61 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   /// Function handles required by the TNT optimization algorithm
 
   // Objective
-  Optimization::Objective<Matrix, Matrix, std::vector<Matrix>> F =
-      [&problem](const Matrix &Y, const Matrix &NablaF_Y,
-                 const std::vector<Matrix> &iterates) {
+  Optimization::Objective<Matrix, Matrix> F =
+      [&problem](const Matrix &Y, const Matrix &NablaF_Y) {
         return problem.evaluate_objective(Y);
       };
 
   // Local quadratic model constructor
-  Optimization::Smooth::QuadraticModel<Matrix, Matrix, Matrix,
-                                       std::vector<Matrix>>
-      QM = [&problem](
-          const Matrix &Y, Matrix &grad,
-          Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix,
-                                               std::vector<Matrix>> &HessOp,
-          Matrix &NablaF_Y, const std::vector<Matrix> &iterates) {
+  Optimization::Smooth::QuadraticModel<Matrix, Matrix, Matrix> QM = [&problem](
+      const Matrix &Y, Matrix &grad,
+      Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix> &HessOp,
+      Matrix &NablaF_Y) {
 
-        // Compute and cache Euclidean gradient at the current iterate
-        NablaF_Y = problem.Euclidean_gradient(Y);
+    // Compute and cache Euclidean gradient at the current iterate
+    NablaF_Y = problem.Euclidean_gradient(Y);
 
-        // Compute Riemannian gradient from Euclidean gradient
-        grad = problem.Riemannian_gradient(Y, NablaF_Y);
+    // Compute Riemannian gradient from Euclidean gradient
+    grad = problem.Riemannian_gradient(Y, NablaF_Y);
 
-        // Define linear operator for computing Riemannian Hessian-vector
-        // products (cf. eq. (44) in the SE-Sync tech report)
-        HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
-                            const Matrix &NablaF_Y,
-                            const std::vector<Matrix> &iterates) {
-          return problem.Riemannian_Hessian_vector_product(Y, NablaF_Y, Ydot);
-        };
-      };
+    // Define linear operator for computing Riemannian Hessian-vector
+    // products (cf. eq. (44) in the SE-Sync tech report)
+    HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
+                        const Matrix &NablaF_Y) {
+      return problem.Riemannian_Hessian_vector_product(Y, NablaF_Y, Ydot);
+    };
+  };
 
   // Riemannian metric
 
   // We consider a realization of the product of Stiefel manifolds as an
   // embedded submanifold of R^{r x dn}; consequently, the induced Riemannian
   // metric is simply the usual Euclidean inner product
-  Optimization::Smooth::RiemannianMetric<Matrix, Matrix, Matrix,
-                                         std::vector<Matrix>>
-      metric = [&problem](const Matrix &Y, const Matrix &V1, const Matrix &V2,
-                          const Matrix &NablaF_Y,
-                          const std::vector<Matrix> &iterates) {
+  Optimization::Smooth::RiemannianMetric<Matrix, Matrix, Matrix> metric =
+      [&problem](const Matrix &Y, const Matrix &V1, const Matrix &V2,
+                 const Matrix &NablaF_Y) {
         return (V1 * V2.transpose()).trace();
       };
 
   // Retraction operator
-  Optimization::Smooth::Retraction<Matrix, Matrix, Matrix, std::vector<Matrix>>
-      retraction = [&problem](const Matrix &Y, const Matrix &Ydot,
-                              const Matrix &NablaF_Y,
-                              const std::vector<Matrix> &iterates) {
+  Optimization::Smooth::Retraction<Matrix, Matrix, Matrix> retraction =
+      [&problem](const Matrix &Y, const Matrix &Ydot, const Matrix &NablaF_Y) {
         return problem.retract(Y, Ydot);
       };
 
   // Preconditioning operator (optional)
-  std::experimental::optional<Optimization::Smooth::LinearOperator<
-      Matrix, Matrix, Matrix, std::vector<Matrix>>>
+  std::experimental::optional<
+      Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix>>
       precon;
   if (options.precon == None)
     precon = std::experimental::nullopt;
   else {
-    Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix,
-                                         std::vector<Matrix>>
-        precon_op = [&problem](const Matrix &Y, const Matrix &Ydot,
-                               const Matrix &NablaF_Y,
-                               const std::vector<Matrix> &iterates) {
+    Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix> precon_op =
+        [&problem](const Matrix &Y, const Matrix &Ydot,
+                   const Matrix &NablaF_Y) {
           return problem.precondition(Y, Ydot);
         };
     precon = precon_op;
-  }
-
-  // Stat function (optional) -- used to record the sequence of iterates
-  // computed during the Riemannian Staircase
-  std::experimental::optional<Optimization::Smooth::TNTUserFunction<
-      Matrix, Matrix, Matrix, std::vector<Matrix>>>
-      user_function;
-
-  if (options.log_iterates) {
-    Optimization::Smooth::TNTUserFunction<Matrix, Matrix, Matrix,
-                                          std::vector<Matrix>>
-        user_function_op =
-            [](double t, const Matrix &Y, double f, const Matrix &g,
-               const Optimization::Smooth::LinearOperator<
-                   Matrix, Matrix, Matrix, std::vector<Matrix>> &HessOp,
-               double Delta, unsigned int num_STPCG_iters, const Matrix &h,
-               double df, double rho, bool accepted, const Matrix &NablaF_Y,
-               std::vector<Matrix> &iterates) { iterates.push_back(Y); };
-    user_function = user_function_op;
-  } else {
-    user_function = std::experimental::nullopt;
   }
 
   /// INITIALIZATION
@@ -265,6 +233,7 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
   params.max_TPCG_iterations = options.max_tCG_iterations;
   params.kappa_fgr = options.STPCG_kappa;
   params.theta = options.STPCG_theta;
+  params.log_iterates = options.log_iterates;
   params.verbose = options.verbose;
 
   auto riemannian_staircase_start_time = Stopwatch::tick();
@@ -297,9 +266,8 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
     /// Run optimization!
     Optimization::Smooth::TNTResult<Matrix> TNTResults =
-        Optimization::Smooth::TNT<Matrix, Matrix, Matrix, std::vector<Matrix>>(
-            F, QM, metric, retraction, Y, NablaF_Y, SESyncResults.iterates,
-            precon, params, user_function);
+        Optimization::Smooth::TNT<Matrix, Matrix, Matrix>(
+            F, QM, metric, retraction, Y, NablaF_Y, precon, params);
 
     // Extract the results
     SESyncResults.Yopt = TNTResults.x;
@@ -315,6 +283,10 @@ SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
 
     // Record sequence of elapsed optimization times
     SESyncResults.elapsed_optimization_times.push_back(TNTResults.time);
+
+    // Record sequence of pose estimates, if requested
+    if (options.log_iterates)
+      SESyncResults.iterates.push_back(TNTResults.iterates);
 
     if (options.verbose) {
       // Display some output to the user
