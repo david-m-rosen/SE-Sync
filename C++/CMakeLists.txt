@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # We require C++ 14
 
 # Enable faster instruction sets (SIMD/AVX)
-add_compile_options(-march=native)
+#add_compile_options(-march=native)
 
 # Set build type to 'RelWithDebInfo' if one was not specified by the user
 if(NOT CMAKE_BUILD_TYPE)
@@ -116,8 +116,8 @@ set_target_properties(SESync PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
 target_link_libraries(SESync gomp)
 endif()
 
-# Export the SESync library to make it available to other CMake projects
-export(TARGETS SESync FILE SESync.cmake)
+# Export the SESync and Optimization libraries to make them available to other CMake projects
+export(TARGETS SESync Optimization FILE SESync.cmake)
 
 # BUILD EXAMPLE DRIVER
 add_subdirectory(examples)
