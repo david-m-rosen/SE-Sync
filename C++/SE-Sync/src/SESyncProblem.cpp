@@ -3,6 +3,8 @@
 #include "SESync/SESyncProblem.h"
 #include "SESync/SESync_utils.h"
 
+#include <random>
+
 namespace SESync {
 
 SESyncProblem::SESyncProblem(
