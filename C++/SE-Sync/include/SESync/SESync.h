@@ -228,7 +228,7 @@ struct SESyncResult {
 /** Given a vector of relative pose measurements specifying a special Euclidean
  * synchronization problem, performs synchronization using the SESync algorithm
  */
-SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
+SESyncResult SESync(const measurements_t &measurements,
                     const SESyncOpts &options = SESyncOpts(),
                     const Matrix &Y0 = Matrix());
 

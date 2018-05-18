@@ -10,11 +10,10 @@
 
 namespace SESync {
 
-std::vector<SESync::RelativePoseMeasurement>
-read_g2o_file(const std::string &filename, size_t &num_poses) {
+measurements_t read_g2o_file(const std::string &filename, size_t &num_poses) {
 
   // Preallocate output vector
-  std::vector<SESync::RelativePoseMeasurement> measurements;
+  measurements_t measurements;
 
   // A single measurement, whose values we will fill in
   SESync::RelativePoseMeasurement measurement;
@@ -141,8 +140,8 @@ read_g2o_file(const std::string &filename, size_t &num_poses) {
   return measurements;
 }
 
-SparseMatrix construct_rotational_connection_Laplacian(
-    const std::vector<SESync::RelativePoseMeasurement> &measurements) {
+SparseMatrix
+construct_rotational_connection_Laplacian(const measurements_t &measurements) {
 
   size_t num_poses = 0; // We will use this to keep track of the largest pose
   // index encountered, which in turn provides the number
@@ -264,9 +263,8 @@ construct_translational_data_matrix(const measurements_t &measurements) {
   return T;
 }
 
-void construct_B_matrices(
-    const std::vector<RelativePoseMeasurement> &measurements, SparseMatrix &B1,
-    SparseMatrix &B2, SparseMatrix &B3) {
+void construct_B_matrices(const measurements_t &measurements, SparseMatrix &B1,
+                          SparseMatrix &B2, SparseMatrix &B3) {
   // Clear input matrices
   B1.setZero();
   B2.setZero();
@@ -354,8 +352,8 @@ void construct_B_matrices(
   B3.setFromTriplets(triplets.begin(), triplets.end());
 }
 
-SparseMatrix construct_quadratic_form_data_matrix(
-    const std::vector<RelativePoseMeasurement> &measurements) {
+SparseMatrix
+construct_quadratic_form_data_matrix(const measurements_t &measurements) {
 
   size_t num_poses = 0;
   size_t d = (!measurements.empty() ? measurements[0].t.size() : 0);

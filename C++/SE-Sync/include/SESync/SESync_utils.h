@@ -8,7 +8,6 @@ matrices used in the SE-Sync algorithm.
 #pragma once
 
 #include <string>
-#include <vector>
 
 #include <Eigen/Sparse>
 
@@ -17,7 +16,9 @@ matrices used in the SE-Sync algorithm.
 
 namespace SESync {
 
-typedef std::vector<SESync::RelativePoseMeasurement> measurements_t;
+typedef std::vector<SESync::RelativePoseMeasurement,
+                    Eigen::aligned_allocator<SESync::RelativePoseMeasurement>>
+    measurements_t;
 
 measurements_t read_g2o_file(const std::string &filename, size_t &num_poses);
 
@@ -44,15 +45,14 @@ construct_translational_data_matrix(const measurements_t &measurements);
 
 /** Given a vector of relative pose measurements, this function computes and
  * returns the B matrices defined in equation (69) of the tech report */
-void construct_B_matrices(
-    const std::vector<RelativePoseMeasurement> &measurements, SparseMatrix &B1,
-    SparseMatrix &B2, SparseMatrix &B3);
+void construct_B_matrices(const measurements_t &measurements, SparseMatrix &B1,
+                          SparseMatrix &B2, SparseMatrix &B3);
 
 /** Given a vector of relative pose measurements, this function constructs the
  * matrix M parameterizing the objective in the translation-explicit formulation
  * of the SE-Sync problem (Problem 2) in the SE-Sync tech report) */
-SparseMatrix construct_quadratic_form_data_matrix(
-    const std::vector<RelativePoseMeasurement> &measurements);
+SparseMatrix
+construct_quadratic_form_data_matrix(const measurements_t &measurements);
 
 /** Given the measurement matrix B3 defined in equation (69c) of the tech report
  * and the problem dimension d, this function computes and returns the

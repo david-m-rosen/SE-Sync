@@ -9,7 +9,7 @@
 
 namespace SESync {
 
-SESyncResult SESync(const std::vector<RelativePoseMeasurement> &measurements,
+SESyncResult SESync(const measurements_t &measurements,
                     const SESyncOpts &options, const Eigen::MatrixXd &Y0) {
 
   /// ALGORITHM DATA

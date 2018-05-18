@@ -132,10 +132,10 @@ public:
   SESyncProblem() {}
 
   /** Constructor using a vector of relative pose measurements */
-  SESyncProblem(
-      const std::vector<SESync::RelativePoseMeasurement> &measurements,
-      const Formulation &formulation = Simplified, bool Cholesky = true,
-      const Preconditioner &precon = IncompleteCholesky);
+  SESyncProblem(const measurements_t &measurements,
+                const Formulation &formulation = Simplified,
+                bool Cholesky = true,
+                const Preconditioner &precon = IncompleteCholesky);
 
   /** Set the maximum rank of the rank-restricted semidefinite relaxation */
   void set_relaxation_rank(unsigned int rank);

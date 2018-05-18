@@ -7,9 +7,9 @@
 
 namespace SESync {
 
-SESyncProblem::SESyncProblem(
-    const std::vector<SESync::RelativePoseMeasurement> &measurements,
-    const Formulation &formulation, bool Cholesky, const Preconditioner &precon)
+SESyncProblem::SESyncProblem(const measurements_t &measurements,
+                             const Formulation &formulation, bool Cholesky,
+                             const Preconditioner &precon)
     : form(formulation), use_Cholesky(Cholesky), preconditioner(precon) {
 
   // Construct oriented incidence matrix for the underlying pose graph
