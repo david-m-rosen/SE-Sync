@@ -7,9 +7,10 @@
 
 #pragma once
 
+#include <Eigen/Dense>
 #include <iostream>
 
-#include <Eigen/Dense>
+#include <SESync/SESync_types.h>
 
 namespace SESync {
 
@@ -23,10 +24,10 @@ struct RelativePoseMeasurement {
   size_t j;
 
   /** Rotational measurement */
-  Eigen::MatrixXd R;
+  Matrix R;
 
   /** Translational measurement */
-  Eigen::VectorXd t;
+  Vector t;
 
   /** Rotational measurement precision */
   double kappa;
@@ -39,8 +40,8 @@ struct RelativePoseMeasurement {
 
   /** Basic constructor */
   RelativePoseMeasurement(size_t first_pose, size_t second_pose,
-                          const Eigen::MatrixXd &relative_rotation,
-                          const Eigen::VectorXd &relative_translation,
+                          const Matrix &relative_rotation,
+                          const Vector &relative_translation,
                           double rotational_precision,
                           double translational_precision)
       : i(first_pose), j(second_pose), R(relative_rotation),
@@ -60,4 +61,7 @@ struct RelativePoseMeasurement {
     return os;
   }
 };
+
+/** Typedef for a vector of RelativePoseMeasurements */
+typedef std::vector<SESync::RelativePoseMeasurement> measurements_t;
 }

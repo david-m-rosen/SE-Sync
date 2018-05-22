@@ -9,6 +9,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
+#include <SESync/RelativePoseMeasurement.h>
+
 namespace SESync {
 
 /** Some useful typedefs for the SE-Sync library */

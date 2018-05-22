@@ -16,10 +16,6 @@ matrices used in the SE-Sync algorithm.
 
 namespace SESync {
 
-typedef std::vector<SESync::RelativePoseMeasurement,
-                    Eigen::aligned_allocator<SESync::RelativePoseMeasurement>>
-    measurements_t;
-
 measurements_t read_g2o_file(const std::string &filename, size_t &num_poses);
 
 /** Given a vector of relative pose measurements, this function computes and
