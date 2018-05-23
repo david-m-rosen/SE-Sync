@@ -10,7 +10,7 @@
 #include <Eigen/Dense>
 #include <iostream>
 
-#include <SESync/SESync_types.h>
+#include "SESync/SESync_types.h"
 
 namespace SESync {
 

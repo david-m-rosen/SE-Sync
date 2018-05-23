@@ -10,7 +10,7 @@
 namespace SESync {
 
 SESyncResult SESync(const measurements_t &measurements,
-                    const SESyncOpts &options, const Eigen::MatrixXd &Y0) {
+                    const SESyncOpts &options, const Matrix &Y0) {
 
   /// ALGORITHM DATA
 

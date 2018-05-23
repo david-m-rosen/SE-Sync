@@ -10,6 +10,10 @@
 
 #include <Eigen/Dense>
 
+#include "SESync/SESync_types.h"
+
+namespace SESync {
+
 class StiefelProduct {
 
 private:
@@ -44,7 +48,7 @@ public:
 
   /** Given a generic matrix A in R^{p x kn}, this function computes the
    * projection of A onto R (closest point in the Frobenius norm sense).  */
-  Eigen::MatrixXd project(const Eigen::MatrixXd &A) const;
+  Matrix project(const Matrix &A) const;
 
   /** Helper function -- this computes and returns the product
    *
@@ -53,17 +57,15 @@ public:
    * where A, B, and C are p x kn matrices (cf. eq. (5) in the SE-Sync tech
    * report).
    */
-  Eigen::MatrixXd SymBlockDiagProduct(const Eigen::MatrixXd &A,
-                                      const Eigen::MatrixXd &B,
-                                      const Eigen::MatrixXd &C) const;
+  Matrix SymBlockDiagProduct(const Matrix &A, const Matrix &B,
+                             const Matrix &C) const;
 
   /** Given an element Y in M and a matrix V in T_X(R^{p x kn}) (that is, a (p
    * x kn)-dimensional matrix V considered as an element of the tangent space to
    * the *entire* ambient Euclidean space at X), this function computes and
    * returns the projection of V onto T_X(M), the tangent space of M at X (cf.
    * eq. (42) in the SE-Sync tech report).*/
-  Eigen::MatrixXd Proj(const Eigen::MatrixXd &Y,
-                       const Eigen::MatrixXd &V) const {
+  Matrix Proj(const Matrix &Y, const Matrix &V) const {
     return V - SymBlockDiagProduct(Y, Y, V);
   }
 
@@ -72,9 +74,10 @@ public:
    * specified in eq. (4.8) of Absil et al.'s  "Optimization Algorithms on
    * Matrix Manifolds").
    */
-  Eigen::MatrixXd retract(const Eigen::MatrixXd &Y,
-                          const Eigen::MatrixXd &V) const;
+  Matrix retract(const Matrix &Y, const Matrix &V) const;
 
   /** Sample a random point on M */
-  Eigen::MatrixXd random_sample() const;
+  Matrix random_sample() const;
 };
+
+} // namespace SESync
