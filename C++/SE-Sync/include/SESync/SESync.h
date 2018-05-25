@@ -101,7 +101,11 @@ struct SESyncOpts {
 
   /** The preconditioning strategy to use in the Riemannian trust-region
    * algorithm*/
-  Preconditioner precon = IncompleteCholesky;
+  Preconditioner precon = RegularizedCholesky;
+
+  /** Maximum admissible condition number for the regularized Cholesky
+   * preconditioner */
+  double reg_Cholesky_precon_max_condition_number = 1e6;
 
   /** Whether to print output as the algorithm runs */
   bool verbose = false;
@@ -202,6 +206,11 @@ struct SESyncResult {
    * obtained during the optimization at each level of the Riemannian Staircase
    */
   std::vector<std::vector<double>> gradient_norms;
+
+  /** A vector containing the sequence of (# Hessian-vector product operations)
+   * carried out during the optimization at each level of the Riemannian
+   * Staircase */
+  std::vector<std::vector<unsigned int>> Hessian_vector_products;
 
   /** A vector containing the sequence of elapsed times in the optimization at
    * each level of the Riemannian Staircase at which the corresponding function

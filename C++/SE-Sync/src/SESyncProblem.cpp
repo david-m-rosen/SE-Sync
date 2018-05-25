@@ -1,4 +1,5 @@
-#include <SymEigsSolver.h> // Spectra's symmetric eigensolver
+#include "MatOp/SparseSymMatProd.h"
+#include "SymEigsSolver.h" // Spectra's symmetric eigensolver
 
 #include "SESync/SESyncProblem.h"
 #include "SESync/SESync_utils.h"
@@ -9,8 +10,10 @@ namespace SESync {
 
 SESyncProblem::SESyncProblem(const measurements_t &measurements,
                              const Formulation &formulation, bool Cholesky,
-                             const Preconditioner &precon)
-    : form(formulation), use_Cholesky(Cholesky), preconditioner(precon) {
+                             const Preconditioner &precon,
+                             double reg_chol_precon_max_cond)
+    : form(formulation), use_Cholesky(Cholesky), preconditioner(precon),
+      RegCholPrecon_max_cond(reg_chol_precon_max_cond) {
 
   // Construct oriented incidence matrix for the underlying pose graph
   A = construct_oriented_incidence_matrix(measurements);
@@ -80,7 +83,31 @@ SESyncProblem::SESyncProblem(const measurements_t &measurements,
       Eigen::VectorXd diag = LGrho.diagonal();
       JacobiPrecon = diag.cwiseInverse().asDiagonal();
     } else if (preconditioner == IncompleteCholesky)
-      iChol = new IncompleteCholeskyFactorization(LGrho);
+      iCholPrecon = new IncompleteCholeskyFactorization(LGrho);
+    else if (preconditioner == RegularizedCholesky) {
+      // Compute maximum eigenvalue of LGrho
+
+      // NB: Spectra's built-in SparseSymProduct matrix assumes that input
+      // matrices are stored in COLUMN-MAJOR order
+      Eigen::SparseMatrix<double, Eigen::ColMajor> LGrho_col_major(LGrho);
+
+      Spectra::SparseSymMatProd<double> op(LGrho_col_major);
+      Spectra::SymEigsSolver<double, Spectra::LARGEST_MAGN,
+                             Spectra::SparseSymMatProd<double>>
+          max_eig_solver(&op, 1, 3);
+      max_eig_solver.init();
+
+      int max_iterations = 10000;
+      double tol = 1e-4; // We only require a relatively loose estimate here ...
+      int nconv = max_eig_solver.compute(max_iterations, tol);
+
+      double lambda_max = max_eig_solver.eigenvalues()(0);
+      RegCholPrecon.compute(
+          LGrho +
+          SparseMatrix(Vector::Constant(LGrho.rows(),
+                                        lambda_max / RegCholPrecon_max_cond)
+                           .asDiagonal()));
+    }
 
   } else {
     // form == Explicit
@@ -91,7 +118,30 @@ SESyncProblem::SESyncProblem(const measurements_t &measurements,
       Eigen::VectorXd diag = M.diagonal();
       JacobiPrecon = diag.cwiseInverse().asDiagonal();
     } else if (preconditioner == IncompleteCholesky)
-      iChol = new IncompleteCholeskyFactorization(M);
+      iCholPrecon = new IncompleteCholeskyFactorization(M);
+    else if (preconditioner == RegularizedCholesky) {
+      // Compute maximum eigenvalue of M
+
+      // NB: Spectra's built-in SparseSymProduct matrix assumes that input
+      // matrices are stored in COLUMN-MAJOR order
+      Eigen::SparseMatrix<double, Eigen::ColMajor> M_col_major(M);
+
+      Spectra::SparseSymMatProd<double> op(M_col_major);
+      Spectra::SymEigsSolver<double, Spectra::LARGEST_MAGN,
+                             Spectra::SparseSymMatProd<double>>
+          max_eig_solver(&op, 1, 3);
+      max_eig_solver.init();
+
+      int max_iterations = 10000;
+      double tol = 1e-4; // We only require a relatively loose estimate here ...
+      int nconv = max_eig_solver.compute(max_iterations, tol);
+
+      double lambda_max = max_eig_solver.eigenvalues()(0);
+      RegCholPrecon.compute(
+          M + SparseMatrix(Vector::Constant(M.rows(),
+                                            lambda_max / RegCholPrecon_max_cond)
+                               .asDiagonal()));
+    }
   }
 }
 
@@ -160,9 +210,12 @@ Matrix SESyncProblem::precondition(const Matrix &Y, const Matrix &dotY) const {
     return dotY;
   else if (preconditioner == Jacobi)
     return tangent_space_projection(Y, JacobiPrecon * dotY);
-  else // preconditioner = IncompleteCholesky
-    return tangent_space_projection(Y,
-                                    iChol->solve(dotY.transpose()).transpose());
+  else if (preconditioner == IncompleteCholesky)
+    return tangent_space_projection(
+        Y, iCholPrecon->solve(dotY.transpose()).transpose());
+  else // preconditioner == RegularizedCholesky
+    return tangent_space_projection(
+        Y, RegCholPrecon.solve(dotY.transpose()).transpose());
 }
 
 Matrix SESyncProblem::tangent_space_projection(const Matrix &Y,
@@ -266,7 +319,8 @@ Matrix SESyncProblem::round_solution(const Matrix Y) const {
 }
 
 Matrix SESyncProblem::compute_Lambda_blocks(const Matrix &Y) const {
-  // Compute S * Y', where S is the data matrix defining the quadratic form for
+  // Compute S * Y', where S is the data matrix defining the quadratic form
+  // for
   // the specific version of the SE-Sync problem we're solving
   Matrix SYt = data_matrix_product(Y.transpose());
 
@@ -341,13 +395,16 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
     return true;
   }
 
-  // The largest-magnitude eigenvalue is positive, and is therefore the maximum
+  // The largest-magnitude eigenvalue is positive, and is therefore the
+  // maximum
   // eigenvalue.  Therefore, after shifting the spectrum of S - Lambda by -
-  // 2*lambda_lm (by forming S - Lambda - 2*lambda_max*I), the  shifted spectrum
+  // 2*lambda_lm (by forming S - Lambda - 2*lambda_max*I), the  shifted
+  // spectrum
   // will lie in the interval [lambda_min(A) - 2*  lambda_max(A),
   // -lambda_max*A]; in particular, the largest-magnitude eigenvalue of  S -
   // Lambda - 2*lambda_max*I is lambda_min - 2*lambda_max, with  corresponding
-  // eigenvector v_min; furthermore, the condition number sigma of S - Lambda -
+  // eigenvector v_min; furthermore, the condition number sigma of S - Lambda
+  // -
   // 2*lambda_max is then upper-bounded by 2 :-).
 
   SMinusLambdaProdFunctor min_shifted_op(this, Y, -2 * lambda_lm);
@@ -358,7 +415,8 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
 
   // If Y is a critical point of F, then Y^T is also in the null space
   // of S - Lambda(Y) (cf. Lemma 6 of the tech report), and therefore its
-  // rows are eigenvectors corresponding to the eigenvalue 0.  In the case that
+  // rows are eigenvectors corresponding to the eigenvalue 0.  In the case
+  // that
   // the relaxation is exact, this is the *minimum* eigenvalue, and therefore
   // the rows of Y are exactly the eigenvectors that we're looking for.  On
   // the other hand, if the relaxation is *not* exact, then S - Lambda(Y)

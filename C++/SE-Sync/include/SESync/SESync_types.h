@@ -40,6 +40,6 @@ enum Formulation {
 
 /** The set of available preconditioning strategies to use in the Riemannian
  * Trust Region when solving this problem */
-enum Preconditioner { None, Jacobi, IncompleteCholesky };
+enum Preconditioner { None, Jacobi, IncompleteCholesky, RegularizedCholesky };
 
 } // namespace SESync

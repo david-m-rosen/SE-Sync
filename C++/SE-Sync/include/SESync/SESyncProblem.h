@@ -118,7 +118,14 @@ private:
   DiagonalMatrix JacobiPrecon;
 
   /** Incomplete Cholesky Preconditioner */
-  IncompleteCholeskyFactorization *iChol = nullptr;
+  IncompleteCholeskyFactorization *iCholPrecon = nullptr;
+
+  /** Tikhonov-regularized Cholesky Preconditioner */
+  SparseCholeskyFactorization RegCholPrecon;
+
+  /** Upper-bound on the admissible condition number of the regularized
+   * approximate Hessian matrix used for Cholesky preconditioner */
+  double RegCholPrecon_max_cond;
 
   /** The underlying manifold in which the generalized orientations lie in the
   rank-restricted Riemannian optimization problem (Problem 9 in the SE-Sync tech
@@ -131,11 +138,25 @@ public:
   /** Default constructor; doesn't actually do anything */
   SESyncProblem() {}
 
-  /** Constructor using a vector of relative pose measurements */
+  /** Basic constructor.  Here
+   *
+   * - measurements is a vector of relative pose measurements defining the
+          pose-graph SLAM problem to be solved.
+   * - formulation is an enum type specifying whether to solve the simplified
+   *      form of the SDP relaxation (in which translational states have been
+   *      eliminated) or the explicit form (in which the translational states
+   *      are explicitly represented).
+   * - Cholesky is a Boolean value indicating whether to use a Cholesky or a QR
+   *      factorization to compute the orthogonal projection operator Pi
+   *      required when solving the Simplified form of the pose-graph SLAM
+   *      problem.
+   *  - Precon is an enum type specifying the preconditioning strategy to employ
+   */
   SESyncProblem(const measurements_t &measurements,
                 const Formulation &formulation = Simplified,
                 bool Cholesky = true,
-                const Preconditioner &precon = IncompleteCholesky);
+                const Preconditioner &precon = IncompleteCholesky,
+                double reg_chol_precon_max_cond = 1e6);
 
   /** Set the maximum rank of the rank-restricted semidefinite relaxation */
   void set_relaxation_rank(unsigned int rank);
@@ -162,14 +183,8 @@ public:
    * graph over which this problem is defined */
   const SparseMatrix &oriented_incidence_matrix() const { return A; }
 
-  const StiefelProduct &manifold() const { return SP; }
-
-  const DiagonalMatrix &JacobiPreconditioner() const { return JacobiPrecon; }
-
-  const IncompleteCholeskyFactorization *
-  IncompleteCholsekyPreconditioner() const {
-    return iChol;
-  }
+  /** Returns the StiefelProduct manifold underlying this SE-Sync problem */
+  const StiefelProduct &Stiefel_product_manifold() const { return SP; }
 
   /// OPTIMIZATION AND GEOMETRY
 
@@ -306,8 +321,8 @@ public:
     if (QR)
       delete QR;
 
-    if (iChol)
-      delete iChol;
+    if (iCholPrecon)
+      delete iCholPrecon;
   }
 
   /// MINIMUM EIGENVALUE COMPUTATIONS

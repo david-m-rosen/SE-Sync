@@ -89,8 +89,12 @@ SESyncResult SESync(const measurements_t &measurements,
       std::cout << "the identity preconditioner";
     else if (options.precon == Jacobi)
       std::cout << "Jacobi preconditioner";
-    else
+    else if (options.precon == IncompleteCholesky)
       std::cout << "incomplete Cholesky preconditioner";
+    else if (options.precon == RegularizedCholesky)
+      std::cout << "regularized Cholesky preconditioner with maximum condition "
+                   "number "
+                << options.reg_Cholesky_precon_max_condition_number;
 
     std::cout << std::endl << std::endl;
   }
@@ -110,7 +114,8 @@ SESyncResult SESync(const measurements_t &measurements,
 
   auto problem_construction_start_time = Stopwatch::tick();
   SESyncProblem problem(measurements, options.formulation, options.use_Cholesky,
-                        options.precon);
+                        options.precon,
+                        options.reg_Cholesky_precon_max_condition_number);
   problem.set_relaxation_rank(options.r0);
   double problem_construction_elapsed_time =
       Stopwatch::tock(problem_construction_start_time);
@@ -280,6 +285,10 @@ SESyncResult SESync(const measurements_t &measurements,
 
     // Record sequence of gradient norm values
     SESyncResults.gradient_norms.push_back(TNTResults.gradient_norms);
+
+    // Record sequence of (# Hessian-vector products)
+    SESyncResults.Hessian_vector_products.push_back(
+        TNTResults.inner_iterations);
 
     // Record sequence of elapsed optimization times
     SESyncResults.elapsed_optimization_times.push_back(TNTResults.time);
