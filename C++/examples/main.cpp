@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
   opts.num_threads = 4;
 
 #ifdef GPERFTOOLS
-  ProfilerStart("SESync.prof");
+  ProfilerStart("SE-Sync.prof");
 #endif
 
   /// RUN SE-SYNC!
