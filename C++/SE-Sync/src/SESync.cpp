@@ -60,8 +60,10 @@ SESyncResult SESync(const measurements_t &measurements,
     if (options.log_iterates)
       std::cout << " Logging entire sequence of Riemannian Staircase iterates"
                 << std::endl;
+#if defined(_OPENMP)
     std::cout << " Running SE-Sync with " << options.num_threads << " threads"
               << std::endl;
+#endif
     std::cout << std::endl;
 
     std::cout << "Riemannian trust-region settings:" << std::endl;
@@ -102,8 +104,10 @@ SESyncResult SESync(const measurements_t &measurements,
   /// ALGORITHM START
   auto SESync_start_time = Stopwatch::tick();
 
-  // Set number of threads
+// Set number of threads
+#if defined(_OPENMP)
   omp_set_num_threads(options.num_threads);
+#endif
 
   /// CONSTRUCT SE-SYNC PROBLEM INSTANCE
   if (options.verbose)

@@ -7,8 +7,6 @@ project(SESync C CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # We require C++ 14
 
-# Enable faster instruction sets (SIMD/AVX)
-add_compile_options(-march=native)
 
 # Set build type to 'RelWithDebInfo' if one was not specified by the user
 if(NOT CMAKE_BUILD_TYPE)
@@ -19,18 +17,33 @@ else()
   message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode\n")
 endif()
 
-
-
 # Directory for built libraries
 set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/lib CACHE PATH "The directory in which to place the SE-Sync library built by this project")
 # Directory for built executables
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "The directory in which to place executables built by this project")
 
 # BUILD CONFIGURATIONS
-option(CMAKE_VERBOSE_MAKEFILE "Generate verbose makefiles?" OFF)
+# Enable faster instruction sets (SIMD/AVX)
+set(ENABLE_FAST_INSTRUCTIONS ON CACHE BOOL "Enable faster instruction sets (SIMD/AVX)")
+# Enable OpenMP (if available)
+set(ENABLE_OPENMP ON CACHE BOOL "Enable OpenMP (if available)")
+# Enable profiling using Google Performance Tools
+set(ENABLE_PROFILING OFF CACHE BOOL "Enable code profiling using Google Performance Tools")
 
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/eigen/cmake" CACHE STRING "The CMake module path used for this project")
+
+if(${ENABLE_FAST_INSTRUCTIONS})
+message(STATUS "Enabling SIMD/AVX instruction sets")
+add_definitions(-march=native)
+endif()
+
+if(${ENABLE_PROFILING})
+message(STATUS "Enabling code profiling using Google Performance Tools")
+set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} -lprofiler)
+endif()
+
+message(STATUS "")
 
 
 # SESYNC DEPENDENCIES
@@ -60,11 +73,11 @@ add_subdirectory(${OPTIMIZATION_DIR})
 find_library(OptLib NAMES Optimization)
 
 # PERFORMANCE IMPROVEMENTS
-# Uncomment the following 'find_package' line to turn on support for multithreading (if available)
-# Check if OpenMP support is available (for parallelization of Eigen operations)
+if(${ENABLE_OPENMP})
 find_package(OpenMP)
 if(OPENMP_FOUND)
-message(STATUS "\nFound OpenMP! Turning on support for parallelization")
+message(STATUS "\nFound OpenMP! Turning on support for parallelization\n")
+endif()
 endif()
 
 
