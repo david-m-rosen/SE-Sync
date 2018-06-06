@@ -3,6 +3,10 @@
 
 #include <fstream>
 
+#ifdef GPERFTOOLS
+#include <gperftools/profiler.h>
+#endif
+
 using namespace std;
 using namespace SESync;
 
@@ -27,12 +31,20 @@ int main(int argc, char **argv) {
   opts.verbose = true; // Print output to stdout
   opts.num_threads = 4;
 
+#ifdef GPERFTOOLS
+  ProfilerStart("SESync.prof");
+#endif
+
+  /// RUN SE-SYNC!
   SESyncResult results = SESync::SESync(measurements, opts);
 
+#ifdef GPERFTOOLS
+  ProfilerStop();
+#endif
+
+  // Write output
   string filename = "poses.txt";
-
   cout << "Saving final poses to file: " << filename << endl;
-
   ofstream poses_file(filename);
   poses_file << results.xhat;
   poses_file.close();

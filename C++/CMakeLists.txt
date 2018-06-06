@@ -27,8 +27,8 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "The direc
 set(ENABLE_FAST_INSTRUCTIONS ON CACHE BOOL "Enable faster instruction sets (SIMD/AVX)")
 # Enable OpenMP (if available)
 set(ENABLE_OPENMP ON CACHE BOOL "Enable OpenMP (if available)")
-# Enable profiling using Google Performance Tools
-set(ENABLE_PROFILING OFF CACHE BOOL "Enable code profiling using Google Performance Tools")
+# Enable code profiling using gperftools
+set(ENABLE_PROFILING OFF CACHE BOOL "Enable code profiling using gperftools")
 
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/eigen/cmake" CACHE STRING "The CMake module path used for this project")
@@ -122,7 +122,6 @@ target_include_directories(SESync PRIVATE ${SESync_PRIVATE_INCLUDES})
 target_include_directories(SESync PUBLIC ${SESync_INCLUDES})
 target_link_libraries(SESync Optimization ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
 
-# Uncomment these lines to enable support for OpenMP
 if(OPENMP_FOUND)
 # Add additional compilation flags to enable OpenMP support
 set_target_properties(SESync PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
