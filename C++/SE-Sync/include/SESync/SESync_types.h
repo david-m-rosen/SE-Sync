@@ -23,7 +23,7 @@ typedef Eigen::SparseMatrix<double, Eigen::RowMajor> SparseMatrix;
 
 /** The specific formulation of special Euclidean synchronization problem to
  * solve */
-enum Formulation {
+enum class Formulation {
   /** Construct and solve the simplified version of the special Euclidean
   * synchronization problem obtained by analytically eliminating the
   *  translational states from the estimation (cf. Problem 4 in the SE-Sync tech
@@ -38,8 +38,18 @@ enum Formulation {
   Explicit
 };
 
+/** The type of factorization to use when computing the action of the orthogonal
+ * projection operator Pi when solving the Simplified form of the special
+ * Euclidean synchronization problem */
+enum class ProjectionFactorization { Cholesky, QR };
+
 /** The set of available preconditioning strategies to use in the Riemannian
  * Trust Region when solving this problem */
-enum Preconditioner { None, Jacobi, IncompleteCholesky, RegularizedCholesky };
+enum class Preconditioner {
+  None,
+  Jacobi,
+  IncompleteCholesky,
+  RegularizedCholesky
+};
 
 } // namespace SESync

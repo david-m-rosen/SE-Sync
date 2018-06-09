@@ -6,7 +6,7 @@
 * (tangent space projection and retraction) and evaluating the optimization
 * objective and its gradient and Hessian operator.
 *
-*  Copyright (C) 2016, 2017 by David M. Rosen
+*  Copyright (C) 2016 - 2018 by David M. Rosen
 */
 
 #pragma once
@@ -44,59 +44,59 @@ private:
 
   /** The specific formulation of the SE-Sync problem to be solved
 (translation-implicit, translation-explicit, or robust) */
-  Formulation form;
+  Formulation form_;
 
   /** Number of poses */
-  unsigned int n = 0;
+  unsigned int n_ = 0;
 
   /** Number of measurements */
-  unsigned int m = 0;
+  unsigned int m_ = 0;
 
   /** Dimensional parameter d for the special Euclidean group SE(d) over which
    * this problem is defined */
-  unsigned int d = 0;
+  unsigned int d_ = 0;
 
   /** Relaxation rank */
-  unsigned int r = 0;
+  unsigned int r_ = 0;
 
   /** The oriented incidence matrix A encoding the underlying measurement
    * graph for this problem */
-  SparseMatrix A;
+  SparseMatrix A_;
 
   /** The matrices B1, B2, and B3 defined in equation (69) of the SE-Sync tech
    * report */
-  SparseMatrix B1, B2, B3;
+  SparseMatrix B1_, B2_, B3_;
 
   /** The matrix M parameterizing the quadratic form appearing in the Explicit
    * form of the SE-Sync problem (Problem 2 in the SE-Sync tech report) */
-  SparseMatrix M;
+  SparseMatrix M_;
 
   /** The rotational connection Laplacian for the special Euclidean
 * synchronization problem, cf. eq. 14 of the SE-Sync tech report.  Only
 * used in Implicit mode.*/
-  SparseMatrix LGrho;
+  SparseMatrix LGrho_;
 
   /** The weighted reduced oriented incidence matrix Ared Omega^(1/2) (cf.
 * eq. 39 of the SE-Sync tech report).  Only used in Implicit mode. */
-  SparseMatrix Ared_SqrtOmega;
+  SparseMatrix Ared_SqrtOmega_;
 
   /** The transpose of the above matrix; we cache this for computational
  * efficiency, since it's used frequently.  Only used in Implicit mode.
  */
-  SparseMatrix SqrtOmega_AredT;
+  SparseMatrix SqrtOmega_AredT_;
 
   /** The weighted translational data matrix Omega^(1/2) T (cf. eqs. 22-24
 * of the SE-Sync tech report.  Only used in Implicit mode. */
-  SparseMatrix SqrtOmega_T;
+  SparseMatrix SqrtOmega_T_;
 
   /** The transpose of the above matrix; we cache this for computational
  * efficiency, since it's used frequently.  Only used in Implicit mode. */
-  SparseMatrix TT_SqrtOmega;
+  SparseMatrix TT_SqrtOmega_;
 
   /** An Eigen sparse linear solver that encodes the Cholesky factor L used
 * in the computation of the orthogonal projection function (cf. eq. 39 of the
 * SE-Sync tech report) */
-  SparseCholeskyFactorization L;
+  SparseCholeskyFactorization L_;
 
   /** An Eigen sparse linear solver that encodes the QR factorization used in
  * the computation of the orthogonal projection function (cf. eq. 98 of the
@@ -104,33 +104,33 @@ private:
 
   // When using Eigen::SPQR, the destructor causes a segfault if this variable
   // isn't explicitly initialized (i.e. not just default-constructed)
-  SparseQRFactorization *QR = nullptr;
+  SparseQRFactorization *QR_ = nullptr;
 
   /** A Boolean variable determining whether to use the Cholesky or QR
  * decompositions for computing the orthogonal projection */
-  bool use_Cholesky;
+  ProjectionFactorization projection_factorization_;
 
   /** The preconditioning strategy to use when running the Riemannian
    * trust-region algorithm */
-  Preconditioner preconditioner;
+  Preconditioner preconditioner_;
 
   /** Diagonal Jacobi preconditioner */
-  DiagonalMatrix JacobiPrecon;
+  DiagonalMatrix Jacobi_precon_;
 
   /** Incomplete Cholesky Preconditioner */
-  IncompleteCholeskyFactorization *iCholPrecon = nullptr;
+  IncompleteCholeskyFactorization *iChol_precon_ = nullptr;
 
   /** Tikhonov-regularized Cholesky Preconditioner */
-  SparseCholeskyFactorization RegCholPrecon;
+  SparseCholeskyFactorization reg_Chol_precon_;
 
   /** Upper-bound on the admissible condition number of the regularized
    * approximate Hessian matrix used for Cholesky preconditioner */
-  double RegCholPrecon_max_cond;
+  double reg_Chol_precon_max_cond_;
 
   /** The underlying manifold in which the generalized orientations lie in the
   rank-restricted Riemannian optimization problem (Problem 9 in the SE-Sync tech
   report).*/
-  StiefelProduct SP;
+  StiefelProduct SP_;
 
 public:
   /// CONSTRUCTORS AND MUTATORS
@@ -146,17 +146,20 @@ public:
    *      form of the SDP relaxation (in which translational states have been
    *      eliminated) or the explicit form (in which the translational states
    *      are explicitly represented).
-   * - Cholesky is a Boolean value indicating whether to use a Cholesky or a QR
-   *      factorization to compute the orthogonal projection operator Pi
-   *      required when solving the Simplified form of the pose-graph SLAM
-   *      problem.
-   *  - Precon is an enum type specifying the preconditioning strategy to employ
+   * - projection_factorization is an enum type specifying the kind of matrix
+   *      factorization to use when computing the action of the orthogonal
+   *      projection operator Pi.  Only operative when solving the Simplified
+   *      formulation of the special Euclidean synchronization problem
+   *  - preconditioner is an enum type specifying the preconditioning strategy
+   *      to employ
    */
-  SESyncProblem(const measurements_t &measurements,
-                const Formulation &formulation = Simplified,
-                bool Cholesky = true,
-                const Preconditioner &precon = IncompleteCholesky,
-                double reg_chol_precon_max_cond = 1e6);
+  SESyncProblem(
+      const measurements_t &measurements,
+      const Formulation &formulation = Formulation::Simplified,
+      const ProjectionFactorization &projection_factorization =
+          ProjectionFactorization::Cholesky,
+      const Preconditioner &preconditioner = Preconditioner::IncompleteCholesky,
+      double reg_chol_precon_max_cond = 1e6);
 
   /** Set the maximum rank of the rank-restricted semidefinite relaxation */
   void set_relaxation_rank(unsigned int rank);
@@ -164,27 +167,37 @@ public:
   /// ACCESSORS
 
   /** Returns the specific formulation of this SE-Sync problem */
-  Formulation formulation() const { return form; }
+  Formulation formulation() const { return form_; }
+
+  /** Returns the type of matrix factorization used to compute the action of the
+   * orthogonal projection operator Pi when solving a Simplified instance of the
+   * special Euclidean synchronization problem */
+  ProjectionFactorization projection_factorization() const {
+    return projection_factorization();
+  }
+
+  /** Returns the preconditioning strategy */
+  Preconditioner preconditioner() const { return preconditioner_; }
 
   /** Returns the number of poses appearing in this problem */
-  unsigned int num_poses() const { return n; }
+  unsigned int num_poses() const { return n_; }
 
   /** Returns the number of measurements in this problem */
-  unsigned int num_measurements() const { return m; }
+  unsigned int num_measurements() const { return m_; }
 
   /** Returns the dimensional parameter d for the special Euclidean group SE(d)
    * over which this problem is defined */
-  unsigned int dimension() const { return d; }
+  unsigned int dimension() const { return d_; }
 
   /** Returns the relaxation rank r of this problem */
-  unsigned int relaxation_rank() const { return r; }
+  unsigned int relaxation_rank() const { return r_; }
 
   /** Returns the oriented incidence matrix A of the underlying measurement
    * graph over which this problem is defined */
-  const SparseMatrix &oriented_incidence_matrix() const { return A; }
+  const SparseMatrix &oriented_incidence_matrix() const { return A_; }
 
   /** Returns the StiefelProduct manifold underlying this SE-Sync problem */
-  const StiefelProduct &Stiefel_product_manifold() const { return SP; }
+  const StiefelProduct &Stiefel_product_manifold() const { return SP_; }
 
   /// OPTIMIZATION AND GEOMETRY
 
@@ -193,14 +206,14 @@ public:
   // We inline this function in order to take advantage of Eigen's ability
   // to optimize matrix expressions as compile time
   inline Matrix Pi_product(const Matrix &X) const {
-    if (use_Cholesky)
-      return X - SqrtOmega_AredT * L.solve(Ared_SqrtOmega * X);
+    if (projection_factorization_ == ProjectionFactorization::Cholesky)
+      return X - SqrtOmega_AredT_ * L_.solve(Ared_SqrtOmega_ * X);
     else {
       Eigen::MatrixXd PiX = X;
       for (unsigned int c = 0; c < X.cols(); c++) {
         // Eigen's SPQR support only supports solving with vectors(!) (i.e.
         // 1-column matrices)
-        PiX.col(c) = X.col(c) - SqrtOmega_AredT * QR->solve(X.col(c));
+        PiX.col(c) = X.col(c) - SqrtOmega_AredT_ * QR_->solve(X.col(c));
       }
       return PiX;
     }
@@ -210,7 +223,7 @@ public:
   // We inline this function in order to take advantage of Eigen's ability to
   // optimize matrix expressions as compile time
   inline Matrix Q_product(const Matrix &X) const {
-    return LGrho * X + TT_SqrtOmega * Pi_product(SqrtOmega_T * X);
+    return LGrho_ * X + TT_SqrtOmega_ * Pi_product(SqrtOmega_T_ * X);
   }
 
   /** Given a matrix Y, this function computes and returns the matrix product
@@ -318,11 +331,11 @@ public:
   Matrix random_sample() const;
 
   ~SESyncProblem() {
-    if (QR)
-      delete QR;
+    if (QR_)
+      delete QR_;
 
-    if (iCholPrecon)
-      delete iCholPrecon;
+    if (iChol_precon_)
+      delete iChol_precon_;
   }
 
   /// MINIMUM EIGENVALUE COMPUTATIONS
@@ -332,26 +345,26 @@ public:
   *nontrivial function, perform_op(x,y), that computes and returns the product
   *y = (S - Lambda + sigma*I) x */
   struct SMinusLambdaProdFunctor {
-    const SESyncProblem *_problem;
+    const SESyncProblem *problem_;
 
     // Diagonal blocks of the matrix Lambda
-    Matrix _Lambda_blocks;
+    Matrix Lambda_blocks_;
 
     // Number of rows and columns of the matrix B - Lambda
-    int _rows;
-    int _cols;
+    int rows_;
+    int cols_;
 
     // Dimensional parameter d of the special Euclidean group SE(d) over which
     // this synchronization problem is defined
-    int _dim;
-    double _sigma;
+    int dim_;
+    double sigma_;
 
     // Constructor
     SMinusLambdaProdFunctor(const SESyncProblem *prob, const Matrix &Y,
                             double sigma = 0);
 
-    int rows() const { return _rows; }
-    int cols() const { return _cols; }
+    int rows() const { return rows_; }
+    int cols() const { return cols_; }
 
     // Matrix-vector multiplication operation
     void perform_op(double *x, double *y) const;

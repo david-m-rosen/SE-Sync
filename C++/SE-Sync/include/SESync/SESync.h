@@ -68,7 +68,7 @@ struct SESyncOpts {
   /// SE-SYNC PARAMETERS
 
   /** The specific formulation of the SE-Sync problem to solve */
-  Formulation formulation = Simplified;
+  Formulation formulation = Formulation::Simplified;
 
   /** The initial level of the Riemannian Staircase */
   unsigned int r0 = 5;
@@ -97,11 +97,12 @@ struct SESyncOpts {
 
   /** Whether to use the Cholesky or QR factorization when computing the
    * orthogonal projection */
-  bool use_Cholesky = true;
+  ProjectionFactorization projection_factorization =
+      ProjectionFactorization::Cholesky;
 
   /** The preconditioning strategy to use in the Riemannian trust-region
    * algorithm*/
-  Preconditioner precon = RegularizedCholesky;
+  Preconditioner preconditioner = Preconditioner::RegularizedCholesky;
 
   /** Maximum admissible condition number for the regularized Cholesky
    * preconditioner */

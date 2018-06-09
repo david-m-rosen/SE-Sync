@@ -32,7 +32,7 @@ SESyncResult SESync(const measurements_t &measurements,
     std::cout << "ALGORITHM SETTINGS:" << std::endl << std::endl;
     std::cout << "SE-Sync settings:" << std::endl;
     std::cout << " SE-Sync problem formulation: ";
-    if (options.formulation == Simplified)
+    if (options.formulation == Formulation::Simplified)
       std::cout << "simplified";
     else // Explicit)
       std::cout << "explicit";
@@ -49,8 +49,11 @@ SESyncResult SESync(const measurements_t &measurements,
     std::cout << " Tolerance for accepting an eigenvalue as numerically "
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
-    if (options.formulation == Simplified) {
-      std::cout << " Using " << (options.use_Cholesky ? "Cholseky" : "QR")
+    if (options.formulation == Formulation::Simplified) {
+      std::cout << " Using " << (options.projection_factorization ==
+                                         ProjectionFactorization::Cholesky
+                                     ? "Cholseky"
+                                     : "QR")
                 << " decomposition to compute orthogonal projections"
                 << std::endl;
     }
@@ -87,13 +90,13 @@ SESyncResult SESync(const measurements_t &measurements,
               << (1 + options.STPCG_theta) << std::endl;
     std::cout
         << " Preconditioning the truncated conjugate gradient method using ";
-    if (options.precon == None)
+    if (options.preconditioner == Preconditioner::None)
       std::cout << "the identity preconditioner";
-    else if (options.precon == Jacobi)
+    else if (options.preconditioner == Preconditioner::Jacobi)
       std::cout << "Jacobi preconditioner";
-    else if (options.precon == IncompleteCholesky)
+    else if (options.preconditioner == Preconditioner::IncompleteCholesky)
       std::cout << "incomplete Cholesky preconditioner";
-    else if (options.precon == RegularizedCholesky)
+    else if (options.preconditioner == Preconditioner::RegularizedCholesky)
       std::cout << "regularized Cholesky preconditioner with maximum condition "
                    "number "
                 << options.reg_Cholesky_precon_max_condition_number;
@@ -117,9 +120,9 @@ SESyncResult SESync(const measurements_t &measurements,
     std::cout << " Constructing SE-Sync problem instance ... ";
 
   auto problem_construction_start_time = Stopwatch::tick();
-  SESyncProblem problem(measurements, options.formulation, options.use_Cholesky,
-                        options.precon,
-                        options.reg_Cholesky_precon_max_condition_number);
+  SESyncProblem problem(
+      measurements, options.formulation, options.projection_factorization,
+      options.preconditioner, options.reg_Cholesky_precon_max_condition_number);
   problem.set_relaxation_rank(options.r0);
   double problem_construction_elapsed_time =
       Stopwatch::tock(problem_construction_start_time);
@@ -179,7 +182,7 @@ SESyncResult SESync(const measurements_t &measurements,
   std::experimental::optional<
       Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix>>
       precon;
-  if (options.precon == None)
+  if (options.preconditioner == Preconditioner::None)
     precon = std::experimental::nullopt;
   else {
     Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix> precon_op =
@@ -442,7 +445,7 @@ SESyncResult SESync(const measurements_t &measurements,
   // extract only the *rotational* elements of xhat if the SE synchronization
   // problem was solved using the simplified formulation
   SESyncResults.Fxhat =
-      (options.formulation == Simplified
+      (options.formulation == Formulation::Simplified
            ? problem.evaluate_objective(SESyncResults.xhat.block(
                  0, problem.num_poses(), problem.dimension(),
                  problem.dimension() * problem.num_poses()))

@@ -18,13 +18,13 @@ class StiefelProduct {
 
 private:
   // Number of vectors in each orthonormal k-frame
-  unsigned int _k;
+  unsigned int k_;
 
   // Dimension of ambient Euclidean space containing the frames
-  unsigned int _p;
+  unsigned int p_;
 
   // Number of copies of St(k,p) in the product
-  unsigned int _n;
+  unsigned int n_;
 
 public:
   /// CONSTRUCTORS AND MUTATORS
@@ -33,16 +33,16 @@ public:
   StiefelProduct() {}
 
   StiefelProduct(unsigned int k, unsigned int p, unsigned int n)
-      : _k(k), _p(p), _n(n) {}
+      : k_(k), p_(p), n_(n) {}
 
-  void set_k(unsigned int k) { _k = k; }
-  void set_p(unsigned int p) { _p = p; }
-  void set_n(unsigned int n) { _n = n; }
+  void set_k(unsigned int k) { k_ = k; }
+  void set_p(unsigned int p) { p_ = p; }
+  void set_n(unsigned int n) { n_ = n; }
 
   /// ACCESSORS
-  unsigned int get_k() const { return _k; }
-  unsigned int get_p() const { return _p; }
-  unsigned int get_n() const { return _n; }
+  unsigned int get_k() const { return k_; }
+  unsigned int get_p() const { return p_; }
+  unsigned int get_n() const { return n_; }
 
   /// GEOMETRY
 
