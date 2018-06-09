@@ -9,8 +9,8 @@
 
 namespace SESync {
 
-SESyncResult SESync(const measurements_t &measurements,
-                    const SESyncOpts &options, const Matrix &Y0) {
+SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
+                    const Matrix &Y0) {
 
   /// ALGORITHM DATA
 
@@ -32,7 +32,7 @@ SESyncResult SESync(const measurements_t &measurements,
     std::cout << "ALGORITHM SETTINGS:" << std::endl << std::endl;
     std::cout << "SE-Sync settings:" << std::endl;
     std::cout << " SE-Sync problem formulation: ";
-    if (options.formulation == Formulation::Simplified)
+    if (problem.formulation() == Formulation::Simplified)
       std::cout << "simplified";
     else // Explicit)
       std::cout << "explicit";
@@ -50,7 +50,7 @@ SESyncResult SESync(const measurements_t &measurements,
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
     if (options.formulation == Formulation::Simplified) {
-      std::cout << " Using " << (options.projection_factorization ==
+      std::cout << " Using " << (problem.projection_factorization() ==
                                          ProjectionFactorization::Cholesky
                                      ? "Cholseky"
                                      : "QR")
@@ -90,16 +90,16 @@ SESyncResult SESync(const measurements_t &measurements,
               << (1 + options.STPCG_theta) << std::endl;
     std::cout
         << " Preconditioning the truncated conjugate gradient method using ";
-    if (options.preconditioner == Preconditioner::None)
+    if (problem.preconditioner() == Preconditioner::None)
       std::cout << "the identity preconditioner";
-    else if (options.preconditioner == Preconditioner::Jacobi)
+    else if (problem.preconditioner() == Preconditioner::Jacobi)
       std::cout << "Jacobi preconditioner";
-    else if (options.preconditioner == Preconditioner::IncompleteCholesky)
+    else if (problem.preconditioner() == Preconditioner::IncompleteCholesky)
       std::cout << "incomplete Cholesky preconditioner";
-    else if (options.preconditioner == Preconditioner::RegularizedCholesky)
+    else if (problem.preconditioner() == Preconditioner::RegularizedCholesky)
       std::cout << "regularized Cholesky preconditioner with maximum condition "
                    "number "
-                << options.reg_Cholesky_precon_max_condition_number;
+                << problem.regularized_Cholesky_preconditioner_max_condition();
 
     std::cout << std::endl << std::endl;
   }
@@ -111,25 +111,6 @@ SESyncResult SESync(const measurements_t &measurements,
 #if defined(_OPENMP)
   omp_set_num_threads(options.num_threads);
 #endif
-
-  /// CONSTRUCT SE-SYNC PROBLEM INSTANCE
-  if (options.verbose)
-    std::cout << "INITIALIZATION:" << std::endl;
-
-  if (options.verbose)
-    std::cout << " Constructing SE-Sync problem instance ... ";
-
-  auto problem_construction_start_time = Stopwatch::tick();
-  SESyncProblem problem(
-      measurements, options.formulation, options.projection_factorization,
-      options.preconditioner, options.reg_Cholesky_precon_max_condition_number);
-  problem.set_relaxation_rank(options.r0);
-  double problem_construction_elapsed_time =
-      Stopwatch::tock(problem_construction_start_time);
-
-  if (options.verbose)
-    std::cout << "elapsed computation time: "
-              << problem_construction_elapsed_time << " seconds" << std::endl;
 
   /// SET UP OPTIMIZATION
 
@@ -194,6 +175,10 @@ SESyncResult SESync(const measurements_t &measurements,
   }
 
   /// INITIALIZATION
+  if (options.verbose)
+    std::cout << "INITIALIZATION:" << std::endl;
+
+  problem.set_relaxation_rank(options.r0);
 
   if (Y0.size() != 0) {
     if (options.verbose)
@@ -505,6 +490,25 @@ SESyncResult SESync(const measurements_t &measurements,
     std::cout << "===== END SE-SYNC =====" << std::endl << std::endl;
   }
   return SESyncResults;
+}
+
+SESyncResult SESync(const measurements_t &measurements,
+                    const SESyncOpts &options, const Matrix &Y0) {
+  if (options.verbose)
+    std::cout << "Constructing SE-Sync problem instance ... ";
+
+  auto problem_construction_start_time = Stopwatch::tick();
+  SESyncProblem problem(
+      measurements, options.formulation, options.projection_factorization,
+      options.preconditioner, options.reg_Cholesky_precon_max_condition_number);
+  double problem_construction_elapsed_time =
+      Stopwatch::tock(problem_construction_start_time);
+  if (options.verbose)
+    std::cout << "elapsed computation time: "
+              << problem_construction_elapsed_time << " seconds" << std::endl
+              << std::endl;
+
+  return SESync(problem, options, Y0);
 }
 
 bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,

@@ -235,6 +235,11 @@ struct SESyncResult {
   SESyncStatus status;
 };
 
+/** Given an SESyncProblem instance, this function performs synchronization */
+SESyncResult SESync(SESyncProblem &problem,
+                    const SESyncOpts &options = SESyncOpts(),
+                    const Matrix &Y0 = Matrix());
+
 /** Given a vector of relative pose measurements specifying a special Euclidean
  * synchronization problem, performs synchronization using the SESync algorithm
  */

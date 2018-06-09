@@ -173,11 +173,17 @@ public:
    * orthogonal projection operator Pi when solving a Simplified instance of the
    * special Euclidean synchronization problem */
   ProjectionFactorization projection_factorization() const {
-    return projection_factorization();
+    return projection_factorization_;
   }
 
   /** Returns the preconditioning strategy */
   Preconditioner preconditioner() const { return preconditioner_; }
+
+  /** Returns the maximum admissible condition number for the regularized
+   * Cholesky preconditioner */
+  double regularized_Cholesky_preconditioner_max_condition() const {
+    return reg_Chol_precon_max_cond_;
+  }
 
   /** Returns the number of poses appearing in this problem */
   unsigned int num_poses() const { return n_; }
