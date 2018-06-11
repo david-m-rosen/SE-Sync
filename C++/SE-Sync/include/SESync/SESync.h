@@ -90,11 +90,6 @@ struct SESyncOpts {
 (#poses) * (#problem dimension) - 1] */
   unsigned int num_Lanczos_vectors = 20;
 
-  /** If no initial iterate Y0 is supplied, this boolean determines the
- * initialization strategy employed by SE-Sync: 'true' -> chordal, 'false' ->
- * random sampling */
-  bool use_chordal_initialization = true;
-
   /** Whether to use the Cholesky or QR factorization when computing the
    * orthogonal projection */
   ProjectionFactorization projection_factorization =
@@ -107,6 +102,11 @@ struct SESyncOpts {
   /** Maximum admissible condition number for the regularized Cholesky
    * preconditioner */
   double reg_Cholesky_precon_max_condition_number = 1e6;
+
+  /** If no initial iterate Y0 is supplied, this boolean determines the
+ * initialization strategy employed by SE-Sync: 'true' -> chordal, 'false' ->
+ * random sampling */
+  Initialization initialization = Initialization::Chordal;
 
   /** Whether to print output as the algorithm runs */
   bool verbose = false;

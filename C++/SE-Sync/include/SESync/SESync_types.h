@@ -52,4 +52,7 @@ enum class Preconditioner {
   RegularizedCholesky
 };
 
+/** The strategy to use for constructing an initial iterate */
+enum class Initialization { Chordal, Random };
+
 } // namespace SESync

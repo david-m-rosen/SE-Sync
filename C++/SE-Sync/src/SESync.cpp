@@ -58,7 +58,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                 << std::endl;
     }
     std::cout << " Initialization method: "
-              << (options.use_chordal_initialization ? "chordal" : "random")
+              << (options.initialization == Initialization::Chordal ? "chordal"
+                                                                    : "random")
               << std::endl;
     if (options.log_iterates)
       std::cout << " Logging entire sequence of Riemannian Staircase iterates"
@@ -186,7 +187,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     Y = Y0;
   } else {
-    if (options.use_chordal_initialization) {
+    if (options.initialization == Initialization::Chordal) {
       if (options.verbose)
         std::cout << " Computing chordal initialization ... ";
 
