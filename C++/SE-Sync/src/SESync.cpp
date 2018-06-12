@@ -265,7 +265,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     /// Run optimization!
     Optimization::Smooth::TNTResult<Matrix> TNTResults =
         Optimization::Smooth::TNT<Matrix, Matrix, Matrix>(
-            F, QM, metric, retraction, Y, NablaF_Y, precon, params);
+            F, QM, metric, retraction, Y, NablaF_Y, precon, params,
+            options.user_function);
 
     // Extract the results
     SESyncResults.Yopt = TNTResults.x;

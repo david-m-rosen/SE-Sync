@@ -1,13 +1,15 @@
 /** A set of typedefs describing the types of matrices and factorizations that
  * will be used in the SE-Sync algorithm
  *
- *  Copyright (C) 2016, 2017 by David M. Rosen
+ *  Copyright (C) 2016 - 2018 by David M. Rosen
  */
 
 #pragma once
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+
+#include "Optimization/Smooth/TNT.h"
 
 namespace SESync {
 
@@ -54,5 +56,12 @@ enum class Preconditioner {
 
 /** The strategy to use for constructing an initial iterate */
 enum class Initialization { Chordal, Random };
+
+/** A typedef for a user-definable function that can be used to
+ * instrument/monitor the performance of the internal Riemannian
+ * truncated-Newton trust-region optimization algorithm as it runs (see the
+ * header file Optimization/Smooth/TNT.h for details). */
+typedef Optimization::Smooth::TNTUserFunction<Matrix, Matrix, Matrix>
+    SESyncTNTUserFunction;
 
 } // namespace SESync

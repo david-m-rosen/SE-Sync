@@ -65,6 +65,11 @@ struct SESyncOpts {
   /** Maximum elapsed computation time (in seconds) */
   double max_computation_time = std::numeric_limits<double>::max();
 
+  /** An optional user-supplied function that can be used to instrument/monitor
+   * the performance of the internal Riemannian truncated-Newton trust-region
+   * optimization algorithm as it runs. */
+  std::experimental::optional<SESyncTNTUserFunction> user_function;
+
   /// SE-SYNC PARAMETERS
 
   /** The specific formulation of the SE-Sync problem to solve */
@@ -232,6 +237,7 @@ struct SESyncResult {
    * at each level of the Riemannian Staircase */
   std::vector<std::vector<Matrix>> iterates;
 
+  /** The termination status of the SE-Sync algorithm */
   SESyncStatus status;
 };
 
