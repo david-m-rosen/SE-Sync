@@ -324,7 +324,7 @@ public:
   *within the required tolerance. */
   bool compute_S_minus_Lambda_min_eig(
       const Matrix &Y, double &min_eigenvalue, Eigen::VectorXd &min_eigenvector,
-      unsigned int max_iterations = 10000,
+      unsigned int &num_iterations, unsigned int max_iterations = 10000,
       double min_eigenvalue_nonnegativity_tolerance = 1e-5,
       unsigned int num_Lanczos_vectors = 20) const;
 

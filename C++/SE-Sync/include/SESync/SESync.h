@@ -228,6 +228,11 @@ struct SESyncResult {
    * optimization at each level of the Riemannian Staircase */
   std::vector<double> minimum_eigenvalues;
 
+  /** A vector containing the number of matrix-vector multiplication operations
+   * performed for the minimum-eigenvalue computation at each level of the
+   * Riemannian Staircase */
+  std::vector<unsigned int> minimum_eigenvalue_matrix_ops;
+
   /** A vector containing the elapsed time of the minimum eigenvalue computation
    * at each level of the Riemannian Staircase */
   std::vector<double> minimum_eigenvalue_computation_times;

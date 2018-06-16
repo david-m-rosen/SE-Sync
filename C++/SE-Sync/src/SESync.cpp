@@ -33,9 +33,9 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     std::cout << "SE-Sync settings:" << std::endl;
     std::cout << " SE-Sync problem formulation: ";
     if (problem.formulation() == Formulation::Simplified)
-      std::cout << "simplified";
+      std::cout << "Simplified";
     else // Explicit)
-      std::cout << "explicit";
+      std::cout << "Explicit";
     std::cout << std::endl;
     std::cout << " Initial level of Riemannian staircase: " << options.r0
               << std::endl;
@@ -306,11 +306,12 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Compute the minimum eigenvalue lambda and corresponding eigenvector
     // of Q - Lambda
+    unsigned int num_min_eig_iterations;
     auto eig_start_time = Stopwatch::tick();
     bool eigenvalue_convergence = problem.compute_S_minus_Lambda_min_eig(
         SESyncResults.Yopt, SESyncResults.lambda_min, SESyncResults.v_min,
-        options.max_eig_iterations, options.min_eig_num_tol,
-        options.num_Lanczos_vectors);
+        num_min_eig_iterations, options.max_eig_iterations,
+        options.min_eig_num_tol, options.num_Lanczos_vectors);
     double eig_elapsed_time = Stopwatch::tock(eig_start_time);
 
     // Check eigenvalue convergence
@@ -324,6 +325,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Record results of eigenvalue computation
     SESyncResults.minimum_eigenvalues.push_back(SESyncResults.lambda_min);
+    SESyncResults.minimum_eigenvalue_matrix_ops.push_back(
+        num_min_eig_iterations);
     SESyncResults.minimum_eigenvalue_computation_times.push_back(
         eig_elapsed_time);
 
@@ -331,10 +334,11 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     if (SESyncResults.lambda_min > -options.min_eig_num_tol) {
       // results.Yopt is a second-order critical point (global optimum)!
       if (options.verbose)
-        std::cout << "Found second-order critical point! (minimum eigenvalue = "
+        std::cout << "Found second-order critical point! Minimum eigenvalue: "
                   << SESyncResults.lambda_min
-                  << "). Elapsed computation time: " << eig_elapsed_time
-                  << " seconds" << std::endl;
+                  << ".  Elapsed computation time: " << eig_elapsed_time
+                  << " seconds (" << num_min_eig_iterations
+                  << " matrix-vector multiplications)." << std::endl;
       SESyncResults.status = GLOBAL_OPT;
       break;
     } // global optimality
@@ -342,10 +346,11 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
       /// ESCAPE FROM SADDLE!
       if (options.verbose) {
-        std::cout << "Saddle point detected (minimum eigenvalue = "
+        std::cout << "Saddle point detected! Minimum eigenvalue: "
                   << SESyncResults.lambda_min
-                  << "). Elapsed computation time: " << eig_elapsed_time
-                  << " seconds" << std::endl;
+                  << ".  Elapsed computation time: " << eig_elapsed_time
+                  << " seconds (" << num_min_eig_iterations
+                  << " matrix-vector multiplications)." << std::endl;
 
         std::cout << "Computing escape direction ... " << std::endl;
       }

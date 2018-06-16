@@ -369,7 +369,8 @@ SparseMatrix SESyncProblem::compute_Lambda(const Matrix &Y) const {
 
 bool SESyncProblem::compute_S_minus_Lambda_min_eig(
     const Matrix &Y, double &min_eigenvalue, Eigen::VectorXd &min_eigenvector,
-    unsigned int max_iterations, double min_eigenvalue_nonnegativity_tolerance,
+    unsigned int &num_iterations, unsigned int max_iterations,
+    double min_eigenvalue_nonnegativity_tolerance,
     unsigned int num_Lanczos_vectors) const {
   // First, compute the largest-magnitude eigenvalue of this matrix
   SMinusLambdaProdFunctor lm_op(this, Y);
@@ -398,16 +399,13 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
   }
 
   // The largest-magnitude eigenvalue is positive, and is therefore the
-  // maximum
-  // eigenvalue.  Therefore, after shifting the spectrum of S - Lambda by -
-  // 2*lambda_lm (by forming S - Lambda - 2*lambda_max*I), the  shifted
-  // spectrum
-  // will lie in the interval [lambda_min(A) - 2*  lambda_max(A),
+  // maximum  eigenvalue.  Therefore, after shifting the spectrum of S - Lambda
+  // by -2*lambda_lm (by forming S - Lambda - 2*lambda_max*I), the  shifted
+  // spectrum will lie in the interval [lambda_min(A) - 2*  lambda_max(A),
   // -lambda_max*A]; in particular, the largest-magnitude eigenvalue of  S -
   // Lambda - 2*lambda_max*I is lambda_min - 2*lambda_max, with  corresponding
   // eigenvector v_min; furthermore, the condition number sigma of S - Lambda
-  // -
-  // 2*lambda_max is then upper-bounded by 2 :-).
+  // -2*lambda_max is then upper-bounded by 2 :-).
 
   SMinusLambdaProdFunctor min_shifted_op(this, Y, -2 * lambda_lm);
 
@@ -416,20 +414,19 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
       min_eigensolver(&min_shifted_op, 1,
                       std::min(num_Lanczos_vectors, n_ * d_));
 
-  // If Y is a critical point of F, then Y^T is also in the null space
-  // of S - Lambda(Y) (cf. Lemma 6 of the tech report), and therefore its
-  // rows are eigenvectors corresponding to the eigenvalue 0.  In the case
-  // that
-  // the relaxation is exact, this is the *minimum* eigenvalue, and therefore
-  // the rows of Y are exactly the eigenvectors that we're looking for.  On
-  // the other hand, if the relaxation is *not* exact, then S - Lambda(Y)
-  // has at least one strictly negative eigenvalue, and the rows of Y are
-  // *unstable fixed points* for the Lanczos iterations.  Thus, we will take a
-  // slightly "fuzzed" version of the first row of Y as an initialization
-  // for the Lanczos iterations; this allows for rapid convergence in the case
-  // that the relaxation is exact (since are starting close to a solution),
-  // while simultaneously allowing the iterations to escape from this fixed
-  // point in the case that the relaxation is not exact.
+  // If Y is a critical point of F, then Y^T is also in the null space of S -
+  // Lambda(Y) (cf. Lemma 6 of the tech report), and therefore its rows are
+  // eigenvectors corresponding to the eigenvalue 0.  In the case  that the
+  // relaxation is exact, this is the *minimum* eigenvalue, and therefore the
+  // rows of Y are exactly the eigenvectors that we're looking for.  On the
+  // other hand, if the relaxation is *not* exact, then S - Lambda(Y) has at
+  // least one strictly negative eigenvalue, and the rows of Y are *unstable
+  // fixed points* for the Lanczos iterations.  Thus, we will take a slightly
+  // "fuzzed" version of the first row of Y as an initialization for the Lanczos
+  // iterations; this allows for rapid convergence in the case that the
+  // relaxation is exact (since are starting close to a solution), while
+  // simultaneously allowing the iterations to escape from this fixed point in
+  // the case that the relaxation is not exact.
   Eigen::VectorXd v0 = Y.row(0).transpose();
   Eigen::VectorXd perturbation(v0.size());
   perturbation.setRandom();
@@ -453,6 +450,7 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
   min_eigenvector = min_eigensolver.eigenvectors(1);
   min_eigenvector.normalize(); // Ensure that this is a unit vector
   min_eigenvalue = min_eigensolver.eigenvalues()(0) + 2 * lambda_lm;
+  num_iterations = min_eigensolver.num_iterations();
   return true;
 }
 
