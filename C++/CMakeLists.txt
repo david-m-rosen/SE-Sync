@@ -65,8 +65,9 @@ find_package(Cholmod REQUIRED)
 find_package(BLAS REQUIRED)
 
 
-#Find Optimization library
+# Find Optimization library
 set(OPTIMIZATION_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Optimization/ CACHE PATH "Path to top-level directory of Optimization (the one containing CMakeLists.txt)")
+
 # Run the Optimization package's CMake file
 add_subdirectory(${OPTIMIZATION_DIR})
 
@@ -115,23 +116,25 @@ ${SESync_SOURCE_DIR}/SESync.cpp
 )
 
 # Build the SE-Sync library
-add_library(SESync SHARED ${SESync_HDRS} ${SESync_SRCS})
-target_include_directories(SESync PRIVATE ${SESync_PRIVATE_INCLUDES})
-target_include_directories(SESync PUBLIC ${SESync_INCLUDES})
-target_link_libraries(SESync Optimization ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
+add_library(${PROJECT_NAME} SHARED ${SESync_HDRS} ${SESync_SRCS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${SESync_PRIVATE_INCLUDES})
+target_include_directories(${PROJECT_NAME} PUBLIC ${SESync_INCLUDES})
+target_link_libraries(${PROJECT_NAME} Optimization ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
 
 if(OPENMP_FOUND)
 # Add additional compilation flags to enable OpenMP support
-set_target_properties(SESync PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
-target_link_libraries(SESync gomp)
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
+target_link_libraries(${PROJECT_NAME} gomp)
 endif()
-
-# Export the SESync and Optimization libraries to make them available to other CMake projects
-export(TARGETS SESync Optimization FILE SESync.cmake)
-
-# Add this project to the CMake package registry, so that it can easily be found and imported by other CMake projects
-export(PACKAGE ${PROJECT_NAME})
 
 # BUILD EXAMPLE DRIVER
 add_subdirectory(examples)
+
+
+# EXPORT SE-SYNC LIBRARY
+
+# Add add entry for this project into CMake's package registry, so that this project can be found by other CMake projects
+export(PACKAGE ${PROJECT_NAME})
+# Create a configuration file for this project, so that it can be imported by other CMake projects
+export(TARGETS ${PROJECT_NAME} Optimization FILE ${PROJECT_NAME}Config.cmake)
 
