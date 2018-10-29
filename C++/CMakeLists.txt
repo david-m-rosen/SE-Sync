@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.1)
 
 # PROJECT CONFIGURATION
-project(SESync C CXX)
+project(SESync LANGUAGES C CXX VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # We require C++ 14
 
@@ -67,10 +67,8 @@ find_package(BLAS REQUIRED)
 
 #Find Optimization library
 set(OPTIMIZATION_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Optimization/ CACHE PATH "Path to top-level directory of Optimization (the one containing CMakeLists.txt)")
-# Run this project's CMakeLists file
+# Run the Optimization package's CMake file
 add_subdirectory(${OPTIMIZATION_DIR})
-#Import dependencies from this library
-find_library(OptLib NAMES Optimization)
 
 # PERFORMANCE IMPROVEMENTS
 if(${ENABLE_OPENMP})
@@ -130,6 +128,9 @@ endif()
 
 # Export the SESync and Optimization libraries to make them available to other CMake projects
 export(TARGETS SESync Optimization FILE SESync.cmake)
+
+# Add this project to the CMake package registry, so that it can easily be found and imported by other CMake projects
+export(PACKAGE ${PROJECT_NAME})
 
 # BUILD EXAMPLE DRIVER
 add_subdirectory(examples)
