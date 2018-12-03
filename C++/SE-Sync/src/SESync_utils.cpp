@@ -46,11 +46,11 @@ measurements_t read_g2o_file(const std::string &filename, size_t &num_poses) {
       // This is a 2D pose measurement
 
       /** The g2o format specifies a 2D relative pose measurement in the
- * following form:
- *
- * EDGE_SE2 id1 id2 dx dy dtheta, I11, I12, I13, I22, I23, I33
- *
- */
+       * following form:
+       *
+       * EDGE_SE2 id1 id2 dx dy dtheta, I11, I12, I13, I22, I23, I33
+       *
+       */
 
       // Extract formatted output
       strstrm >> i >> j >> dx >> dy >> dtheta >> I11 >> I12 >> I13 >> I22 >>
@@ -76,17 +76,17 @@ measurements_t read_g2o_file(const std::string &filename, size_t &num_poses) {
       // This is a 3D pose measurement
 
       /** The g2o format specifies a 3D relative pose measurement in the
- * following form:
- *
- * EDGE_SE3:QUAT id1, id2, dx, dy, dz, dqx, dqy, dqz, dqw
- *
- * I11 I12 I13 I14 I15 I16
- *     I22 I23 I24 I25 I26
- *         I33 I34 I35 I36
- *             I44 I45 I46
- *                 I55 I56
- *                     I66
- */
+       * following form:
+       *
+       * EDGE_SE3:QUAT id1, id2, dx, dy, dz, dqx, dqy, dqz, dqw
+       *
+       * I11 I12 I13 I14 I15 I16
+       *     I22 I23 I24 I25 I26
+       *         I33 I34 I35 I36
+       *             I44 I45 I46
+       *                 I55 I56
+       *                     I66
+       */
 
       // Extract formatted output
       strstrm >> i >> j >> dx >> dy >> dz >> dqx >> dqy >> dqz >> dqw >> I11 >>
@@ -559,4 +559,55 @@ Matrix project_to_SOd(const Matrix &M) {
     return Uprime * svd.matrixV().transpose();
   }
 }
+
+double orbit_distance_dS(const Matrix &X, const Matrix &Y, Matrix *G_S) {
+  unsigned int d = X.rows();
+  unsigned int n = X.cols() / d;
+
+  // Compute orbit distance and optimal registration G_S according to Theorem 5
+  // in the SE-Sync tech report
+  Matrix XYt = X * Y.transpose();
+
+  // Compute singular value decomposition of XY^T
+  Eigen::JacobiSVD<Matrix> svd(XYt, Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+  // Compute determinant of XYt using the LU decomposition
+  Eigen::FullPivLU<Matrix> lu(XYt);
+
+  // Construct diagonal matrix Xi = diag(1, ..., 1, det(UV^T))
+  Vector Xi_diag = Vector::Constant(d, 1.0);
+  // Note that since U and V are orthogonal matrices, then det(UV^T) = +/- 1
+  Xi_diag(d - 1) = std::copysign(1.0, lu.determinant());
+
+  // Compute orbit distance dS
+  double dS = sqrt(fabs(
+      2 * d * n - 2 * (Xi_diag.array() * svd.singularValues().array()).sum()));
+
+  if (G_S) {
+    // Compute optimal registration G_S registering Y to X
+    *G_S = svd.matrixU() * Xi_diag.asDiagonal() * svd.matrixV().transpose();
+  }
+  return dS;
 }
+
+double orbit_distance_dO(const Matrix &X, const Matrix &Y, Matrix *G_O) {
+  unsigned int d = X.rows();
+  unsigned int n = X.cols() / d;
+
+  // Compute orbit distance and optimal registration G_O according to Theorem 5
+  // in the SE-Sync tech report
+  Matrix XYt = X * Y.transpose();
+
+  // Compute singular value decomposition of XY^T
+  Eigen::JacobiSVD<Matrix> svd(XYt, Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+  // Compute orbit distance dO
+  double dO = sqrt(fabs(2 * d * n - 2 * svd.singularValues().sum()));
+
+  if (G_O) {
+    // Compute optimal registration G_O registering Y to X
+    *G_O = svd.matrixU() * svd.matrixV().transpose();
+  }
+  return dO;
+}
+} // namespace SESync

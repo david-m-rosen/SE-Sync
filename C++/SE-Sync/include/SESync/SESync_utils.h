@@ -65,4 +65,20 @@ Matrix recover_translations(const SparseMatrix &B1, const SparseMatrix &B2,
  * SO(d) */
 Matrix project_to_SOd(const Matrix &M);
 
+/** Given two matrices X, Y in SO(d)^n, this function computes and returns the
+ * orbit distance d_S(X,Y) between them and (optionally) the optimal
+ * registration G_S aligning Y to X, as described in Appendix C.1 of the SE-Sync
+ * tech report.
+ */
+double orbit_distance_dS(const Matrix &X, const Matrix &Y,
+                         Matrix *G_S = nullptr);
+
+/** Given two matrices X, Y in O(d)^n, this function computes and returns the
+ * orbit distance d_O(X,Y) between them and (optionally) the optimal
+ * registration G_O aligning Y to X, as described in Appendix C.1 of the SE-Sync
+ * tech report.
+ */
+double orbit_distance_dO(const Matrix &X, const Matrix &Y,
+                         Matrix *G_O = nullptr);
+
 } // namespace SESync
