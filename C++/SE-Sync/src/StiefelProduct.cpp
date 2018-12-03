@@ -2,8 +2,6 @@
 #include <Eigen/QR>
 #include <Eigen/SVD>
 
-#include <random> // For sampling random points on the manifold
-
 #include "SESync/StiefelProduct.h"
 namespace SESync {
 
@@ -54,10 +52,11 @@ Matrix StiefelProduct::retract(const Matrix &Y, const Matrix &V) const {
   return project(Y + V);
 }
 
-Matrix StiefelProduct::random_sample() const {
+Matrix StiefelProduct::random_sample(
+    const std::default_random_engine::result_type &seed) const {
   // Generate a matrix of the appropriate dimension by sampling its elements
   // from the standard Gaussian
-  std::default_random_engine generator;
+  std::default_random_engine generator(seed);
   std::normal_distribution<double> g;
 
   Matrix R(p_, k_ * n_);
@@ -66,4 +65,4 @@ Matrix StiefelProduct::random_sample() const {
       R(r, c) = g(generator);
   return project(R);
 }
-}
+} // namespace SESync

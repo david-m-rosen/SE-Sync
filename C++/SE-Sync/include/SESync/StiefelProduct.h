@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <random> // For sampling random points on the manifold
+
 #include <Eigen/Dense>
 
 #include "SESync/SESync_types.h"
@@ -76,8 +78,10 @@ public:
    */
   Matrix retract(const Matrix &Y, const Matrix &V) const;
 
-  /** Sample a random point on M */
-  Matrix random_sample() const;
+  /** Sample a random point on M, using the (optional) passed seed to initialize
+   * the random number generator.  */
+  Matrix random_sample(const std::default_random_engine::result_type &seed =
+                           std::default_random_engine::default_seed) const;
 };
 
 } // namespace SESync
