@@ -30,10 +30,10 @@ struct RelativePoseMeasurement {
   Vector t;
 
   /** Rotational measurement precision */
-  double kappa;
+  Scalar kappa;
 
   /** Translational measurement precision */
-  double tau;
+  Scalar tau;
 
   /** Simple default constructor; does nothing */
   RelativePoseMeasurement() {}
@@ -42,8 +42,8 @@ struct RelativePoseMeasurement {
   RelativePoseMeasurement(size_t first_pose, size_t second_pose,
                           const Matrix &relative_rotation,
                           const Vector &relative_translation,
-                          double rotational_precision,
-                          double translational_precision)
+                          Scalar rotational_precision,
+                          Scalar translational_precision)
       : i(first_pose), j(second_pose), R(relative_rotation),
         t(relative_translation), kappa(rotational_precision),
         tau(translational_precision) {}
@@ -64,4 +64,4 @@ struct RelativePoseMeasurement {
 
 /** Typedef for a vector of RelativePoseMeasurements */
 typedef std::vector<SESync::RelativePoseMeasurement> measurements_t;
-}
+} // namespace SESync

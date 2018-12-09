@@ -50,11 +50,10 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
     if (options.formulation == Formulation::Simplified) {
-      std::cout << " Using "
-                << (problem.projection_factorization() ==
-                            ProjectionFactorization::Cholesky
-                        ? "Cholseky"
-                        : "QR")
+      std::cout << " Using " << (problem.projection_factorization() ==
+                                         ProjectionFactorization::Cholesky
+                                     ? "Cholseky"
+                                     : "QR")
                 << " decomposition to compute orthogonal projections"
                 << std::endl;
     }
@@ -119,7 +118,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   /// Function handles required by the TNT optimization algorithm
 
   // Objective
-  Optimization::Objective<Matrix, double, Matrix> F =
+  Optimization::Objective<Matrix, Scalar, Matrix> F =
       [&problem](const Matrix &Y, const Matrix &NablaF_Y) {
         return problem.evaluate_objective(Y);
       };
@@ -136,20 +135,23 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
         // Compute Riemannian gradient from Euclidean gradient
         grad = problem.Riemannian_gradient(Y, NablaF_Y);
 
-        // Define linear operator for computing Riemannian Hessian-vector
-        // products (cf. eq. (44) in the SE-Sync tech report)
-        HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
-                            const Matrix &NablaF_Y) {
-          return problem.Riemannian_Hessian_vector_product(Y, NablaF_Y, Ydot);
-        };
-      };
+    // Compute Riemannian gradient from Euclidean gradient
+    grad = problem.Riemannian_gradient(Y, NablaF_Y);
+
+    // Define linear operator for computing Riemannian Hessian-vector
+    // products (cf. eq. (44) in the SE-Sync tech report)
+    HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
+                        const Matrix &NablaF_Y) {
+      return problem.Riemannian_Hessian_vector_product(Y, NablaF_Y, Ydot);
+    };
+  };
 
   // Riemannian metric
 
   // We consider a realization of the product of Stiefel manifolds as an
   // embedded submanifold of R^{r x dn}; consequently, the induced Riemannian
   // metric is simply the usual Euclidean inner product
-  Optimization::Smooth::RiemannianMetric<Matrix, Matrix, double, Matrix>
+  Optimization::Smooth::RiemannianMetric<Matrix, Matrix, Scalar, Matrix>
       metric = [&problem](const Matrix &Y, const Matrix &V1, const Matrix &V2,
                           const Matrix &NablaF_Y) {
         return (V1 * V2.transpose()).trace();
@@ -222,7 +224,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   /// RIEMANNIAN STAIRCASE
 
   // Configure optimization parameters
-  Optimization::Smooth::TNTParams<double> params;
+  Optimization::Smooth::TNTParams<Scalar> params;
   params.gradient_tolerance = options.grad_norm_tol;
   params.preconditioned_gradient_tolerance =
       options.preconditioned_grad_norm_tol;
@@ -237,7 +239,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
   auto riemannian_staircase_start_time = Stopwatch::tick();
 
-  for (unsigned int r = options.r0; r <= options.rmax; r++) {
+  for (size_t r = options.r0; r <= options.rmax; r++) {
 
     // The elapsed time from the start of the Riemannian Staircase algorithm
     // until the start of this iteration of RTR
@@ -264,8 +266,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                 << std::endl;
 
     /// Run optimization!
-    Optimization::Smooth::TNTResult<Matrix> TNTResults =
-        Optimization::Smooth::TNT<Matrix, Matrix, double, Matrix>(
+    Optimization::Smooth::TNTResult<Matrix, Scalar> TNTResults =
+        Optimization::Smooth::TNT<Matrix, Matrix, Scalar, Matrix>(
             F, QM, metric, retraction, Y, NablaF_Y, precon, params,
             options.user_function);
 
@@ -307,7 +309,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Compute the minimum eigenvalue lambda and corresponding eigenvector
     // of Q - Lambda
-    unsigned int num_min_eig_iterations;
+    size_t num_min_eig_iterations;
     auto eig_start_time = Stopwatch::tick();
     bool eigenvalue_convergence = problem.compute_S_minus_Lambda_min_eig(
         SESyncResults.Yopt, SESyncResults.lambda_min, SESyncResults.v_min,
@@ -448,7 +450,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   Matrix Lambda_blocks = problem.compute_Lambda_blocks(SESyncResults.Yopt);
 
   SESyncResults.trace_Lambda = 0;
-  for (unsigned int i = 0; i < problem.num_poses(); i++)
+  for (size_t i = 0; i < problem.num_poses(); i++)
     SESyncResults.trace_Lambda +=
         Lambda_blocks
             .block(0, i * problem.dimension(), problem.dimension(),
@@ -520,9 +522,9 @@ SESyncResult SESync(const measurements_t &measurements,
 }
 
 bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
-                   double lambda_min, const Vector &v_min,
-                   double gradient_tolerance,
-                   double preconditioned_gradient_tolerance, Matrix &Yplus) {
+                   Scalar lambda_min, const Vector &v_min,
+                   Scalar gradient_tolerance,
+                   Scalar preconditioned_gradient_tolerance, Matrix &Yplus) {
 
   /** v_min is an eigenvector corresponding to a negative eigenvalue of Q -
    * Lambda, so the KKT conditions for the semidefinite relaxation are not
@@ -535,11 +537,11 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
    * and provides a direction of negative curvature */
 
   // Function value at current iterate (saddle point)
-  double FY = problem.evaluate_objective(Y);
+  Scalar FY = problem.evaluate_objective(Y);
 
   // Relaxation rank at the NEXT level of the Riemannian Staircase, i.e. we
   // require that r = X.rows() + 1
-  unsigned int r = problem.relaxation_rank();
+  size_t r = problem.relaxation_rank();
 
   // Construct the corresponding representation of the saddle point X in the
   // next level of the Riemannian Staircase by adding a row of 0's
@@ -553,8 +555,8 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   // arrive at a trial point whose gradient is large enough to avoid
   // triggering the gradient norm tolerance stopping condition,
   // according to the local second-order model
-  double alpha = 2 * 1000 * gradient_tolerance / fabs(lambda_min);
-  double alpha_min = 1e-32; // Minimum stepsize
+  Scalar alpha = 2 * 1000 * gradient_tolerance / fabs(lambda_min);
+  Scalar alpha_min = 1e-32; // Minimum stepsize
 
   // Initialize line search
   bool escape_success = false;
@@ -570,10 +572,10 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
     // the current iterate Y, and that the gradient at Ytest is
     // sufficiently large that we will not automatically trigger the
     // gradient tolerance stopping criterion at the next iteration
-    double FYtest = problem.evaluate_objective(Ytest);
+    Scalar FYtest = problem.evaluate_objective(Ytest);
     Matrix grad_FYtest = problem.Riemannian_gradient(Ytest);
-    double grad_FYtest_norm = grad_FYtest.norm();
-    double preconditioned_grad_FYtest_norm =
+    Scalar grad_FYtest_norm = grad_FYtest.norm();
+    Scalar preconditioned_grad_FYtest_norm =
         problem.precondition(Ytest, grad_FYtest).norm();
 
     if ((FYtest < FY) && (grad_FYtest_norm > gradient_tolerance) &&

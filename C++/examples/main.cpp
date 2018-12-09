@@ -10,6 +10,8 @@
 using namespace std;
 using namespace SESync;
 
+bool write_poses = false;
+
 int main(int argc, char **argv) {
   if (argc != 2) {
     cout << "Usage: " << argv[0] << " [input .g2o file]" << endl;
@@ -42,10 +44,12 @@ int main(int argc, char **argv) {
   ProfilerStop();
 #endif
 
-  // Write output
-  string filename = "poses.txt";
-  cout << "Saving final poses to file: " << filename << endl;
-  ofstream poses_file(filename);
-  poses_file << results.xhat;
-  poses_file.close();
+  if (write_poses) {
+    // Write output
+    string filename = "poses.txt";
+    cout << "Saving final poses to file: " << filename << endl;
+    ofstream poses_file(filename);
+    poses_file << results.xhat;
+    poses_file.close();
+  }
 }

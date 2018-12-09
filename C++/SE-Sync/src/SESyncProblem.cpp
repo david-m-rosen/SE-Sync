@@ -11,7 +11,7 @@ namespace SESync {
 SESyncProblem::SESyncProblem(
     const measurements_t &measurements, const Formulation &formulation,
     const ProjectionFactorization &projection_factorization,
-    const Preconditioner &precon, double reg_chol_precon_max_cond)
+    const Preconditioner &precon, Scalar reg_chol_precon_max_cond)
     : form_(formulation), projection_factorization_(projection_factorization),
       preconditioner_(precon),
       reg_Chol_precon_max_cond_(reg_chol_precon_max_cond) {
@@ -81,7 +81,7 @@ SESyncProblem::SESyncProblem(
 
     /** Compute and cache preconditioning matrices, if required */
     if (preconditioner_ == Preconditioner::Jacobi) {
-      Eigen::VectorXd diag = LGrho_.diagonal();
+      Vector diag = LGrho_.diagonal();
       Jacobi_precon_ = diag.cwiseInverse().asDiagonal();
     } else if (preconditioner_ == Preconditioner::IncompleteCholesky)
       iChol_precon_ = new IncompleteCholeskyFactorization(LGrho_);
@@ -90,19 +90,19 @@ SESyncProblem::SESyncProblem(
 
       // NB: Spectra's built-in SparseSymProduct matrix assumes that input
       // matrices are stored in COLUMN-MAJOR order
-      Eigen::SparseMatrix<double, Eigen::ColMajor> LGrho_col_major(LGrho_);
+      Eigen::SparseMatrix<Scalar, Eigen::ColMajor> LGrho_col_major(LGrho_);
 
-      Spectra::SparseSymMatProd<double> op(LGrho_col_major);
-      Spectra::SymEigsSolver<double, Spectra::LARGEST_MAGN,
-                             Spectra::SparseSymMatProd<double>>
+      Spectra::SparseSymMatProd<Scalar> op(LGrho_col_major);
+      Spectra::SymEigsSolver<Scalar, Spectra::LARGEST_MAGN,
+                             Spectra::SparseSymMatProd<Scalar>>
           max_eig_solver(&op, 1, 3);
       max_eig_solver.init();
 
       int max_iterations = 10000;
-      double tol = 1e-4; // We only require a relatively loose estimate here ...
+      Scalar tol = 1e-4; // We only require a relatively loose estimate here ...
       int nconv = max_eig_solver.compute(max_iterations, tol);
 
-      double lambda_max = max_eig_solver.eigenvalues()(0);
+      Scalar lambda_max = max_eig_solver.eigenvalues()(0);
       reg_Chol_precon_.compute(
           LGrho_ +
           SparseMatrix(Vector::Constant(LGrho_.rows(),
@@ -116,7 +116,7 @@ SESyncProblem::SESyncProblem(
 
     /** Compute and cache preconditioning matrices, if required */
     if (preconditioner_ == Preconditioner::Jacobi) {
-      Eigen::VectorXd diag = M_.diagonal();
+      Vector diag = M_.diagonal();
       Jacobi_precon_ = diag.cwiseInverse().asDiagonal();
     } else if (preconditioner_ == Preconditioner::IncompleteCholesky)
       iChol_precon_ = new IncompleteCholeskyFactorization(M_);
@@ -125,19 +125,19 @@ SESyncProblem::SESyncProblem(
 
       // NB: Spectra's built-in SparseSymProduct matrix assumes that input
       // matrices are stored in COLUMN-MAJOR order
-      Eigen::SparseMatrix<double, Eigen::ColMajor> M_col_major(M_);
+      Eigen::SparseMatrix<Scalar, Eigen::ColMajor> M_col_major(M_);
 
-      Spectra::SparseSymMatProd<double> op(M_col_major);
-      Spectra::SymEigsSolver<double, Spectra::LARGEST_MAGN,
-                             Spectra::SparseSymMatProd<double>>
+      Spectra::SparseSymMatProd<Scalar> op(M_col_major);
+      Spectra::SymEigsSolver<Scalar, Spectra::LARGEST_MAGN,
+                             Spectra::SparseSymMatProd<Scalar>>
           max_eig_solver(&op, 1, 3);
       max_eig_solver.init();
 
       int max_iterations = 10000;
-      double tol = 1e-4; // We only require a relatively loose estimate here ...
+      Scalar tol = 1e-4; // We only require a relatively loose estimate here ...
       int nconv = max_eig_solver.compute(max_iterations, tol);
 
-      double lambda_max = max_eig_solver.eigenvalues()(0);
+      Scalar lambda_max = max_eig_solver.eigenvalues()(0);
       reg_Chol_precon_.compute(
           M_ +
           SparseMatrix(Vector::Constant(M_.rows(),
@@ -147,7 +147,7 @@ SESyncProblem::SESyncProblem(
   }
 }
 
-void SESyncProblem::set_relaxation_rank(unsigned int rank) {
+void SESyncProblem::set_relaxation_rank(size_t rank) {
   r_ = rank;
   SP_.set_p(r_);
 }
@@ -159,7 +159,7 @@ Matrix SESyncProblem::data_matrix_product(const Matrix &Y) const {
     return M_ * Y;
 }
 
-double SESyncProblem::evaluate_objective(const Matrix &Y) const {
+Scalar SESyncProblem::evaluate_objective(const Matrix &Y) const {
   if (form_ == Formulation::Simplified)
     return (Y * Q_product(Y.transpose())).trace();
   else // form == Explicit
@@ -260,25 +260,24 @@ Matrix SESyncProblem::round_solution(const Matrix Y) const {
   // First, compute a thin SVD of Y
   Eigen::JacobiSVD<Matrix> svd(Y, Eigen::ComputeThinV);
 
-  Eigen::VectorXd sigmas = svd.singularValues();
+  Vector sigmas = svd.singularValues();
   // Construct a diagonal matrix comprised of the first d singular values
-  Eigen::DiagonalMatrix<double, Eigen::Dynamic> Sigma_d(d_);
-  Eigen::DiagonalMatrix<double, Eigen::Dynamic>::DiagonalVectorType &diagonal =
-      Sigma_d.diagonal();
-  for (unsigned int i = 0; i < d_; ++i)
+  DiagonalMatrix Sigma_d(d_);
+  DiagonalMatrix::DiagonalVectorType &diagonal = Sigma_d.diagonal();
+  for (size_t i = 0; i < d_; ++i)
     diagonal(i) = sigmas(i);
 
   // First, construct a rank-d truncated singular value decomposition for Y
-  Eigen::MatrixXd R = Sigma_d * svd.matrixV().leftCols(d_).transpose();
+  Matrix R = Sigma_d * svd.matrixV().leftCols(d_).transpose();
 
-  Eigen::VectorXd determinants(n_);
+  Vector determinants(n_);
 
   // Compute the offset at which the rotation matrix blocks begin
-  unsigned int rot_offset = (form_ == Formulation::Simplified ? 0 : n_);
+  size_t rot_offset = (form_ == Formulation::Simplified ? 0 : n_);
 
-  unsigned int ng0 = 0; // This will count the number of blocks whose
+  size_t ng0 = 0; // This will count the number of blocks whose
   // determinants have positive sign
-  for (unsigned int i = 0; i < n_; ++i) {
+  for (size_t i = 0; i < n_; ++i) {
     // Compute the determinant of the ith dxd block of R
     determinants(i) = R.block(0, rot_offset + i * d_, d_, d_).determinant();
     if (determinants(i) > 0)
@@ -291,7 +290,7 @@ Matrix SESyncProblem::round_solution(const Matrix Y) const {
 
     // Get a reflection matrix that we can use to reverse the signs of those
     // blocks of R that have the wrong determinant
-    Eigen::MatrixXd reflector = Eigen::MatrixXd::Identity(d_, d_);
+    Matrix reflector = Matrix::Identity(d_, d_);
     reflector(d_ - 1, d_ - 1) = -1;
 
     R = reflector * R;
@@ -299,7 +298,7 @@ Matrix SESyncProblem::round_solution(const Matrix Y) const {
 
 // Finally, project each dxd rotation block to SO(d)
 #pragma omp parallel for
-  for (unsigned int i = 0; i < n_; ++i)
+  for (size_t i = 0; i < n_; ++i)
     R.block(0, rot_offset + i * d_, d_, d_) =
         project_to_SOd(R.block(0, rot_offset + i * d_, d_, d_));
 
@@ -330,10 +329,10 @@ Matrix SESyncProblem::compute_Lambda_blocks(const Matrix &Y) const {
   Matrix Lambda_blocks(d_, n_ * d_);
 
   // Index of the row/column at which the rotational blocks begin in matrix X
-  unsigned int offset = (form_ == Formulation::Simplified ? 0 : n_);
+  size_t offset = (form_ == Formulation::Simplified ? 0 : n_);
 
 #pragma omp parallel for
-  for (unsigned int i = 0; i < n_; ++i) {
+  for (size_t i = 0; i < n_; ++i) {
     Matrix P = SYt.block(offset + i * d_, 0, d_, Y.rows()) *
                Y.block(0, offset + i * d_, Y.rows(), d_);
     Lambda_blocks.block(0, i * d_, d_, d_) = .5 * (P + P.transpose());
@@ -344,14 +343,14 @@ Matrix SESyncProblem::compute_Lambda_blocks(const Matrix &Y) const {
 SparseMatrix SESyncProblem::compute_Lambda_from_Lambda_blocks(
     const Matrix &Lambda_blocks) const {
 
-  unsigned int offset = (form_ == Formulation::Simplified ? 0 : n_);
+  size_t offset = (form_ == Formulation::Simplified ? 0 : n_);
 
-  std::vector<Eigen::Triplet<SparseMatrix::Scalar>> elements;
+  std::vector<Eigen::Triplet<Scalar>> elements;
   elements.reserve(d_ * d_ * n_);
 
-  for (unsigned int i = 0; i < n_; ++i)
-    for (unsigned int r = 0; r < d_; ++r)
-      for (unsigned int c = 0; c < d_; ++c)
+  for (size_t i = 0; i < n_; ++i)
+    for (size_t r = 0; r < d_; ++r)
+      for (size_t c = 0; c < d_; ++c)
         elements.emplace_back(offset + i * d_ + r, offset + i * d_ + c,
                               Lambda_blocks(r, i * d_ + c));
 
@@ -368,13 +367,13 @@ SparseMatrix SESyncProblem::compute_Lambda(const Matrix &Y) const {
 }
 
 bool SESyncProblem::compute_S_minus_Lambda_min_eig(
-    const Matrix &Y, double &min_eigenvalue, Eigen::VectorXd &min_eigenvector,
-    unsigned int &num_iterations, unsigned int max_iterations,
-    double min_eigenvalue_nonnegativity_tolerance,
-    unsigned int num_Lanczos_vectors) const {
+    const Matrix &Y, Scalar &min_eigenvalue, Vector &min_eigenvector,
+    size_t &num_iterations, size_t max_iterations,
+    Scalar min_eigenvalue_nonnegativity_tolerance,
+    size_t num_Lanczos_vectors) const {
   // First, compute the largest-magnitude eigenvalue of this matrix
   SMinusLambdaProdFunctor lm_op(this, Y);
-  Spectra::SymEigsSolver<double, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN,
+  Spectra::SymEigsSolver<Scalar, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN,
                          SMinusLambdaProdFunctor>
       largest_magnitude_eigensolver(&lm_op, 1,
                                     std::min(num_Lanczos_vectors, n_ * d_));
@@ -387,7 +386,7 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
   if (num_converged != 1)
     return false;
 
-  double lambda_lm = largest_magnitude_eigensolver.eigenvalues()(0);
+  Scalar lambda_lm = largest_magnitude_eigensolver.eigenvalues()(0);
 
   if (lambda_lm < 0) {
     // The largest-magnitude eigenvalue is negative, and therefore also the
@@ -409,7 +408,7 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
 
   SMinusLambdaProdFunctor min_shifted_op(this, Y, -2 * lambda_lm);
 
-  Spectra::SymEigsSolver<double, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN,
+  Spectra::SymEigsSolver<Scalar, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN,
                          SMinusLambdaProdFunctor>
       min_eigensolver(&min_shifted_op, 1,
                       std::min(num_Lanczos_vectors, n_ * d_));
@@ -427,12 +426,11 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
   // relaxation is exact (since are starting close to a solution), while
   // simultaneously allowing the iterations to escape from this fixed point in
   // the case that the relaxation is not exact.
-  Eigen::VectorXd v0 = Y.row(0).transpose();
-  Eigen::VectorXd perturbation(v0.size());
+  Vector v0 = Y.row(0).transpose();
+  Vector perturbation(v0.size());
   perturbation.setRandom();
   perturbation.normalize();
-  Eigen::VectorXd xinit =
-      v0 + (.03 * v0.norm()) * perturbation; // Perturb v0 by ~3%
+  Vector xinit = v0 + (.03 * v0.norm()) * perturbation; // Perturb v0 by ~3%
 
   // Use this to initialize the eigensolver
   min_eigensolver.init(xinit.data());
@@ -489,10 +487,10 @@ Matrix SESyncProblem::random_sample() const {
     // Randomly sample a set of coordinates for the initial positions from the
     // standard normal distribution
     std::default_random_engine generator;
-    std::normal_distribution<double> g;
+    std::normal_distribution<Scalar> g;
 
-    for (unsigned int i = 0; i < r_; ++i)
-      for (unsigned int j = 0; j < n_; ++j)
+    for (size_t i = 0; i < r_; ++i)
+      for (size_t j = 0; j < n_; ++j)
         Y(i, j) = g(generator);
   }
 
@@ -502,7 +500,7 @@ Matrix SESyncProblem::random_sample() const {
 /// MINIMUM EIGENVALUE COMPUTATION STRUCT
 
 SESyncProblem::SMinusLambdaProdFunctor::SMinusLambdaProdFunctor(
-    const SESyncProblem *prob, const Matrix &Y, double sigma)
+    const SESyncProblem *prob, const Matrix &Y, Scalar sigma)
     : problem_(prob), dim_(prob->dimension()), sigma_(sigma) {
 
   if (problem_->formulation() == Formulation::Simplified) {
@@ -518,21 +516,21 @@ SESyncProblem::SMinusLambdaProdFunctor::SMinusLambdaProdFunctor(
   Lambda_blocks_ = problem_->compute_Lambda_blocks(Y);
 }
 
-void SESyncProblem::SMinusLambdaProdFunctor::perform_op(double *x,
-                                                        double *y) const {
-  Eigen::Map<Eigen::VectorXd> X(x, cols_);
-  Eigen::Map<Eigen::VectorXd> Y(y, rows_);
+void SESyncProblem::SMinusLambdaProdFunctor::perform_op(Scalar *x,
+                                                        Scalar *y) const {
+  Eigen::Map<Vector> X(x, cols_);
+  Eigen::Map<Vector> Y(y, rows_);
 
   Y = problem_->data_matrix_product(X);
 
   // Offset corresponding to the first index in X and Y associated with
   // rotational blocks
-  unsigned int offset = (problem_->formulation() == Formulation::Simplified
-                             ? 0
-                             : problem_->num_poses());
+  size_t offset = (problem_->formulation() == Formulation::Simplified
+                       ? 0
+                       : problem_->num_poses());
 
 #pragma omp parallel for
-  for (unsigned int i = 0; i < problem_->num_poses(); ++i)
+  for (size_t i = 0; i < problem_->num_poses(); ++i)
     Y.segment(offset + i * dim_, dim_) -=
         Lambda_blocks_.block(0, i * dim_, dim_, dim_) *
         X.segment(offset + i * dim_, dim_);

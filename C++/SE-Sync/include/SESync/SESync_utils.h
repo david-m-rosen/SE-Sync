@@ -53,7 +53,7 @@ construct_quadratic_form_data_matrix(const measurements_t &measurements);
 /** Given the measurement matrix B3 defined in equation (69c) of the tech report
  * and the problem dimension d, this function computes and returns the
  * corresponding chordal initialization for the rotational states */
-Matrix chordal_initialization(unsigned int d, const SparseMatrix &B3);
+Matrix chordal_initialization(size_t d, const SparseMatrix &B3);
 
 /** Given the measurement matrices B1 and B2 and a matrix R of rotational state
  * estimates, this function computes and returns the corresponding optimal
@@ -70,7 +70,7 @@ Matrix project_to_SOd(const Matrix &M);
  * registration G_S aligning Y to X, as described in Appendix C.1 of the SE-Sync
  * tech report.
  */
-double orbit_distance_dS(const Matrix &X, const Matrix &Y,
+Scalar orbit_distance_dS(const Matrix &X, const Matrix &Y,
                          Matrix *G_S = nullptr);
 
 /** Given two matrices X, Y in O(d)^n, this function computes and returns the
@@ -78,7 +78,7 @@ double orbit_distance_dS(const Matrix &X, const Matrix &Y,
  * registration G_O aligning Y to X, as described in Appendix C.1 of the SE-Sync
  * tech report.
  */
-double orbit_distance_dO(const Matrix &X, const Matrix &Y,
+Scalar orbit_distance_dO(const Matrix &X, const Matrix &Y,
                          Matrix *G_O = nullptr);
 
 } // namespace SESync

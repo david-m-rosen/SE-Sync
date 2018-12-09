@@ -14,29 +14,30 @@
 namespace SESync {
 
 /** Some useful typedefs for the SE-Sync library */
-typedef Eigen::VectorXd Vector;
-typedef Eigen::MatrixXd Matrix;
-typedef Eigen::DiagonalMatrix<double, Eigen::Dynamic> DiagonalMatrix;
+typedef double Scalar;
+typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
+typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+typedef Eigen::DiagonalMatrix<Scalar, Eigen::Dynamic> DiagonalMatrix;
 
 /** We use row-major storage order to take advantage of fast (sparse-matrix) *
  * (dense-vector) multiplications when OpenMP is available (cf. the Eigen
  * documentation page on "Eigen and Multithreading") */
-typedef Eigen::SparseMatrix<double, Eigen::RowMajor> SparseMatrix;
+typedef Eigen::SparseMatrix<Scalar, Eigen::RowMajor> SparseMatrix;
 
 /** The specific formulation of special Euclidean synchronization problem to
  * solve */
 enum class Formulation {
   /** Construct and solve the simplified version of the special Euclidean
-   * synchronization problem obtained by analytically eliminating the
-   *  translational states from the estimation (cf. Problem 4 in the SE-Sync
-   * tech report).
-   */
+  * synchronization problem obtained by analytically eliminating the
+  *  translational states from the estimation (cf. Problem 4 in the SE-Sync tech
+  *  report).
+  */
   Simplified,
 
   /** Construct and solve the formulation of the special Euclidean
-   * synchronization problem that explicitly estimates both rotational and
-   * translational states (cf. Problem 2 in the SE-Sync tech report).
-   */
+  * synchronization problem that explicitly estimates both rotational and
+  * translational states (cf. Problem 2 in the SE-Sync tech report).
+  */
   Explicit
 };
 
@@ -61,7 +62,7 @@ enum class Initialization { Chordal, Random };
  * instrument/monitor the performance of the internal Riemannian
  * truncated-Newton trust-region optimization algorithm as it runs (see the
  * header file Optimization/Smooth/TNT.h for details). */
-typedef Optimization::Smooth::TNTUserFunction<Matrix, Matrix, double, Matrix>
+typedef Optimization::Smooth::TNTUserFunction<Matrix, Matrix, Scalar, Matrix>
     SESyncTNTUserFunction;
 
 } // namespace SESync

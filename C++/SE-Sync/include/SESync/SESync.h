@@ -1,8 +1,8 @@
 /** This file provides a convenient functional interface to the SESync
- * algorithm.
- *
- *  Copyright (C) 2016 - 2018 by David M. Rosen
- */
+* algorithm.
+*
+*  Copyright (C) 2016 - 2018 by David M. Rosen
+*/
 
 #pragma once
 
@@ -22,25 +22,25 @@ struct SESyncOpts {
   /// OPTIMIZATION STOPPING CRITERIA
 
   /** Stopping tolerance for the norm of the Riemannian gradient */
-  double grad_norm_tol = 1e-2;
+  Scalar grad_norm_tol = 1e-2;
 
   /** Stopping tolerance for the norm of the preconditioned Riemannian gradient
    */
-  double preconditioned_grad_norm_tol = 1e-4;
+  Scalar preconditioned_grad_norm_tol = 1e-4;
 
   /** Stopping criterion based upon the relative decrease in function value */
-  double rel_func_decrease_tol = 1e-7;
+  Scalar rel_func_decrease_tol = 1e-7;
 
   /** Stopping criterion based upon the norm of an accepted update step */
-  double stepsize_tol = 1e-3;
+  Scalar stepsize_tol = 1e-3;
 
   /** Maximum permitted number of (outer) iterations of the Riemannian
    * trust-region method when solving each instance of Problem 9 */
-  unsigned int max_iterations = 1000;
+  size_t max_iterations = 1000;
 
   /** Maximum number of inner (truncated conjugate-gradient) iterations to
    * perform per out iteration */
-  unsigned int max_tCG_iterations = 10000;
+  size_t max_tCG_iterations = 10000;
 
   /// These next two parameters define the stopping criteria for the truncated
   /// preconditioned conjugate-gradient solver running in the inner loop --
@@ -53,14 +53,14 @@ struct SESyncOpts {
   /** Gradient tolerance for the truncated preconditioned conjugate
   gradient solver: stop if ||g|| < kappa * ||g_0||.  This parameter should be in
   the range (0,1). */
-  double STPCG_kappa = .1;
+  Scalar STPCG_kappa = .1;
 
   /** Gradient tolerance based upon a fractional-power reduction in the norm of
    * the gradient: stop if ||g|| < ||kappa||^{1+ theta}.  This value should be
    * positive, and controls the asymptotic convergence rate of the
    * truncated-Newton trust-region solver: specifically, for theta > 0, the TNT
    * algorithm converges q-superlinearly with order (1+theta). */
-  double STPCG_theta = .5;
+  Scalar STPCG_theta = .5;
 
   /** Maximum elapsed computation time (in seconds) */
   double max_computation_time = std::numeric_limits<double>::max();
@@ -76,24 +76,24 @@ struct SESyncOpts {
   Formulation formulation = Formulation::Simplified;
 
   /** The initial level of the Riemannian Staircase */
-  unsigned int r0 = 5;
+  size_t r0 = 5;
 
   /** The maximum level of the Riemannian Staircase to explore */
-  unsigned int rmax = 10;
+  size_t rmax = 10;
 
   /** The maximum number of Lanczos iterations to admit for eigenvalue
    * computations */
-  unsigned int max_eig_iterations = 10000;
+  size_t max_eig_iterations = 10000;
 
   /** A numerical tolerance for acceptance of the minimum eigenvalue of Q -
    * Lambda(Y*) as numerically nonnegative; this should be a small positive
    * value e.g. 10^-4 */
-  double min_eig_num_tol = 1e-5;
+  Scalar min_eig_num_tol = 1e-5;
 
   /** The number of working vectors to use in the minimum eigenvalue computation
 (using the implicitly-restarted Arnoldi algorithm); must be in the range [1,
 (#poses) * (#problem dimension) - 1] */
-  unsigned int num_Lanczos_vectors = 20;
+  size_t num_Lanczos_vectors = 20;
 
   /** Whether to use the Cholesky or QR factorization when computing the
    * orthogonal projection */
@@ -106,11 +106,11 @@ struct SESyncOpts {
 
   /** Maximum admissible condition number for the regularized Cholesky
    * preconditioner */
-  double reg_Cholesky_precon_max_condition_number = 1e6;
+  Scalar reg_Cholesky_precon_max_condition_number = 1e6;
 
   /** If no initial iterate Y0 is supplied, this boolean determines the
-   * initialization strategy employed by SE-Sync: 'true' -> chordal, 'false' ->
-   * random sampling */
+ * initialization strategy employed by SE-Sync: 'true' -> chordal, 'false' ->
+ * random sampling */
   Initialization initialization = Initialization::Chordal;
 
   /** Whether to print output as the algorithm runs */
@@ -122,7 +122,7 @@ struct SESyncOpts {
 
   /** The number of threads to use for parallelization (assuming that SE-Sync is
    * built using a compiler that supports OpenMP */
-  unsigned int num_threads = 1;
+  size_t num_threads = 1;
 };
 
 /** These enumerations describe the termination status of the SE-Sync algorithm
@@ -158,10 +158,10 @@ struct SESyncResult {
   Matrix Yopt;
 
   /** The value of the objective F(Y^T Y) = F(Z) attained by the Yopt */
-  double SDPval;
+  Scalar SDPval;
 
   /** The norm of the Riemannian gradient at Yopt */
-  double gradnorm;
+  Scalar gradnorm;
 
   /** The Lagrange multiplier matrix Lambda corresponding to Yopt, computed
    * according to eq. (119) in the SE-Sync tech report.  If Z = Y^T Y is an
@@ -171,7 +171,7 @@ struct SESyncResult {
 
   /** The trace of Lambda; this is the value of Lambda under the objective of
    * the (primal) semidefinite relaxation Problem 6. */
-  double trace_Lambda;
+  Scalar trace_Lambda;
 
   /** The duality gap between the estimates for the primal and dual solutions
    * Lambda and Z = Y^T Y of Problems 7 and 6, respectively; it is given by:
@@ -179,23 +179,23 @@ struct SESyncResult {
    * SDP_duality_gap := F(Y^T Y) - tr(Lambda)
    *
    */
-  double SDP_duality_gap;
+  Scalar SDP_duality_gap;
 
   /** The minimum eigenvalue of the matrix S - Lambda */
-  double lambda_min;
+  Scalar lambda_min;
 
   /** The corresponding eigenvector of the minimum eigenvalue */
   Vector v_min;
 
   /** The value of the rounded solution xhat in SE(d)^n */
-  double Fxhat;
+  Scalar Fxhat;
 
   /** The rounded solution xhat = [t | R] in SE(d)^n */
   Matrix xhat;
 
   /** Upper bound on the global suboptimality of the recovered pose estimates
    * xhat; this is equal to F(xhat) - tr(Lambda) */
-  double suboptimality_upper_bound;
+  Scalar suboptimality_upper_bound;
 
   /** The total elapsed computation time for the SE-Sync algorithm */
   double total_computation_time;
@@ -206,12 +206,12 @@ struct SESyncResult {
 
   /** A vector containing the sequence of function values obtained during the
    * optimization at each level of the Riemannian Staircase */
-  std::vector<std::vector<double>> function_values;
+  std::vector<std::vector<Scalar>> function_values;
 
   /** A vector containing the sequence of norms of the Riemannian gradients
    * obtained during the optimization at each level of the Riemannian Staircase
    */
-  std::vector<std::vector<double>> gradient_norms;
+  std::vector<std::vector<Scalar>> gradient_norms;
 
   /** A vector containing the sequence of (# Hessian-vector product operations)
    * carried out during the optimization at each level of the Riemannian
@@ -226,12 +226,12 @@ struct SESyncResult {
   /** A vector containing the sequence of minimum eigenvalues of the certificate
    * matrix constructed from the critical point recovered from the
    * optimization at each level of the Riemannian Staircase */
-  std::vector<double> minimum_eigenvalues;
+  std::vector<Scalar> minimum_eigenvalues;
 
   /** A vector containing the number of matrix-vector multiplication operations
    * performed for the minimum-eigenvalue computation at each level of the
    * Riemannian Staircase */
-  std::vector<unsigned int> minimum_eigenvalue_matrix_ops;
+  std::vector<size_t> minimum_eigenvalue_matrix_ops;
 
   /** A vector containing the elapsed time of the minimum eigenvalue computation
    * at each level of the Riemannian Staircase */
@@ -292,8 +292,8 @@ SESyncResult SESync(const measurements_t &measurements,
  * of the Riemannian Staircase
  */
 bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
-                   double lambda_min, const Vector &v_min,
-                   double gradient_tolerance,
-                   double preconditioned_gradient_tolerance, Matrix &Yplus);
+                   Scalar lambda_min, const Vector &v_min,
+                   Scalar gradient_tolerance,
+                   Scalar preconditioned_gradient_tolerance, Matrix &Yplus);
 
 } // namespace SESync
