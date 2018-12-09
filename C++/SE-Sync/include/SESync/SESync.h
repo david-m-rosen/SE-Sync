@@ -1,8 +1,8 @@
 /** This file provides a convenient functional interface to the SESync
-* algorithm.
-*
-*  Copyright (C) 2016 - 2018 by David M. Rosen
-*/
+ * algorithm.
+ *
+ *  Copyright (C) 2016 - 2018 by David M. Rosen
+ */
 
 #pragma once
 
@@ -82,12 +82,12 @@ struct SESyncOpts {
   unsigned int rmax = 10;
 
   /** The maximum number of Lanczos iterations to admit for eigenvalue
- * computations */
+   * computations */
   unsigned int max_eig_iterations = 10000;
 
   /** A numerical tolerance for acceptance of the minimum eigenvalue of Q -
- * Lambda(Y*) as numerically nonnegative; this should be a small positive value
- * e.g. 10^-4 */
+   * Lambda(Y*) as numerically nonnegative; this should be a small positive
+   * value e.g. 10^-4 */
   double min_eig_num_tol = 1e-5;
 
   /** The number of working vectors to use in the minimum eigenvalue computation
@@ -109,8 +109,8 @@ struct SESyncOpts {
   double reg_Cholesky_precon_max_condition_number = 1e6;
 
   /** If no initial iterate Y0 is supplied, this boolean determines the
- * initialization strategy employed by SE-Sync: 'true' -> chordal, 'false' ->
- * random sampling */
+   * initialization strategy employed by SE-Sync: 'true' -> chordal, 'false' ->
+   * random sampling */
   Initialization initialization = Initialization::Chordal;
 
   /** Whether to print output as the algorithm runs */
@@ -216,7 +216,7 @@ struct SESyncResult {
   /** A vector containing the sequence of (# Hessian-vector product operations)
    * carried out during the optimization at each level of the Riemannian
    * Staircase */
-  std::vector<std::vector<unsigned int>> Hessian_vector_products;
+  std::vector<std::vector<size_t>> Hessian_vector_products;
 
   /** A vector containing the sequence of elapsed times in the optimization at
    * each level of the Riemannian Staircase at which the corresponding function

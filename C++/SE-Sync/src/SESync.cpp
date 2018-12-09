@@ -50,10 +50,11 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
     if (options.formulation == Formulation::Simplified) {
-      std::cout << " Using " << (problem.projection_factorization() ==
-                                         ProjectionFactorization::Cholesky
-                                     ? "Cholseky"
-                                     : "QR")
+      std::cout << " Using "
+                << (problem.projection_factorization() ==
+                            ProjectionFactorization::Cholesky
+                        ? "Cholseky"
+                        : "QR")
                 << " decomposition to compute orthogonal projections"
                 << std::endl;
     }
@@ -118,39 +119,39 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   /// Function handles required by the TNT optimization algorithm
 
   // Objective
-  Optimization::Objective<Matrix, Matrix> F =
+  Optimization::Objective<Matrix, double, Matrix> F =
       [&problem](const Matrix &Y, const Matrix &NablaF_Y) {
         return problem.evaluate_objective(Y);
       };
 
   // Local quadratic model constructor
-  Optimization::Smooth::QuadraticModel<Matrix, Matrix, Matrix> QM = [&problem](
-      const Matrix &Y, Matrix &grad,
-      Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix> &HessOp,
-      Matrix &NablaF_Y) {
+  Optimization::Smooth::QuadraticModel<Matrix, Matrix, Matrix> QM =
+      [&problem](
+          const Matrix &Y, Matrix &grad,
+          Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix> &HessOp,
+          Matrix &NablaF_Y) {
+        // Compute and cache Euclidean gradient at the current iterate
+        NablaF_Y = problem.Euclidean_gradient(Y);
 
-    // Compute and cache Euclidean gradient at the current iterate
-    NablaF_Y = problem.Euclidean_gradient(Y);
+        // Compute Riemannian gradient from Euclidean gradient
+        grad = problem.Riemannian_gradient(Y, NablaF_Y);
 
-    // Compute Riemannian gradient from Euclidean gradient
-    grad = problem.Riemannian_gradient(Y, NablaF_Y);
-
-    // Define linear operator for computing Riemannian Hessian-vector
-    // products (cf. eq. (44) in the SE-Sync tech report)
-    HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
-                        const Matrix &NablaF_Y) {
-      return problem.Riemannian_Hessian_vector_product(Y, NablaF_Y, Ydot);
-    };
-  };
+        // Define linear operator for computing Riemannian Hessian-vector
+        // products (cf. eq. (44) in the SE-Sync tech report)
+        HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
+                            const Matrix &NablaF_Y) {
+          return problem.Riemannian_Hessian_vector_product(Y, NablaF_Y, Ydot);
+        };
+      };
 
   // Riemannian metric
 
   // We consider a realization of the product of Stiefel manifolds as an
   // embedded submanifold of R^{r x dn}; consequently, the induced Riemannian
   // metric is simply the usual Euclidean inner product
-  Optimization::Smooth::RiemannianMetric<Matrix, Matrix, Matrix> metric =
-      [&problem](const Matrix &Y, const Matrix &V1, const Matrix &V2,
-                 const Matrix &NablaF_Y) {
+  Optimization::Smooth::RiemannianMetric<Matrix, Matrix, double, Matrix>
+      metric = [&problem](const Matrix &Y, const Matrix &V1, const Matrix &V2,
+                          const Matrix &NablaF_Y) {
         return (V1 * V2.transpose()).trace();
       };
 
@@ -221,7 +222,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   /// RIEMANNIAN STAIRCASE
 
   // Configure optimization parameters
-  Optimization::Smooth::TNTParams params;
+  Optimization::Smooth::TNTParams<double> params;
   params.gradient_tolerance = options.grad_norm_tol;
   params.preconditioned_gradient_tolerance =
       options.preconditioned_grad_norm_tol;
@@ -264,7 +265,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     /// Run optimization!
     Optimization::Smooth::TNTResult<Matrix> TNTResults =
-        Optimization::Smooth::TNT<Matrix, Matrix, Matrix>(
+        Optimization::Smooth::TNT<Matrix, Matrix, double, Matrix>(
             F, QM, metric, retraction, Y, NablaF_Y, precon, params,
             options.user_function);
 
@@ -524,14 +525,14 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
                    double preconditioned_gradient_tolerance, Matrix &Yplus) {
 
   /** v_min is an eigenvector corresponding to a negative eigenvalue of Q -
-* Lambda, so the KKT conditions for the semidefinite relaxation are not
-* satisfied; this implies that Y is a saddle point of the rank-restricted
-* semidefinite  optimization.  Fortunately, v_min can be used to compute a
-* descent  direction from this saddle point, as described in Theorem 3.9
-* of the paper "A Riemannian Low-Rank Method for Optimization over
-* Semidefinite  Matrices with Block-Diagonal Constraints". Define the vector
-* Xdot := e_{r+1} * v'; this is a tangent vector to the domain of the SDP
-* and provides a direction of negative curvature */
+   * Lambda, so the KKT conditions for the semidefinite relaxation are not
+   * satisfied; this implies that Y is a saddle point of the rank-restricted
+   * semidefinite  optimization.  Fortunately, v_min can be used to compute a
+   * descent  direction from this saddle point, as described in Theorem 3.9
+   * of the paper "A Riemannian Low-Rank Method for Optimization over
+   * Semidefinite  Matrices with Block-Diagonal Constraints". Define the vector
+   * Xdot := e_{r+1} * v'; this is a tangent vector to the domain of the SDP
+   * and provides a direction of negative curvature */
 
   // Function value at current iterate (saddle point)
   double FY = problem.evaluate_objective(Y);
@@ -589,4 +590,4 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
     return false;
   }
 }
-}
+} // namespace SESync
