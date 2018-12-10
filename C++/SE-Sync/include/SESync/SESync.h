@@ -50,9 +50,9 @@ struct SESyncOpts {
   /// that update step.  You probably don't need to modify these unless you
   /// really know what you're doing.
 
-  /** Gradient tolerance for the truncated preconditioned conjugate
-  gradient solver: stop if ||g|| < kappa * ||g_0||.  This parameter should be in
-  the range (0,1). */
+  /** Gradient tolerance for the truncated preconditioned conjugate gradient
+   * solver: stop if ||g|| < kappa * ||g_0||.  This parameter should be in the
+   * range (0,1). */
   Scalar STPCG_kappa = .1;
 
   /** Gradient tolerance based upon a fractional-power reduction in the norm of
@@ -91,8 +91,8 @@ struct SESyncOpts {
   Scalar min_eig_num_tol = 1e-5;
 
   /** The number of working vectors to use in the minimum eigenvalue computation
-(using the implicitly-restarted Arnoldi algorithm); must be in the range [1,
-(#poses) * (#problem dimension) - 1] */
+   * (using the implicitly-restarted Arnoldi algorithm); must be in the range
+   * [1, (#poses) * (#problem dimension) - 1] */
   size_t num_Lanczos_vectors = 20;
 
   /** Whether to use the Cholesky or QR factorization when computing the
@@ -132,20 +132,20 @@ enum SESyncStatus {
   GLOBAL_OPT,
 
   /** The algorithm converged to a saddle point, but the backtracking line
-     search was unable to escape it */
+   * search was unable to escape it */
   SADDLE_POINT,
 
   /** The algorithm converged to a first-order critical point, but the
-     minimum-eigenvalue computation did not converge to sufficient precision to
-     enable its characterization */
+   * minimum-eigenvalue computation did not converge to sufficient precision to
+   * enable its characterization */
   EIG_IMPRECISION,
 
   /** The algorithm exhausted the maximum number of iterations of the Riemannian
-     Staircase before finding an optimal solution */
+   * Staircase before finding an optimal solution */
   RS_ITER_LIMIT,
 
   /** The algorithm exhausted the allotted total computation time before finding
-     an optimal solution */
+   * an optimal solution */
   ELAPSED_TIME
 };
 
@@ -259,7 +259,7 @@ SESyncResult SESync(const measurements_t &measurements,
                     const Matrix &Y0 = Matrix());
 
 /** Helper function: used in the Riemannian Staircase to escape from a saddle
- * point.  Here:
+ *  point.  Here:
  *
  * - problem is the specific special Euclidean synchronization problem we are
  *     attempting to solve
@@ -268,8 +268,8 @@ SESyncResult SESync(const measurements_t &measurements,
  * - lambda_min is the (negative) minimum eigenvalue of the matrix Q - Lambda
  * - v_min is the eigenvector corresponding to lambda_min
  * - gradient_tolerance is a *lower bound* on the norm of the Riemannian
- * gradient grad F(Yplus)
- *     in order to accept a candidate point Xplus as a valid solution
+ *   gradient grad F(Yplus) in order to accept a candidate point Xplus as a
+ *   valid solution
  *
  * Post-condition:  This function returns a Boolean value indicating whether it
  * was able to successfully escape from the saddle point, meaning it found a
