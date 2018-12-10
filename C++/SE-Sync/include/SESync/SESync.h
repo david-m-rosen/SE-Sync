@@ -1,8 +1,8 @@
 /** This file provides a convenient functional interface to the SESync
-* algorithm.
-*
-*  Copyright (C) 2016 - 2018 by David M. Rosen
-*/
+ * algorithm.
+ *
+ *  Copyright (C) 2016 - 2018 by David M. Rosen (dmrosen@mit.edu).
+ */
 
 #pragma once
 
@@ -109,8 +109,8 @@ struct SESyncOpts {
   Scalar reg_Cholesky_precon_max_condition_number = 1e6;
 
   /** If no initial iterate Y0 is supplied, this boolean determines the
- * initialization strategy employed by SE-Sync: 'true' -> chordal, 'false' ->
- * random sampling */
+   * initialization strategy employed by SE-Sync: 'true' -> chordal, 'false' ->
+   * random sampling */
   Initialization initialization = Initialization::Chordal;
 
   /** Whether to print output as the algorithm runs */
