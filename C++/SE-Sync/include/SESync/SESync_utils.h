@@ -2,7 +2,7 @@
 set of pose-graph SLAM measurements and constructing the corresponding data
 matrices used in the SE-Sync algorithm.
  *
- * Copyright (C) 2016, 2017 by David M. Rosen
+ * Copyright (C) 2016 - 2018 by David M. Rosen (dmrosen@mit.edu)
  */
 
 #pragma once

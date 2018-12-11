@@ -3,7 +3,7 @@
  * in p-dimensional space).  Elements of this manifold (and its tangent spaces)
  * are represented as p x kn matrices of type 'MatrixType'
  *
- * Copyright (C) 2017 by David M. Rosen
+ * Copyright (C) 2016 - 2018 by David M. Rosen (dmrosen@mit.edu)
  */
 
 #pragma once

@@ -6,7 +6,7 @@
  * (tangent space projection and retraction) and evaluating the optimization
  * objective and its gradient and Hessian operator.
  *
- *  Copyright (C) 2016 - 2018 by David M. Rosen
+ * Copyright (C) 2016 - 2018 by David M. Rosen (dmrosen@mit.edu)
  */
 
 #pragma once

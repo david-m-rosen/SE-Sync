@@ -2,7 +2,7 @@
  * measurement sampled from the generative model given in equation (10) of the
  * SE-Sync tech report.
  *
- * Copyright (C) 2016, 2017 by David M. Rosen
+ * Copyright (C) 2016 - 2018 by David M. Rosen (dmrosen@mit.edu)
  */
 
 #pragma once

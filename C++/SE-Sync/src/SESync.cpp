@@ -50,10 +50,11 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
     if (options.formulation == Formulation::Simplified) {
-      std::cout << " Using " << (problem.projection_factorization() ==
-                                         ProjectionFactorization::Cholesky
-                                     ? "Cholseky"
-                                     : "QR")
+      std::cout << " Using "
+                << (problem.projection_factorization() ==
+                            ProjectionFactorization::Cholesky
+                        ? "Cholseky"
+                        : "QR")
                 << " decomposition to compute orthogonal projections"
                 << std::endl;
     }
@@ -135,16 +136,16 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
         // Compute Riemannian gradient from Euclidean gradient
         grad = problem.Riemannian_gradient(Y, NablaF_Y);
 
-    // Compute Riemannian gradient from Euclidean gradient
-    grad = problem.Riemannian_gradient(Y, NablaF_Y);
+        // Compute Riemannian gradient from Euclidean gradient
+        grad = problem.Riemannian_gradient(Y, NablaF_Y);
 
-    // Define linear operator for computing Riemannian Hessian-vector
-    // products (cf. eq. (44) in the SE-Sync tech report)
-    HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
-                        const Matrix &NablaF_Y) {
-      return problem.Riemannian_Hessian_vector_product(Y, NablaF_Y, Ydot);
-    };
-  };
+        // Define linear operator for computing Riemannian Hessian-vector
+        // products (cf. eq. (44) in the SE-Sync tech report)
+        HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
+                            const Matrix &NablaF_Y) {
+          return problem.Riemannian_Hessian_vector_product(Y, NablaF_Y, Ydot);
+        };
+      };
 
   // Riemannian metric
 
@@ -533,17 +534,17 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
    * descent  direction from this saddle point, as described in Theorem 3.9
    * of the paper "A Riemannian Low-Rank Method for Optimization over
    * Semidefinite  Matrices with Block-Diagonal Constraints". Define the vector
-   * Xdot := e_{r+1} * v'; this is a tangent vector to the domain of the SDP
+   * Ydot := e_{r+1} * v'; this is a tangent vector to the domain of the SDP
    * and provides a direction of negative curvature */
 
   // Function value at current iterate (saddle point)
   Scalar FY = problem.evaluate_objective(Y);
 
   // Relaxation rank at the NEXT level of the Riemannian Staircase, i.e. we
-  // require that r = X.rows() + 1
+  // require that r = Y.rows() + 1
   size_t r = problem.relaxation_rank();
 
-  // Construct the corresponding representation of the saddle point X in the
+  // Construct the corresponding representation of the saddle point Y in the
   // next level of the Riemannian Staircase by adding a row of 0's
   Matrix Y_augmented = Matrix::Zero(r, Y.cols());
   Y_augmented.topRows(r - 1) = Y;
@@ -568,7 +569,7 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
     // Retract along the given tangent vector using the given stepsize
     Ytest = problem.retract(Y_augmented, alpha * Ydot);
 
-    // Ensure that the trial point Xtest has a lower function value than
+    // Ensure that the trial point Ytest has a lower function value than
     // the current iterate Y, and that the gradient at Ytest is
     // sufficiently large that we will not automatically trigger the
     // gradient tolerance stopping criterion at the next iteration
