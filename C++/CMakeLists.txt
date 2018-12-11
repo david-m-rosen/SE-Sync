@@ -31,7 +31,7 @@ set(ENABLE_OPENMP ON CACHE BOOL "Enable OpenMP (if available)")
 set(ENABLE_PROFILING OFF CACHE BOOL "Enable code profiling using gperftools")
 
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/eigen/cmake" CACHE STRING "The CMake module path used for this project")
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Eigen/cmake" CACHE STRING "The CMake module path used for this project")
 
 if(${ENABLE_FAST_INSTRUCTIONS})
 message(STATUS "Enabling SIMD/AVX instruction sets")
@@ -49,14 +49,9 @@ message(STATUS "")
 # SESYNC DEPENDENCIES
 
 # FIND EIGEN3
-set( ENV{EIGEN3_ROOT_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/eigen)
-find_package(Eigen3 3.3.3 REQUIRED)
-if(EIGEN3_FOUND)
-message(STATUS "Found Eigen3 library (version ${EIGEN3_VERSION})")
+set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Eigen)
 message(STATUS "Eigen3 include directory: ${EIGEN3_INCLUDE_DIR}\n")
-else()
-message(STATUS "Eigen library not found!")
-endif()
+
 
 # FIND ADDITIONAL LIBRARIES
 # These next operations make use of the .cmake files shipped with Eigen3
@@ -82,7 +77,8 @@ endif()
 
 # FIND SPECTRA
 # Spectra doesn't ship with a .cmake file, but it's header-only, so it suffices to simply determine it's top-level directory
-set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/spectra/include CACHE PATH "Path to top-level directory of Spectra template library")
+set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/include CACHE PATH "Path to top-level directory of Spectra template library")
+message(STATUS "Spectra include directory: ${SPECTRA_INCLUDE_DIR}\n")
 
 set(SESync_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/include)
 set(SESync_HDR_DIR ${SESync_INCLUDE_DIR}/SESync)

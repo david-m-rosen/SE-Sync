@@ -1,5 +1,5 @@
-#include "MatOp/SparseSymMatProd.h"
-#include "SymEigsSolver.h" // Spectra's symmetric eigensolver
+#include "Spectra/MatOp/SparseSymMatProd.h"
+#include "Spectra/SymEigsSolver.h" // Spectra's symmetric eigensolver
 
 #include "SESync/SESyncProblem.h"
 #include "SESync/SESync_utils.h"
