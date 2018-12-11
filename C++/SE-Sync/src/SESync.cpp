@@ -104,7 +104,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                 << problem.regularized_Cholesky_preconditioner_max_condition();
 
     std::cout << std::endl << std::endl;
-  }
+  } // if (options.verbose)
 
   /// ALGORITHM START
   auto SESync_start_time = Stopwatch::tick();
@@ -320,9 +320,10 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Check eigenvalue convergence
     if (!eigenvalue_convergence) {
-      std::cout << "WARNING!  EIGENVALUE COMPUTATION DID NOT CONVERGE TO "
-                   "DESIRED PRECISION!"
-                << std::endl;
+      if (options.verbose)
+        std::cout << "WARNING!  EIGENVALUE COMPUTATION DID NOT CONVERGE TO "
+                     "DESIRED PRECISION!"
+                  << std::endl;
       SESyncResults.status = EIG_IMPRECISION;
       break;
     }
@@ -373,10 +374,12 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
         // Update initialization point for next level in the Staircase
         Y = Yplus;
       } else {
-        std::cout << "WARNING!  BACKTRACKING LINE SEARCH FAILED TO ESCAPE FROM "
-                     "SADDLE POINT!  (Try decreasing the preconditioned "
-                     "gradient norm tolerance)"
-                  << std::endl;
+        if (options.verbose)
+          std::cout
+              << "WARNING!  BACKTRACKING LINE SEARCH FAILED TO ESCAPE FROM "
+                 "SADDLE POINT!  (Try decreasing the preconditioned "
+                 "gradient norm tolerance)"
+              << std::endl;
         SESyncResults.status = SADDLE_POINT;
         break;
       }
@@ -416,7 +419,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                 << std::endl;
       break;
     }
-  }
+  } // if (options.verbose)
 
   if (options.verbose)
     std::cout << std::endl << "Rounding solution ... ";
@@ -499,7 +502,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << std::endl;
 
     std::cout << "===== END SE-SYNC =====" << std::endl << std::endl;
-  }
+  } // if (options.verbose)
   return SESyncResults;
 }
 
