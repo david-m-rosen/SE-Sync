@@ -572,13 +572,13 @@ Scalar orbit_distance_dS(const Matrix &X, const Matrix &Y, Matrix *G_S) {
   // Compute singular value decomposition of XY^T
   Eigen::JacobiSVD<Matrix> svd(XYt, Eigen::ComputeFullU | Eigen::ComputeFullV);
 
-  // Compute determinant of XYt using the LU decomposition
-  Eigen::FullPivLU<Matrix> lu(XYt);
+  // Compute UVt
+  Matrix UVt = svd.matrixU() * svd.matrixV().transpose();
 
   // Construct diagonal matrix Xi = diag(1, ..., 1, det(UV^T))
   Vector Xi_diag = Vector::Constant(d, 1.0);
   // Note that since U and V are orthogonal matrices, then det(UV^T) = +/- 1
-  Xi_diag(d - 1) = std::copysign(1.0, lu.determinant());
+  Xi_diag(d - 1) = std::copysign(1.0, UVt.determinant());
 
   // Compute orbit distance dS
   Scalar dS = sqrt(fabs(
