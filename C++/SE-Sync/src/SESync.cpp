@@ -53,7 +53,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       std::cout << " Using "
                 << (problem.projection_factorization() ==
                             ProjectionFactorization::Cholesky
-                        ? "Cholseky"
+                        ? "Cholesky"
                         : "QR")
                 << " decomposition to compute orthogonal projections"
                 << std::endl;

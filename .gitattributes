@@ -1,0 +1,3 @@
+# Don't count the Manopt code in the following directory when summarizing the SE-Sync project's language breakdown usage via Linguist
+
+MATLAB/SE-Sync/manopt/* linguist-vendored
