@@ -17,6 +17,48 @@ To use the MATLAB implementation of SE-Sync, simply place the 'MATLAB' folder in
 
 The C++ implementation of SE-Sync can be built and exported as a CMake project.  For a minimal working example, see [C++/examples/main](https://github.com/david-m-rosen/SE-Sync/blob/master/C%2B%2B/examples/main.cpp), which provides a simple command-line utility for processing .g2o files.
 
+#### C++ quick installation guide
+
+The following installation instructions have been verified on Ubuntu 18.04:
+
+*Step 1:*  Install dependencies
+```
+$ sudo apt-get install build-essential cmake-gui libsuitesparse-dev
+```
+
+*Step 2:*  Clone the repository
+```
+$ git clone https://github.com/david-m-rosen/SE-Sync.git SESync
+```
+
+*Step 3:*  Initialize Git submodules
+```
+$ cd SESync
+$ git submodule init
+$ git submodule update
+```
+
+*Step 4:*  Create build directory
+```
+$ cd C++ && mkdir build
+```
+
+*Step 5:*  Configure build and generate Makefiles
+```
+$ cd build && cmake ..
+```
+
+*Step 6:*  Build code
+```
+$ make [-jN, where N is the number of cores to use for parallel compilation]
+```
+
+*Step 7:*  Run the example command-line utility on some tasty data :-D!
+```
+$ cd bin
+$ ./SE-Sync ../../../data/sphere2500.g2o 
+```
+
 ## References
 
 We are making this software freely available in the hope that it will be useful to others. If you use SE-Sync in your own work, please [cite](https://github.com/david-m-rosen/SE-Sync/blob/master/SE-Sync%20-%20A%20certifiably%20correct%20algorithm%20for%20synchronization%20over%20the%20special%20Euclidean%20group.pdf) [our](https://github.com/david-m-rosen/SE-Sync/blob/master/SE-Sync%20-%20A%20Certifiably%20Correct%20Algorithm%20for%20Synchronization%20over%20the%20Special%20Euclidean%20Group.pdf) [papers](https://github.com/david-m-rosen/SE-Sync/blob/master/A%20Certifiably%20Correct%20Algorithm%20for%20Synchronization%20over%20the%20Special%20Euclidean%20Group.pdf):
