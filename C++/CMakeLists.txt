@@ -120,7 +120,8 @@ target_link_libraries(${PROJECT_NAME} Optimization ${BLAS_LIBRARIES} ${CHOLMOD_L
 if(OPENMP_FOUND)
 # Add additional compilation flags to enable OpenMP support
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
-target_link_libraries(${PROJECT_NAME} gomp)
+set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-fopenmp")
+target_link_libraries(${PROJECT_NAME})
 endif()
 
 # BUILD EXAMPLE DRIVER
