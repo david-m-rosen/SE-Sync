@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/david-m-rosen/SE-Sync.svg?branch=master)](https://travis-ci.org/david-m-rosen/SE-Sync)
+
 # SE-Sync
 
 
