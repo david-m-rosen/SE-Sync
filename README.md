@@ -77,7 +77,7 @@ month = mar,
 year = {2019},
 }
 
-@techreport{Rosen2016SESync,
+@techreport{Rosen2017SESync,
 title = {{SE-Sync}: A Certifiably Correct Algorithm for Synchronization over the Special {Euclidean} Group},
 author = {Rosen, D.M. and Carlone, L. and Bandeira, A.S. and Leonard, J.J.},
 institution = {Computer Science and Artificial Intelligence Laboratory, Massachusetts Institute of Technology},
