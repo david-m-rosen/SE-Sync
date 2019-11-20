@@ -96,6 +96,14 @@ year = {2016},
 address = {San Francisco, CA},
 }
 
+@unpublished{Rosen2017Computational,
+title = {Computational Enhancements for Certifiably Correct {SLAM}},
+author = {Rosen, D.M. and Carlone, L.},
+note = {Presented at the International Conference on Intelligent Robots and Systems (IROS) in the workshop ``Introspective Methods for Reliable Autonomy"},
+month = sep,
+year = {2017},
+}
+
 
 ```
 
