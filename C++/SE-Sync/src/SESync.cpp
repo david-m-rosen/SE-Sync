@@ -561,7 +561,7 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   // arrive at a trial point whose gradient is large enough to avoid
   // triggering the gradient norm tolerance stopping condition,
   // according to the local second-order model
-  Scalar alpha = 2 * sqrt(10 * gradient_tolerance / fabs(lambda_min));
+  Scalar alpha = 10 * gradient_tolerance / fabs(lambda_min);
   Scalar alpha_min = 1e-16; // Minimum stepsize
 
   // Vectors of trial stepsizes and corresponding function values
@@ -570,8 +570,7 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
 
   /// Backtracking line search
   Matrix Ytest;
-  do {
-    alpha /= 2;
+  while (alpha >= alpha_min) {
 
     // Retract along the given tangent vector using the given stepsize
     Ytest = problem.retract(Y_augmented, alpha * Ydot);
@@ -596,7 +595,8 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
       Yplus = Ytest;
       return true;
     }
-  } while (alpha >= alpha_min);
+    alpha /= 2;
+  }
 
   // If control reaches here, we failed to find a trial point that satisfied
   // *both* the function decrease *and* gradient bounds.  In order to make
