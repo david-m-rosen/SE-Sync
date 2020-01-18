@@ -7,6 +7,8 @@
 
 #include "Optimization/Smooth/TNT.h"
 
+#include <algorithm>
+
 namespace SESync {
 
 SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
@@ -555,16 +557,18 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   Matrix Ydot = Matrix::Zero(r, Y.cols());
   Ydot.bottomRows<1>() = v_min.transpose();
 
-  // Set the initial step length to 100 times the distance needed to
+  // Set the initial step length to 10 times the distance needed to
   // arrive at a trial point whose gradient is large enough to avoid
   // triggering the gradient norm tolerance stopping condition,
   // according to the local second-order model
-  Scalar alpha = 2 * 1000 * gradient_tolerance / fabs(lambda_min);
-  Scalar alpha_min = 1e-32; // Minimum stepsize
+  Scalar alpha = 2 * sqrt(10 * gradient_tolerance / fabs(lambda_min));
+  Scalar alpha_min = 1e-16; // Minimum stepsize
 
-  // Initialize line search
-  bool escape_success = false;
+  // Vectors of trial stepsizes and corresponding function values
+  std::vector<double> alphas;
+  std::vector<double> fvals;
 
+  /// Backtracking line search
   Matrix Ytest;
   do {
     alpha /= 2;
@@ -582,17 +586,39 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
     Scalar preconditioned_grad_FYtest_norm =
         problem.precondition(Ytest, grad_FYtest).norm();
 
+    // Record trial stepsize and function value
+    alphas.push_back(alpha);
+    fvals.push_back(FYtest);
+
     if ((FYtest < FY) && (grad_FYtest_norm > gradient_tolerance) &&
-        (preconditioned_grad_FYtest_norm > preconditioned_gradient_tolerance))
-      escape_success = true;
-  } while (!escape_success && (alpha > alpha_min));
-  if (escape_success) {
-    // Update initialization point for next level in the Staircase
-    Yplus = Ytest;
+        (preconditioned_grad_FYtest_norm > preconditioned_gradient_tolerance)) {
+      // Accept this trial point and return success
+      Yplus = Ytest;
+      return true;
+    }
+  } while (alpha >= alpha_min);
+
+  // If control reaches here, we failed to find a trial point that satisfied
+  // *both* the function decrease *and* gradient bounds.  In order to make
+  // forward progress, we will fall back to accepting the trial point that
+  // simply minimized the objective value, provided that it strictly *decreased*
+  // the objective from the current (saddle) point
+
+  // Find minimum function value from among the trial points
+  auto fmin_iter = std::min_element(fvals.begin(), fvals.end());
+  auto min_idx = std::distance(fvals.begin(), fmin_iter);
+
+  double f_min = fvals[min_idx];
+  double a_min = alphas[min_idx];
+
+  if (f_min < FY) {
+    // If this trial point strictly decreased the objective value, accept it and
+    // return success
+    Yplus = problem.retract(Y_augmented, a_min * Ydot);
     return true;
   } else {
-    // If control reaches here, we exited the loop without finding a suitable
-    // iterate, i.e. we failed to escape the saddle point
+    // NO trial point decreased the objective value: we were unable to escape
+    // the saddle point!
     return false;
   }
 }
