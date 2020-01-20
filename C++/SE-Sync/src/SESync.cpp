@@ -557,12 +557,14 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   Matrix Ydot = Matrix::Zero(r, Y.cols());
   Ydot.bottomRows<1>() = v_min.transpose();
 
-  // Set the initial step length to 10 times the distance needed to
-  // arrive at a trial point whose gradient is large enough to avoid
-  // triggering the gradient norm tolerance stopping condition,
-  // according to the local second-order model
-  Scalar alpha = 10 * gradient_tolerance / fabs(lambda_min);
-  Scalar alpha_min = 1e-16; // Minimum stepsize
+  // Set the initial step length to the greater of 10 times the distance needed
+  // to arrive at a trial point whose gradient is large enough to avoid
+  // triggering the gradient norm tolerance stopping condition (according to the
+  // local second-order model), or at least 2^4 times the minimum admissible
+  // steplength,
+  Scalar alpha_min = 1e-6; // Minimum stepsize
+  Scalar alpha =
+      std::max(16 * alpha_min, 10 * gradient_tolerance / fabs(lambda_min));
 
   // Vectors of trial stepsizes and corresponding function values
   std::vector<double> alphas;
