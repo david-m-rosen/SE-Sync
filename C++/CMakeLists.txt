@@ -24,7 +24,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "The direc
 
 # BUILD CONFIGURATIONS
 # Enable faster instruction sets (SIMD/AVX)
-set(ENABLE_FAST_INSTRUCTIONS ON CACHE BOOL "Enable faster instruction sets (SIMD/AVX)")
+set(ENABLE_VECTORIZATION OFF CACHE BOOL "Enable vectorized instruction sets (SIMD/AVX)? [disabled by default]")
 # Enable OpenMP (if available)
 set(ENABLE_OPENMP ON CACHE BOOL "Enable OpenMP (if available)")
 # Enable code profiling using gperftools
@@ -33,7 +33,7 @@ set(ENABLE_PROFILING OFF CACHE BOOL "Enable code profiling using gperftools")
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Eigen/cmake" CACHE STRING "The CMake module path used for this project")
 
-if(${ENABLE_FAST_INSTRUCTIONS})
+if(${ENABLE_VECTORIZATION})
 message(STATUS "Enabling SIMD/AVX instruction sets")
 add_definitions(-march=native)
 endif()
@@ -70,7 +70,7 @@ add_subdirectory(${OPTIMIZATION_DIR})
 if(${ENABLE_OPENMP})
 find_package(OpenMP)
 if(OPENMP_FOUND)
-message(STATUS "\nFound OpenMP! Turning on support for parallelization\n")
+message(STATUS "Found OpenMP! Turning on support for parallelization\n")
 endif()
 endif()
 
