@@ -138,9 +138,6 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
         // Compute Riemannian gradient from Euclidean gradient
         grad = problem.Riemannian_gradient(Y, NablaF_Y);
 
-        // Compute Riemannian gradient from Euclidean gradient
-        grad = problem.Riemannian_gradient(Y, NablaF_Y);
-
         // Define linear operator for computing Riemannian Hessian-vector
         // products (cf. eq. (44) in the SE-Sync tech report)
         HessOp = [&problem](const Matrix &Y, const Matrix &Ydot,
