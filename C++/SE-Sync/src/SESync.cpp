@@ -5,7 +5,7 @@
 #include "SESync/SESync_types.h"
 #include "SESync/SESync_utils.h"
 
-#include "Optimization/Smooth/TNT.h"
+#include "Optimization/Riemannian/TNT.h"
 
 #include <algorithm>
 
@@ -127,11 +127,11 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       };
 
   // Local quadratic model constructor
-  Optimization::Smooth::QuadraticModel<Matrix, Matrix, Matrix> QM =
-      [&problem](
-          const Matrix &Y, Matrix &grad,
-          Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix> &HessOp,
-          Matrix &NablaF_Y) {
+  Optimization::Riemannian::QuadraticModel<Matrix, Matrix, Matrix> QM =
+      [&problem](const Matrix &Y, Matrix &grad,
+                 Optimization::Riemannian::LinearOperator<Matrix, Matrix,
+                                                          Matrix> &HessOp,
+                 Matrix &NablaF_Y) {
         // Compute and cache Euclidean gradient at the current iterate
         NablaF_Y = problem.Euclidean_gradient(Y);
 
@@ -151,26 +151,26 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   // We consider a realization of the product of Stiefel manifolds as an
   // embedded submanifold of R^{r x dn}; consequently, the induced Riemannian
   // metric is simply the usual Euclidean inner product
-  Optimization::Smooth::RiemannianMetric<Matrix, Matrix, Scalar, Matrix>
+  Optimization::Riemannian::RiemannianMetric<Matrix, Matrix, Scalar, Matrix>
       metric = [&problem](const Matrix &Y, const Matrix &V1, const Matrix &V2,
                           const Matrix &NablaF_Y) {
         return (V1 * V2.transpose()).trace();
       };
 
   // Retraction operator
-  Optimization::Smooth::Retraction<Matrix, Matrix, Matrix> retraction =
+  Optimization::Riemannian::Retraction<Matrix, Matrix, Matrix> retraction =
       [&problem](const Matrix &Y, const Matrix &Ydot, const Matrix &NablaF_Y) {
         return problem.retract(Y, Ydot);
       };
 
   // Preconditioning operator (optional)
   std::experimental::optional<
-      Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix>>
+      Optimization::Riemannian::LinearOperator<Matrix, Matrix, Matrix>>
       precon;
   if (options.preconditioner == Preconditioner::None)
     precon = std::experimental::nullopt;
   else {
-    Optimization::Smooth::LinearOperator<Matrix, Matrix, Matrix> precon_op =
+    Optimization::Riemannian::LinearOperator<Matrix, Matrix, Matrix> precon_op =
         [&problem](const Matrix &Y, const Matrix &Ydot,
                    const Matrix &NablaF_Y) {
           return problem.precondition(Y, Ydot);
@@ -224,7 +224,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   /// RIEMANNIAN STAIRCASE
 
   // Configure optimization parameters
-  Optimization::Smooth::TNTParams<Scalar> params;
+  Optimization::Riemannian::TNTParams<Scalar> params;
   params.gradient_tolerance = options.grad_norm_tol;
   params.preconditioned_gradient_tolerance =
       options.preconditioned_grad_norm_tol;
@@ -266,8 +266,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                 << std::endl;
 
     /// Run optimization!
-    Optimization::Smooth::TNTResult<Matrix, Scalar> TNTResults =
-        Optimization::Smooth::TNT<Matrix, Matrix, Scalar, Matrix>(
+    Optimization::Riemannian::TNTResult<Matrix, Scalar> TNTResults =
+        Optimization::Riemannian::TNT<Matrix, Matrix, Scalar, Matrix>(
             F, QM, metric, retraction, Y, NablaF_Y, precon, params,
             options.user_function);
 

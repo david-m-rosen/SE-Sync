@@ -9,7 +9,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-#include "Optimization/Smooth/TNT.h"
+#include "Optimization/Riemannian/TNT.h"
 
 namespace SESync {
 
@@ -61,8 +61,9 @@ enum class Initialization { Chordal, Random };
 /** A typedef for a user-definable function that can be used to
  * instrument/monitor the performance of the internal Riemannian
  * truncated-Newton trust-region optimization algorithm as it runs (see the
- * header file Optimization/Smooth/TNT.h for details). */
-typedef Optimization::Smooth::TNTUserFunction<Matrix, Matrix, Scalar, Matrix>
+ * header file Optimization/Riemannian/TNT.h for details). */
+typedef Optimization::Riemannian::TNTUserFunction<Matrix, Matrix, Scalar,
+                                                  Matrix>
     SESyncTNTUserFunction;
 
 } // namespace SESync
