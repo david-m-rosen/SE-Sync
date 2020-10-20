@@ -12,9 +12,10 @@
 namespace SESync {
 
 /* *************************************************************************  */
-SESyncVisualizer::SESyncVisualizer(const measurements_t &measurements,
+SESyncVisualizer::SESyncVisualizer(const size_t num_poses,
+                                   const measurements_t &measurements,
                                    const SESyncOpts &options)
-    : measurements_(measurements), options_(options) {
+    : num_poses_(num_poses), measurements_(measurements), options_(options) {
   // Build an SE-Sync problem.
   problem_ = std::make_shared<SESyncProblem>(
       measurements_, options_.formulation, options_.projection_factorization,
@@ -24,30 +25,24 @@ SESyncVisualizer::SESyncVisualizer(const measurements_t &measurements,
   // Solve (Empty initialization).
   result_ = SESync(*problem_, options_, /*Y0 = */ Matrix());
 
-  // TEMP
+  // Round all iterates using approriate rank.
   std::vector<std::vector<Matrix>> iterates = result_.iterates;
-  std::cout << "Checking out the iterates." << std::endl;
-  std::cout << "Staircase levels: " << iterates.size() << std::endl;
   size_t rank_counter = options_.r0;
   for (size_t l = 0; l < iterates.size(); l++) {
     problem_->set_relaxation_rank(rank_counter);
     for (const Matrix &Y : iterates[l]) {
       iterates_.push_back(problem_->round_solution(Y));
-      std::cout << "xhat: " << iterates_.back().rows() << "x"
-                << iterates_.back().cols() << std::endl;
     }
-    std::cout << " - level " << rank_counter << ": " << iterates[l].size()
-              << std::endl;
     rank_counter++;
   }
-  Matrix Yopt = result_.Yopt;
-  std::cout << "Yopt dimensions: " << Yopt.rows() << "x" << Yopt.cols()
-            << std::endl;
-  std::cout << "Rank counter: " << rank_counter << std::endl;
-  std::cout << "recovered iterates: " << iterates_.size() << std::endl;
-  // TEMP
 
-  // Round all iterates using approriate rank.
+  // Get problem's dimension from optimal solution.
+  dim_ = result_.xhat.rows();
+
+  // Parse all solutions into vectors of matrices.
+  for (const Matrix &xhat : iterates_) {
+    solutions_.push_back(ParseXhatToVector(AnchorSolution(xhat)));
+  }
 }
 
 /* *************************************************************************  */
@@ -80,17 +75,17 @@ void SESyncVisualizer::RenderWorld() {
   bool show_z0 = true;
   pangolin::RegisterKeyPressCallback('z', [&]() { show_z0 = !show_z0; });
 
-  bool show_gtsam = true;
-  pangolin::RegisterKeyPressCallback('g', [&]() { show_gtsam = !show_gtsam; });
-
-  bool show_manual = true;
-  pangolin::RegisterKeyPressCallback('m',
-                                     [&]() { show_manual = !show_manual; });
+  bool restart = false;
+  pangolin::RegisterKeyPressCallback('r', [&]() { restart = !restart; });
 
   // Manage the size of the points.
   glPointSize(3.5); // Default is 1.
   // Useful identity.
   Eigen::Matrix4d I_4x4 = Eigen::Matrix4d::Identity();
+
+  auto clock = Stopwatch::tick();
+  double time = 0, dt = 0.5;
+  size_t counter = 0, pose_idx = 0, num_iters = solutions_.size();
 
   while (!pangolin::ShouldQuit()) {
     // Clear screen and activate view to render into
@@ -107,13 +102,7 @@ void SESyncVisualizer::RenderWorld() {
     // Default line width.
     glLineWidth(1.0);
 
-    if (show_manual) {
-      for (const auto &vp : vposes_) {
-        glLineWidth(std::get<2>(vp));
-        pangolin::glDrawAxis(std::get<0>(vp), std::get<1>(vp));
-        glLineWidth(1.0);
-      }
-    }
+    DrawTrajectory(solutions_[pose_idx]);
 
     s_cam.Apply();
     glColor3f(1.0, 1.0, 1.0);
@@ -123,6 +112,26 @@ void SESyncVisualizer::RenderWorld() {
     if (show_z0)
       pangolin::glDrawAxis(I_4x4, 0.11);
     glLineWidth(1.0);
+
+    time = Stopwatch::tock(clock);
+    counter++;
+    // std::cout << time << std::endl;
+    // std::cout << fmod(time, 3.0) << std::endl;
+    if (fmod(time, dt) < 1e-4 && counter > 100) {
+      std::cout << "SHOULD TRIGGER HERE!" << std::endl;
+      std::cout << "counter: " << counter << std::endl;
+      counter = 0;
+      pose_idx++;
+      if (pose_idx == num_iters)
+        pose_idx = num_iters - 1;
+      std::cout << "pose idx: " << pose_idx << std::endl;
+      std::cout << "num poses: " << num_iters << std::endl;
+    }
+
+    if (restart) {
+      restart = false;
+      pose_idx = 0;
+    }
 
     // Swap frames and Process Events
     pangolin::FinishFrame();
@@ -148,6 +157,36 @@ void SESyncVisualizer::DrawTrajectory(const Trajectory3 &trajectory,
   pangolin::glDrawLineStrip(positions);
   glLineWidth(1.0);
   glColor3f(1.0, 1.0, 1.0);
+}
+
+/* ************************************************************************** */
+Trajectory3 SESyncVisualizer::ParseXhatToVector(const Matrix &xhat) const {
+  Trajectory3 poses;
+  poses.reserve(num_poses_);
+
+  for (size_t i = 0; i < num_poses_; i++) {
+    Eigen::Matrix4d p = Eigen::Matrix4d::Identity();
+    p.block(0, 0, dim_, dim_) =
+        xhat.block(0, num_poses_ + i * dim_, dim_, dim_);
+    p.block(0, 3, dim_, 1) = xhat.block(0, i, dim_, 1);
+    poses.push_back(p);
+  }
+
+  return poses;
+}
+
+/* ************************************************************************** */
+Matrix SESyncVisualizer::AnchorSolution(const Matrix &xhat) const {
+  // Rotate.
+  Matrix xhat_anchored =
+      xhat.block(0, num_poses_, dim_, dim_).transpose() * xhat;
+
+  // Pin to origin.
+  Matrix anchored_t =
+      xhat.block(0, 0, dim_, num_poses_).colwise() - xhat.col(0);
+  xhat_anchored.block(0, 0, dim_, num_poses_) = anchored_t;
+
+  return xhat_anchored;
 }
 
 } // namespace SESync
