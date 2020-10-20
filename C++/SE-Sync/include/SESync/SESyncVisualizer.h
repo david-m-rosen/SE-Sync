@@ -25,14 +25,16 @@ typedef std::vector<Eigen::Matrix4d, Eigen::aligned_allocator<Eigen::Matrix4d>>
 
 /**
  * @class SESyncVisualizer
- * @brief Class for wrapping OpenGL and Pangoling to visualize in 3D.
+ * @brief Class for wrapping OpenGL and Pangoling to visualize in SESync in 3D.
  */
 class SESyncVisualizer {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   /**
    * @brief Default constructor.
-   * @param result  Structure with SE-Sync results.
+   * @param num_poses     Total number of poses in the problem.
+   * @param measurements  Vector with relative pose measurements.
+   * @param options       Structure with SE-Sync initialization options.
    */
   explicit SESyncVisualizer(const size_t num_poses,
                             const measurements_t &measurements,
@@ -44,17 +46,18 @@ public:
   ~SESyncVisualizer();
 
   /**
-   * @brief Main visualization for Simple3dWorld that does all the drawing.
+   * @brief Main visualization for enjoying the synchronization process.
    */
-  void RenderWorld();
+  void RenderSynchronization();
 
 private:
   /**
-   * @brief Renders the trajectory as a sequence of triads.
-   * @param[in] trajectory Eigen-aligned vector of 3D poses.
+   * @brief Renders the solution as points and lines.
+   * @param[in] trajectory  Eigen-aligned vector of 3D poses.
+   * @param[in] lcs         Vector of 3D position pairs for loop-closing lines.
    */
-  void DrawTrajectory(const Trajectory3 &trajectory,
-                      const double axesLength = 0.2) const;
+  void DrawIterate(const Trajectory3 &trajectory,
+                   const std::vector<Eigen::Vector3d> &lcs) const;
 
   /**
    * @brief Parse an Xhat solution matrix into individual poses.
@@ -72,9 +75,7 @@ private:
 
   std::vector<Matrix> iterates_;       ///< Rounded iterates for visualization.
   std::vector<Trajectory3> solutions_; ///< Parsed solutions.
-
-  Trajectory3 est_; ///< Current state estimate trajectory.
-  Trajectory3 tgt_; ///< Current trajectory estimate for the target.
+  std::vector<std::vector<Eigen::Vector3d>> lcs_; ///< Loop closures.
 
   float w_ = 1200.0f; ///< Width of the screen [px].
   float h_ = 800.0f;  ///< Heigh of the screen [px].
