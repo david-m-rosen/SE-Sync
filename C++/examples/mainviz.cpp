@@ -32,5 +32,5 @@ int main(int argc, char **argv) {
 
   // Run SE-Sync, and launch the visualization magic.
   SESyncVisualizer viz(num_poses, measurements, opts);
-  viz.RenderWorld();
+  viz.RenderSynchronization();
 }
