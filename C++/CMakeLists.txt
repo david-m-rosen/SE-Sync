@@ -29,6 +29,8 @@ set(ENABLE_VECTORIZATION OFF CACHE BOOL "Enable vectorized instruction sets (SIM
 set(ENABLE_OPENMP ON CACHE BOOL "Enable OpenMP (if available)")
 # Enable code profiling using gperftools
 set(ENABLE_PROFILING OFF CACHE BOOL "Enable code profiling using gperftools")
+# Enable visualization module.
+set(ENABLE_VISUALIZATION OFF CACHE BOOL "Enable visualization module.")
 
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Eigen/cmake" CACHE STRING "The CMake module path used for this project")
@@ -41,6 +43,10 @@ endif()
 if(${ENABLE_PROFILING})
 message(STATUS "Enabling code profiling using Google Performance Tools")
 set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} -lprofiler)
+endif()
+
+if(${ENABLE_VISUALIZATION})
+  find_package(Pangolin REQUIRED)
 endif()
 
 message(STATUS "")
@@ -111,11 +117,23 @@ ${SESync_SOURCE_DIR}/SESyncProblem.cpp
 ${SESync_SOURCE_DIR}/SESync.cpp
 )
 
+# If visualization is enabled, make sure to include corresponding files.
+if(${ENABLE_VISUALIZATION})
+  list(APPEND SESync_HDRS
+    ${SESync_HDR_DIR}/SESyncVisualizer.h)
+  list(APPEND SESync_SRCS
+    ${SESync_SOURCE_DIR}/SESyncVisualizer.cpp)
+endif()
+
 # Build the SE-Sync library
 add_library(${PROJECT_NAME} SHARED ${SESync_HDRS} ${SESync_SRCS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${SESync_PRIVATE_INCLUDES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SESync_INCLUDES})
 target_link_libraries(${PROJECT_NAME} Optimization ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
+
+if(${ENABLE_VISUALIZATION})
+  target_link_libraries(${PROJECT_NAME} ${Pangolin_LIBRARIES})
+endif()
 
 if(OPENMP_FOUND)
 # Add additional compilation flags to enable OpenMP support
