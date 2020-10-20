@@ -8,3 +8,10 @@ endif()
 
 
 message(STATUS "Building main SE-Sync command-line executable in directory ${EXECUTABLE_OUTPUT_PATH}\n")
+
+
+# SE-Sync visualizer
+if(${ENABLE_VISUALIZATION})
+  add_executable(SE-SyncViz mainviz.cpp)
+  target_link_libraries(SE-SyncViz SESync)
+endif()
