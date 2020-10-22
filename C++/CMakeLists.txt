@@ -29,6 +29,8 @@ set(ENABLE_VECTORIZATION OFF CACHE BOOL "Enable vectorized instruction sets (SIM
 set(ENABLE_OPENMP ON CACHE BOOL "Enable OpenMP (if available)")
 # Enable code profiling using gperftools
 set(ENABLE_PROFILING OFF CACHE BOOL "Enable code profiling using gperftools")
+# Enable visualization module.
+set(ENABLE_VISUALIZATION OFF CACHE BOOL "Enable visualization module.")
 
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Eigen/cmake" CACHE STRING "The CMake module path used for this project")
@@ -41,6 +43,10 @@ endif()
 if(${ENABLE_PROFILING})
 message(STATUS "Enabling code profiling using Google Performance Tools")
 set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} -lprofiler)
+endif()
+
+if(${ENABLE_VISUALIZATION})
+  find_package(Pangolin REQUIRED)
 endif()
 
 message(STATUS "")
@@ -111,6 +117,7 @@ ${SESync_SOURCE_DIR}/SESyncProblem.cpp
 ${SESync_SOURCE_DIR}/SESync.cpp
 )
 
+
 # Build the SE-Sync library
 add_library(${PROJECT_NAME} SHARED ${SESync_HDRS} ${SESync_SRCS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${SESync_PRIVATE_INCLUDES})
@@ -124,6 +131,21 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-fopenmp")
 target_link_libraries(${PROJECT_NAME})
 endif()
 
+
+# SE-SYNC VISUALIZATION PROJECT
+
+# If visualization is enabled, build library.
+if(${ENABLE_VISUALIZATION})
+  set(SESyncViz_HDRS ${SESync_HDR_DIR}/SESyncVisualizer.h)
+  set(SESyncViz_SRCS ${SESync_SOURCE_DIR}/SESyncVisualizer.cpp)
+
+  add_library(SESyncViz SHARED ${SESyncViz_HDRS} ${SESyncViz_SRCS})
+  target_include_directories(SESyncViz PUBLIC ${SESync_INCLUDE_DIR})
+  target_link_libraries(SESyncViz ${PROJECT_NAME} ${Pangolin_LIBRARIES})
+endif()
+
+
+
 # BUILD EXAMPLE DRIVER
 add_subdirectory(examples)
 
@@ -135,3 +157,14 @@ export(PACKAGE ${PROJECT_NAME})
 # Create a configuration file for this project, so that it can be imported by other CMake projects
 export(TARGETS ${PROJECT_NAME} Optimization FILE ${PROJECT_NAME}Config.cmake)
 
+
+# EXPORT SE-SYNC VISUALIZATION LIBRARY
+
+if(${ENABLE_VISUALIZATION})
+# Add add entry for this project into CMake's package registry, so that this
+# project can be found by other CMake projects
+export(PACKAGE SESyncViz)
+# Create a configuration file for this project, so that it can be imported by
+# other CMake projects
+export(TARGETS SESyncViz FILE SESyncVizConfig.cmake)
+endif()
