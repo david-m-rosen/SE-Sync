@@ -63,10 +63,11 @@ class SESyncVisualizer {
    * @param[in] trajectory  Eigen-aligned vector of 3D poses.
    * @param[in] lcs         Vector of 3D position pairs for loop-closing lines.
    * @param[in] marker      Whether to draw point markers or not.
+   * @param[in] loops       Whether to draw loop closing lines or not.
    */
   void DrawIterate(const Trajectory3 &trajectory,
-                   const std::vector<Eigen::Vector3d> &lcs,
-                   const bool marker) const;
+                   const std::vector<Eigen::Vector3d> &lcs, const bool marker,
+                   const bool loops) const;
 
   /**
    * @brief Parse an Xhat solution matrix into individual poses.

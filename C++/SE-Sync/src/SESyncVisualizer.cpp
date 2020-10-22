@@ -113,6 +113,8 @@ void SESyncVisualizer::RenderSynchronization() {
   pangolin::RegisterKeyPressCallback('b', [&]() { bkgnd = !bkgnd; });
   bool text = true;  // For rendering text information.
   pangolin::RegisterKeyPressCallback('t', [&]() { text = !text; });
+  bool loops = true;  // For toggling loop closing lines.
+  pangolin::RegisterKeyPressCallback('l', [&]() { loops = !loops; });
 
   bool take_screenshot = false;  // Auxiliary variable for saving frames.
   std::string mkdir_string = "mkdir -p " + vopts_.img_dir;
@@ -136,9 +138,9 @@ void SESyncVisualizer::RenderSynchronization() {
 
     // Show either the "natural" solution or the rotated and pinned one.
     if (pin) {  // Rotated and pinned.
-      DrawIterate(solnspind_[soln_idx], lcspind_[soln_idx], markers);
+      DrawIterate(solnspind_[soln_idx], lcspind_[soln_idx], markers, loops);
     } else {  // In parameter space.
-      DrawIterate(solutions_[soln_idx], lcs_[soln_idx], markers);
+      DrawIterate(solutions_[soln_idx], lcs_[soln_idx], markers, loops);
     }
 
     // Show iterate number and staircase level.
@@ -177,7 +179,7 @@ void SESyncVisualizer::RenderSynchronization() {
 /* ************************************************************************** */
 void SESyncVisualizer::DrawIterate(const Trajectory3 &trajectory,
                                    const std::vector<Eigen::Vector3d> &lcs,
-                                   const bool marker) const {
+                                   const bool marker, const bool loops) const {
   std::vector<Eigen::Vector3d> positions;
 
   // Get all positions.
@@ -196,7 +198,7 @@ void SESyncVisualizer::DrawIterate(const Trajectory3 &trajectory,
   // Draw loop closures.
   glColor4f(0.7, 0.7, 1.0, 0.3);
   glLineWidth(1.0);
-  pangolin::glDrawLines(lcs);  // Loop-closing lines.
+  if (loops) pangolin::glDrawLines(lcs);  // Loop-closing lines.
   glLineWidth(1.0);
 }
 
