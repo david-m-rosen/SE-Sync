@@ -117,13 +117,6 @@ ${SESync_SOURCE_DIR}/SESyncProblem.cpp
 ${SESync_SOURCE_DIR}/SESync.cpp
 )
 
-# If visualization is enabled, make sure to include corresponding files.
-if(${ENABLE_VISUALIZATION})
-  list(APPEND SESync_HDRS
-    ${SESync_HDR_DIR}/SESyncVisualizer.h)
-  list(APPEND SESync_SRCS
-    ${SESync_SOURCE_DIR}/SESyncVisualizer.cpp)
-endif()
 
 # Build the SE-Sync library
 add_library(${PROJECT_NAME} SHARED ${SESync_HDRS} ${SESync_SRCS})
@@ -131,16 +124,27 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${SESync_PRIVATE_INCLUDES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SESync_INCLUDES})
 target_link_libraries(${PROJECT_NAME} Optimization ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
 
-if(${ENABLE_VISUALIZATION})
-  target_link_libraries(${PROJECT_NAME} ${Pangolin_LIBRARIES})
-endif()
-
 if(OPENMP_FOUND)
 # Add additional compilation flags to enable OpenMP support
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-fopenmp")
 target_link_libraries(${PROJECT_NAME})
 endif()
+
+
+# SE-SYNC VISUALIZATION PROJECT
+
+# If visualization is enabled, build library.
+if(${ENABLE_VISUALIZATION})
+  set(SESyncViz_HDRS ${SESync_HDR_DIR}/SESyncVisualizer.h)
+  set(SESyncViz_SRCS ${SESync_SOURCE_DIR}/SESyncVisualizer.cpp)
+
+  add_library(SESyncViz SHARED ${SESyncViz_HDRS} ${SESyncViz_SRCS})
+  target_include_directories(SESyncViz PUBLIC ${SESync_INCLUDE_DIR})
+  target_link_libraries(SESyncViz ${PROJECT_NAME} ${Pangolin_LIBRARIES})
+endif()
+
+
 
 # BUILD EXAMPLE DRIVER
 add_subdirectory(examples)
@@ -153,3 +157,14 @@ export(PACKAGE ${PROJECT_NAME})
 # Create a configuration file for this project, so that it can be imported by other CMake projects
 export(TARGETS ${PROJECT_NAME} Optimization FILE ${PROJECT_NAME}Config.cmake)
 
+
+# EXPORT SE-SYNC VISUALIZATION LIBRARY
+
+if(${ENABLE_VISUALIZATION})
+# Add add entry for this project into CMake's package registry, so that this
+# project can be found by other CMake projects
+export(PACKAGE SESyncViz)
+# Create a configuration file for this project, so that it can be imported by
+# other CMake projects
+export(TARGETS SESyncViz FILE SESyncVizConfig.cmake)
+endif()

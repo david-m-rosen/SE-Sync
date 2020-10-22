@@ -13,5 +13,5 @@ message(STATUS "Building main SE-Sync command-line executable in directory ${EXE
 # SE-Sync visualizer
 if(${ENABLE_VISUALIZATION})
   add_executable(SE-SyncViz mainviz.cpp)
-  target_link_libraries(SE-SyncViz SESync)
+  target_link_libraries(SE-SyncViz SESync SESyncViz)
 endif()
