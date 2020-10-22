@@ -73,9 +73,18 @@ private:
    */
   Matrix AnchorSolution(const Matrix &xhat) const;
 
+  /**
+   * @brief Rotates a solution such that the first pose had identity R.
+   * @param[in] xhat  Solution matrix with [translations|Rotations].
+   * @return Solution matrix with R0 = I.
+   */
+  Matrix RotateSolution(const Matrix &xhat) const;
+
   std::vector<Matrix> iterates_;       ///< Rounded iterates for visualization.
-  std::vector<Trajectory3> solutions_; ///< Parsed solutions.
-  std::vector<std::vector<Eigen::Vector3d>> lcs_; ///< Loop closures.
+  std::vector<Trajectory3> solutions_; ///< Parsed solutions, raw.
+  std::vector<Trajectory3> solnspind_; ///< Parsed solutions, pinned and rot'd.
+  std::vector<std::vector<Eigen::Vector3d>> lcs_; ///< Loop closures, natural.
+  std::vector<std::vector<Eigen::Vector3d>> lcspind_; ///< Loop closures, rot'd.
 
   float w_ = 1200.0f; ///< Width of the screen [px].
   float h_ = 800.0f;  ///< Heigh of the screen [px].

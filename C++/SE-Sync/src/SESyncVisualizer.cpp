@@ -43,8 +43,10 @@ SESyncVisualizer::SESyncVisualizer(const size_t num_poses,
   // Parse all solutions into vectors of matrices.
   std::cout << "Parsing rounded solutions..." << std::endl;
   for (const Matrix &xhat : iterates_) {
-    solutions_.push_back(ParseXhatToVector(AnchorSolution(xhat)));
-    lcs_.push_back(std::vector<Eigen::Vector3d>()); // Empty.
+    solutions_.push_back(ParseXhatToVector(xhat));
+    solnspind_.push_back(ParseXhatToVector(RotateSolution(xhat)));
+    lcs_.push_back(std::vector<Eigen::Vector3d>());     // Empty.
+    lcspind_.push_back(std::vector<Eigen::Vector3d>()); // Empty.
   }
 
   // Detect loop closures for drawing.
@@ -55,8 +57,12 @@ SESyncVisualizer::SESyncVisualizer(const size_t num_poses,
     int j = measurements_[m].j;
     if (std::abs(j - i) != 1) {
       for (size_t v = 0; v < solutions_.size(); v++) {
+        // "Natural" solutions in the parameter space.
         lcs_[v].push_back(solutions_[v][i].block(0, 3, 3, 1)); // i-th position.
         lcs_[v].push_back(solutions_[v][j].block(0, 3, 3, 1)); // j-th position.
+        // Pinned and rotated solutions.
+        lcspind_[v].push_back(solnspind_[v][i].block(0, 3, 3, 1));
+        lcspind_[v].push_back(solnspind_[v][j].block(0, 3, 3, 1));
       }
     }
   }
@@ -88,6 +94,8 @@ void SESyncVisualizer::RenderSynchronization() {
   pangolin::RegisterKeyPressCallback('z', [&]() { show_z0 = !show_z0; });
   bool restart = false; // For restarting the visualization.
   pangolin::RegisterKeyPressCallback('r', [&]() { restart = !restart; });
+  bool pin = false; // For pinning and rotating iterates to the origin.
+  pangolin::RegisterKeyPressCallback('p', [&]() { pin = !pin; });
 
   // Book-keeping variables for advancing between iterates.
   auto clock = Stopwatch::tick();
@@ -100,9 +108,14 @@ void SESyncVisualizer::RenderSynchronization() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     d_cam.Activate(s_cam);
-    glClearColor(0.9f, 0.9f, 0.9f, 0.0f); // Background color.
+    glClearColor(1.0f, 1.0f, 1.0f, 0.0f); // Background color.
 
-    DrawIterate(solutions_[soln_idx], lcs_[soln_idx]);
+    // Show either the "natural" solution or the rotated and pinned one.
+    if (pin) { // Rotated and pinned.
+      DrawIterate(solnspind_[soln_idx], lcspind_[soln_idx]);
+    } else { // In parameter space.
+      DrawIterate(solutions_[soln_idx], lcs_[soln_idx]);
+    }
 
     s_cam.Apply();
     glColor3f(1.0, 1.0, 1.0);
@@ -137,6 +150,7 @@ void SESyncVisualizer::DrawIterate(
   // Get all positions.
   for (const Eigen::Matrix4d &p : trajectory) {
     positions.push_back(p.block<3, 1>(0, 3));
+    pangolin::glDrawAxis(p, 0.1); // TEMP.
   }
 
   // Draw a line connecting all poses.
@@ -182,6 +196,11 @@ Matrix SESyncVisualizer::AnchorSolution(const Matrix &xhat) const {
   xhat_anchored.block(0, 0, dim_, num_poses_) = anchored_t;
 
   return xhat_anchored;
+}
+
+/* ************************************************************************** */
+Matrix SESyncVisualizer::RotateSolution(const Matrix &xhat) const {
+  return xhat.block(0, num_poses_, dim_, dim_).transpose() * xhat;
 }
 
 } // namespace SESync
