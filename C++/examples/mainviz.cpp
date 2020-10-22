@@ -1,3 +1,6 @@
+#include <experimental/filesystem>
+#include <iostream>
+
 #include "SESync/SESync.h"
 #include "SESync/SESyncVisualizer.h"
 #include "SESync/SESync_utils.h"
@@ -25,12 +28,18 @@ int main(int argc, char **argv) {
   }
 
   SESyncOpts opts;
-  opts.verbose = true; // Print output to stdout
+  opts.verbose = true;  // Print output to stdout
   opts.num_threads = 4;
-  opts.initialization = Initialization::Random; // Make it interesting.
-  opts.log_iterates = true; // Want them for visualization!!!
+  opts.initialization = Initialization::Random;  // Make it interesting.
+
+  VisualizationOpts vopts;
+  vopts.delay = 0.1;  // [s]
+  vopts.img_name = "custom-img-name";
+  vopts.img_dir =
+      "sesync-iters-" +
+      std::string(std::experimental::filesystem::path(argv[1]).filename());
 
   // Run SE-Sync, and launch the visualization magic.
-  SESyncVisualizer viz(num_poses, measurements, opts);
+  SESyncVisualizer viz(num_poses, measurements, opts, vopts);
   viz.RenderSynchronization();
 }
