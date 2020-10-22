@@ -24,6 +24,12 @@ namespace SESync {
 typedef std::vector<Eigen::Matrix4d, Eigen::aligned_allocator<Eigen::Matrix4d>>
     Trajectory3;
 
+struct VisualizationOpts {
+  std::string img_name = "SE-Sync-Iter";   ///< Name for output screenshots.
+  std::string img_dir = "SE-Sync-Images";  ///< Output directory name.
+  double delay = 0.5;                      ///< Delay between iterates [s].
+};
+
 /**
  * @class SESyncVisualizer
  * @brief Class for wrapping OpenGL and Pangoling to visualize in SESync in 3D.
@@ -36,9 +42,10 @@ class SESyncVisualizer {
    * @param measurements  Vector with relative pose measurements.
    * @param options       Structure with SE-Sync initialization options.
    */
-  explicit SESyncVisualizer(const size_t num_poses,
-                            const measurements_t &measurements,
-                            const SESyncOpts &options);
+  explicit SESyncVisualizer(
+      const size_t num_poses, const measurements_t &measurements,
+      const SESyncOpts &options,
+      const VisualizationOpts &vopts = VisualizationOpts());
 
   /**
    * @brief Default destructor.
@@ -104,6 +111,7 @@ class SESyncVisualizer {
   size_t num_poses_;             ///< Total number of poses.
   size_t num_iters_;             ///< Total number of iterates.
   size_t dim_;                   ///< Dimension of the problem.
+  VisualizationOpts vopts_;      ///< Visualization related parameters.
   SESyncOpts options_;           ///< Initial description of problem.
   SESyncResult result_;          ///< Bundle of magic is all here.
   std::shared_ptr<SESyncProblem> problem_;  ///< Problem instance.

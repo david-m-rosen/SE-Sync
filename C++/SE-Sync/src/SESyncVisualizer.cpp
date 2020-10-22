@@ -8,15 +8,21 @@
 #include "SESync/SESyncVisualizer.h"
 
 #include <Eigen/StdVector>
+#include <cstdlib>
 
 namespace SESync {
 
 /* *************************************************************************  */
 SESyncVisualizer::SESyncVisualizer(const size_t num_poses,
                                    const measurements_t &measurements,
-                                   const SESyncOpts &options)
-    : num_poses_(num_poses), measurements_(measurements), options_(options) {
+                                   const SESyncOpts &options,
+                                   const VisualizationOpts &vopts)
+    : num_poses_(num_poses),
+      measurements_(measurements),
+      options_(options),
+      vopts_(vopts) {
   // Build an SE-Sync problem.
+  options_.log_iterates = true;  // Ensure this is ON at all times.
   problem_ = std::make_shared<SESyncProblem>(
       measurements_, options_.formulation, options_.projection_factorization,
       options_.preconditioner,
@@ -109,12 +115,13 @@ void SESyncVisualizer::RenderSynchronization() {
   pangolin::RegisterKeyPressCallback('t', [&]() { text = !text; });
 
   bool take_screenshot = false;  // Auxiliary variable for saving frames.
+  std::string mkdir_string = "mkdir -p " + vopts_.img_dir;
 
   // Book-keeping variables for advancing between iterates.
   auto clock = Stopwatch::tick();
-  double time = 0;  // [s].
-  size_t counter = 0, soln_idx = 0;
-  double dt = 0.5;  // The desired time between iterate visualization [s].
+  double time = 0;      // To keep track of elapsed time [s].
+  size_t soln_idx = 0;  // Current iterate index [-].
+  bool iters_complete = false;
 
   while (!pangolin::ShouldQuit()) {
     // Clear screen and activate view to render into
@@ -134,32 +141,34 @@ void SESyncVisualizer::RenderSynchronization() {
       DrawIterate(solutions_[soln_idx], lcs_[soln_idx], markers);
     }
 
-    // Advance to next iterate at the desired time (`dt`).
+    // Show iterate number and staircase level.
+    if (text) DrawInfoText(soln_idx, bkgnd);
+
+    // Advance to next iterate at the desired time.
     time = Stopwatch::tock(clock);
-    counter++;
-    if (fmod(time, dt) < 1e-4 && counter > 100) {
+    if (time > (soln_idx + 1) * vopts_.delay && !iters_complete) {
       if (take_screenshot) d_cam.SaveOnRender(GetScreenshotName(soln_idx));
-      counter = 0;
       soln_idx++;
       if (soln_idx == num_iters_) {
         soln_idx = num_iters_ - 1;
+        iters_complete = true;
         take_screenshot = false;
       }
     }
 
-    if (save) {  // On save, restart the loop and save on render.
-      restart = true;
-      save = false;
-      take_screenshot = true;
+    if (save) {                // On save, restart the loop and save on render.
+      save = false;            // Debounce.
+      restart = true;          // Trigger the restart below.
+      take_screenshot = true;  // Save img at each iterate.
+      const int err = system(mkdir_string.c_str());  // Create img dir.
     }
 
-    if (restart) {  // Restart the iterates (toggle with 'r' key).
-      restart = false;
-      soln_idx = 0;
+    if (restart) {                // Restart the iterates (toggle with 'r' key).
+      restart = false;            // Debounce.
+      iters_complete = false;     // Restart iterations.
+      clock = Stopwatch::tick();  // Restart clock.
+      soln_idx = 0;               // Go back to beginning.
     }
-
-    // Show iterate number and staircase level.
-    if (text) DrawInfoText(soln_idx, bkgnd);
 
     pangolin::FinishFrame();  // Swap frames and process events.
   }
@@ -244,7 +253,7 @@ std::string SESyncVisualizer::GetScreenshotName(const size_t iter,
                                                 const size_t digits) const {
   std::string numstr = std::to_string(iter);
   std::string padstr = std::string(digits - numstr.length(), '0') + numstr;
-  return std::string("SE-Sync-Iter-") + padstr;
+  return vopts_.img_dir + std::string("/") + vopts_.img_name + padstr;
 }
 
 }  // namespace SESync
