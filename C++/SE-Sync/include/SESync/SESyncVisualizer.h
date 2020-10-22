@@ -13,6 +13,7 @@
 
 #include <Eigen/Dense>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #include "SESync/SESync.h"
@@ -28,8 +29,7 @@ typedef std::vector<Eigen::Matrix4d, Eigen::aligned_allocator<Eigen::Matrix4d>>
  * @brief Class for wrapping OpenGL and Pangoling to visualize in SESync in 3D.
  */
 class SESyncVisualizer {
-public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+ public:
   /**
    * @brief Default constructor.
    * @param num_poses     Total number of poses in the problem.
@@ -50,14 +50,16 @@ public:
    */
   void RenderSynchronization();
 
-private:
+ private:
   /**
    * @brief Renders the solution as points and lines.
    * @param[in] trajectory  Eigen-aligned vector of 3D poses.
    * @param[in] lcs         Vector of 3D position pairs for loop-closing lines.
+   * @param[in] marker      Whether to draw point markers or not.
    */
   void DrawIterate(const Trajectory3 &trajectory,
-                   const std::vector<Eigen::Vector3d> &lcs) const;
+                   const std::vector<Eigen::Vector3d> &lcs,
+                   const bool marker) const;
 
   /**
    * @brief Parse an Xhat solution matrix into individual poses.
@@ -67,35 +69,47 @@ private:
   Trajectory3 ParseXhatToVector(const Matrix &xhat) const;
 
   /**
-   * @brief Anchor solution at the origin.
-   * @param[in] xhat  Solution matrix with [translations|Rotations].
-   * @return Solution matrix with first pose at the origin.
-   */
-  Matrix AnchorSolution(const Matrix &xhat) const;
-
-  /**
    * @brief Rotates a solution such that the first pose had identity R.
    * @param[in] xhat  Solution matrix with [translations|Rotations].
    * @return Solution matrix with R0 = I.
    */
   Matrix RotateSolution(const Matrix &xhat) const;
 
-  std::vector<Matrix> iterates_;       ///< Rounded iterates for visualization.
-  std::vector<Trajectory3> solutions_; ///< Parsed solutions, raw.
-  std::vector<Trajectory3> solnspind_; ///< Parsed solutions, pinned and rot'd.
-  std::vector<std::vector<Eigen::Vector3d>> lcs_; ///< Loop closures, natural.
-  std::vector<std::vector<Eigen::Vector3d>> lcspind_; ///< Loop closures, rot'd.
+  /**
+   * @brief Draws text to screen with iterate number and staircase level.
+   * @param[in] iter   Number of the current iterate.
+   * @param[in] bkgnd  If true, black background enabled, otherwise white.
+   */
+  void DrawInfoText(const size_t iter, const bool bkgnd) const;
 
-  float w_ = 1200.0f; ///< Width of the screen [px].
-  float h_ = 800.0f;  ///< Heigh of the screen [px].
-  float f_ = 300.0f;  ///< Focal distance of the visualization camera [px].
+  /**
+   * @brief Creates a padded string with specified number of digits.
+   * @param[in] iter  Number to be padded with zeros.
+   */
+  std::string GetScreenshotName(const size_t iter,
+                                const size_t digits = 3) const;
 
-  measurements_t measurements_;            ///< Relative pose measurements data.
-  size_t num_poses_;                       ///< Total number of poses.
-  size_t dim_;                             ///< Dimension of the problem.
-  SESyncOpts options_;                     ///< Initial description of problem.
-  SESyncResult result_;                    ///< Bundle of magic is all here.
-  std::shared_ptr<SESyncProblem> problem_; ///< Problem instance.
+  std::vector<Matrix> iterates_;        ///< Rounded iterates for visualization.
+  std::vector<Trajectory3> solutions_;  ///< Parsed solutions, raw.
+  std::vector<Trajectory3> solnspind_;  ///< Parsed solutions, pinned and rot'd.
+  std::vector<std::vector<Eigen::Vector3d>> lcs_;  ///< Loop closures, natural.
+  std::vector<std::vector<Eigen::Vector3d>> lcspind_;  ///< Loop closures, rot.
+  std::unordered_map<size_t, size_t> staircase_;  ///< iter -> staircase lvl.
+
+  float w_ = 1200.0f;  ///< Width of the screen [px].
+  float h_ = 800.0f;   ///< Heigh of the screen [px].
+  float f_ = 300.0f;   ///< Focal distance of the visualization camera [px].
+
+  measurements_t measurements_;  ///< Relative pose measurements data.
+  size_t num_poses_;             ///< Total number of poses.
+  size_t num_iters_;             ///< Total number of iterates.
+  size_t dim_;                   ///< Dimension of the problem.
+  SESyncOpts options_;           ///< Initial description of problem.
+  SESyncResult result_;          ///< Bundle of magic is all here.
+  std::shared_ptr<SESyncProblem> problem_;  ///< Problem instance.
+
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-} // namespace SESync
+}  // namespace SESync
