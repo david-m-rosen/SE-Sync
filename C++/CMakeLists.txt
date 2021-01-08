@@ -128,7 +128,6 @@ if(OPENMP_FOUND)
 # Add additional compilation flags to enable OpenMP support
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-fopenmp")
-target_link_libraries(${PROJECT_NAME})
 endif()
 
 
