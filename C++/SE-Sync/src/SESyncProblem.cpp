@@ -211,7 +211,7 @@ Matrix SESyncProblem::precondition(const Matrix &Y, const Matrix &dotY) const {
   if (preconditioner_ == Preconditioner::None)
     return dotY;
   else if (preconditioner_ == Preconditioner::Jacobi)
-    return tangent_space_projection(Y, Jacobi_precon_ * dotY);
+    return tangent_space_projection(Y, dotY * Jacobi_precon_);
   else if (preconditioner_ == Preconditioner::IncompleteCholesky)
     return tangent_space_projection(
         Y, iChol_precon_->solve(dotY.transpose()).transpose());
