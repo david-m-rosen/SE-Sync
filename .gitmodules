@@ -7,3 +7,6 @@
 [submodule "C++/Spectra"]
 	path = C++/Spectra
 	url = https://github.com/yixuan/spectra.git
+[submodule "MATLAB/SE-Sync/manopt"]
+	path = MATLAB/SE-Sync/manopt
+	url = ../manopt.git
