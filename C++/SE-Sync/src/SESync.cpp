@@ -1,4 +1,4 @@
-#include <functional>
+﻿#include <functional>
 
 #include "SESync/SESync.h"
 #include "SESync/SESyncProblem.h"
@@ -13,6 +13,28 @@ namespace SESync {
 
 SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                     const Matrix &Y0) {
+
+  /// INPUT SANITATION
+
+  if (options.r0 < problem.dimension())
+    throw std::invalid_argument("Initial relaxation rank must be at least "
+                                "the dimension of the estimation problem.");
+
+  if (options.rmax < options.r0)
+    throw std::invalid_argument("Maximum relaxation rank must be greater than "
+                                "or equal to initial relaxation rank.");
+
+  if (options.max_computation_time <= 0)
+    throw std::invalid_argument(
+        "Maximum computation time must be a positive value");
+
+  if (options.max_eig_iterations < 0)
+    throw std::invalid_argument(
+        "Maximum number of Lanczos iterations must be a positive value");
+
+  if (options.min_eig_num_tol <= 0)
+    throw std::invalid_argument("Numerical tolerance for minimum eigenvalue "
+                                "nonnegativity must be a positive value");
 
   /// ALGORITHM DATA
 
@@ -240,7 +262,6 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   auto riemannian_staircase_start_time = Stopwatch::tick();
 
   for (size_t r = options.r0; r <= options.rmax; r++) {
-
     // The elapsed time from the start of the Riemannian Staircase algorithm
     // until the start of this iteration of RTR
     double RTR_iteration_start_time =
@@ -253,8 +274,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       break;
     }
 
-    // Set  maximum permitted computation time for this level of the Riemannian
-    // Staircase
+    // Set  maximum permitted computation time for this level of the
+    // Riemannian Staircase
     params.max_computation_time =
         options.max_computation_time - RTR_iteration_start_time;
 
@@ -360,7 +381,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       }
 
       // Augment the rank of the rank-restricted semidefinite relaxation in
-      // preparation for ascending to the next level of the Riemannian Staircase
+      // preparation for ascending to the next level of the Riemannian
+      // Staircase
       problem.set_relaxation_rank(r + 1);
 
       Matrix Yplus;
@@ -492,10 +514,10 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     std::cout << "SE-SYNCHRONIZATION RESULTS:" << std::endl;
     std::cout << "Value of rounded pose estimates F(x): " << SESyncResults.Fxhat
               << std::endl;
-    std::cout
-        << "Suboptimality bound F(x) - tr(Lambda) of recovered pose estimate: "
-        << SESyncResults.suboptimality_upper_bound << std::endl
-        << std::endl;
+    std::cout << "Suboptimality bound F(x) - tr(Lambda) of recovered pose "
+                 "estimate: "
+              << SESyncResults.suboptimality_upper_bound << std::endl
+              << std::endl;
     std::cout << "Total elapsed computation time: "
               << SESyncResults.total_computation_time << " seconds" << std::endl
               << std::endl;
