@@ -46,7 +46,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
   // The output results struct that we will return
   SESyncResult SESyncResults;
-  SESyncResults.status = RS_ITER_LIMIT;
+  SESyncResults.status = MaxRank;
 
   /// OPTION PARSING AND OUTPUT TO USER
 
@@ -270,7 +270,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     /// Test temporal stopping condition
 
     if (RTR_iteration_start_time >= options.max_computation_time) {
-      SESyncResults.status = ELAPSED_TIME;
+      SESyncResults.status = ElapsedTime;
       break;
     }
 
@@ -344,7 +344,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
         std::cout << "WARNING!  EIGENVALUE COMPUTATION DID NOT CONVERGE TO "
                      "DESIRED PRECISION!"
                   << std::endl;
-      SESyncResults.status = EIG_IMPRECISION;
+      SESyncResults.status = EigImprecision;
       break;
     }
 
@@ -364,7 +364,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                   << ".  Elapsed computation time: " << eig_elapsed_time
                   << " seconds (" << num_min_eig_iterations
                   << " matrix-vector multiplications)." << std::endl;
-      SESyncResults.status = GLOBAL_OPT;
+      SESyncResults.status = GlobalOpt;
       break;
     } // global optimality
     else {
@@ -401,7 +401,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                  "SADDLE POINT!  (Try decreasing the preconditioned "
                  "gradient norm tolerance)"
               << std::endl;
-        SESyncResults.status = SADDLE_POINT;
+        SESyncResults.status = SaddlePoint;
         break;
       }
     } // saddle point
@@ -416,25 +416,25 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << std::endl;
 
     switch (SESyncResults.status) {
-    case GLOBAL_OPT:
+    case GlobalOpt:
       std::cout << "Found global optimum!" << std::endl;
       break;
-    case EIG_IMPRECISION:
+    case EigImprecision:
       std::cout << "WARNING: Minimum eigenvalue computation did not achieve "
                    "sufficient accuracy; solution may not be globally optimal!"
                 << std::endl;
       break;
-    case SADDLE_POINT:
+    case SaddlePoint:
       std::cout << "WARNING: Line search was unable to escape saddle point!  "
                    "Solution is not globally optimal!"
                 << std::endl;
       break;
-    case RS_ITER_LIMIT:
+    case MaxRank:
       std::cout << "WARNING: Riemannian Staircase reached the maximum "
                    "permitted level before finding global optimum!"
                 << std::endl;
       break;
-    case ELAPSED_TIME:
+    case ElapsedTime:
       std::cout << "WARNING: Algorithm exhausted the allotted computation "
                    "time before finding global optimum!"
                 << std::endl;

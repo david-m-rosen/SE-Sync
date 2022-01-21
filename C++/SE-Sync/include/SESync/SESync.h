@@ -129,24 +129,24 @@ struct SESyncOpts {
  */
 enum SESyncStatus {
   /** The algorithm converged to a certified global optimum */
-  GLOBAL_OPT,
+  GlobalOpt,
 
   /** The algorithm converged to a saddle point, but the backtracking line
    * search was unable to escape it */
-  SADDLE_POINT,
+  SaddlePoint,
 
   /** The algorithm converged to a first-order critical point, but the
    * minimum-eigenvalue computation did not converge to sufficient precision to
    * enable its characterization */
-  EIG_IMPRECISION,
+  EigImprecision,
 
   /** The algorithm exhausted the maximum number of iterations of the Riemannian
    * Staircase before finding an optimal solution */
-  RS_ITER_LIMIT,
+  MaxRank,
 
   /** The algorithm exhausted the allotted total computation time before finding
    * an optimal solution */
-  ELAPSED_TIME
+  ElapsedTime
 };
 
 /** This struct contains the output of the SESync algorithm */
