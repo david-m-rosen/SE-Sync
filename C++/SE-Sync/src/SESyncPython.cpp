@@ -4,12 +4,16 @@
 #include "SESync/SESync_utils.h"
 
 #include <pybind11/eigen.h>
+#include <pybind11/iostream.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(sesync, m) {
+
+  m.doc() = "Python bindings for SE-Sync, a library for certifiably correct "
+            "synchronization over the special Euclidean group";
 
   /// Bindings for SE-Sync enum classes
 
@@ -127,7 +131,7 @@ PYBIND11_MODULE(sesync, m) {
       .def_readwrite("iterates", &SESync::SESyncResult::iterates)
       .def_readwrite("status", &SESync::SESyncResult::status);
 
-  /// Bindings for (some) of the SESync_utils functions
+  /// Bindings for the SESync_utils functions
 
   // NB:  Here we are actually binding an anonymous lambda function that
   // simply wraps the C++ read_g2o_file.  We do this so that we can modify
@@ -148,14 +152,31 @@ PYBIND11_MODULE(sesync, m) {
                                                            num_poses);
         });
 
+  m.def("construct_rotational_connection_Laplacian",
+        &SESync::construct_rotational_connection_Laplacian);
   m.def("construct_oriented_incidence_matrix",
         &SESync::construct_oriented_incidence_matrix);
-
+  m.def("construct_translational_precision_matrix",
+        &SESync::construct_translational_precision_matrix);
+  m.def("construct_quadratic_form_data_matrix",
+        &SESync::construct_quadratic_form_data_matrix);
   m.def("project_to_SOd", &SESync::project_to_SOd);
-
   m.def("orbit_distance_dS", &SESync::orbit_distance_dS);
-
   m.def("orbit_distance_dO", &SESync::orbit_distance_dO);
+
+  m.def("construct_B_matrices",
+        [](const SESync::measurements_t &measurements)
+            -> std::tuple<SESync::SparseMatrix, SESync::SparseMatrix,
+                          SESync::SparseMatrix> {
+          SESync::SparseMatrix B1, B2, B3;
+
+          SESync::construct_B_matrices(measurements, B1, B2, B3);
+
+          return std::make_tuple(B1, B2, B3);
+        });
+
+  m.def("chordal_initialization", &SESync::chordal_initialization);
+  m.def("recover_translations", &SESync::recover_translations);
 
   /// Bindings for the main SESync driver
   m.def(
@@ -163,6 +184,8 @@ PYBIND11_MODULE(sesync, m) {
       [](const SESync::measurements_t &measurements,
          const SESync::SESyncOpts &options,
          const SESync::Matrix &Y0) -> SESync::SESyncResult {
+        // Redirect emitted output from (C++) stdout to (Python) sys.stdout
+        py::scoped_ostream_redirect stream();
         return SESync::SESync(measurements, options, Y0);
       },
       py::arg("measurements"), py::arg("options") = SESync::SESyncOpts(),
