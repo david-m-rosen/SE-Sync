@@ -31,6 +31,8 @@ set(ENABLE_OPENMP ON CACHE BOOL "Enable OpenMP (if available)")
 set(ENABLE_PROFILING OFF CACHE BOOL "Enable code profiling using gperftools")
 # Enable visualization module.
 set(ENABLE_VISUALIZATION OFF CACHE BOOL "Enable visualization module.")
+# Build Python bindings
+set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "Build Python bindings.")
 
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Eigen/cmake" CACHE STRING "The CMake module path used for this project")
@@ -48,6 +50,11 @@ endif()
 if(${ENABLE_VISUALIZATION})
   find_package(Pangolin REQUIRED)
 endif()
+
+if(${BUILD_PYTHON_BINDINGS})
+message(STATUS "Building Python bindings")
+endif()
+
 
 message(STATUS "")
 
@@ -141,6 +148,13 @@ if(${ENABLE_VISUALIZATION})
   add_library(SESyncViz SHARED ${SESyncViz_HDRS} ${SESyncViz_SRCS})
   target_include_directories(SESyncViz PUBLIC ${SESync_INCLUDE_DIR})
   target_link_libraries(SESyncViz ${PROJECT_NAME} ${Pangolin_LIBRARIES})
+endif()
+
+# PYTHON BINDINGS
+if(${BUILD_PYTHON_BINDINGS})
+  find_package(pybind11 REQUIRED)
+  pybind11_add_module(sesync SHARED ${SESync_SOURCE_DIR}/SESyncPython.cpp)
+  target_link_libraries(sesync PRIVATE ${PROJECT_NAME})
 endif()
 
 
