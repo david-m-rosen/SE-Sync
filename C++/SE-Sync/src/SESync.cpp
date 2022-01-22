@@ -350,10 +350,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Record results of eigenvalue computation
     SESyncResults.minimum_eigenvalues.push_back(SESyncResults.lambda_min);
-    SESyncResults.minimum_eigenvalue_matrix_ops.push_back(
-        num_min_eig_iterations);
-    SESyncResults.minimum_eigenvalue_computation_times.push_back(
-        eig_elapsed_time);
+    SESyncResults.min_eig_mat_ops.push_back(num_min_eig_iterations);
+    SESyncResults.min_eig_comp_times.push_back(eig_elapsed_time);
 
     // Test nonnegativity of minimum eigenvalue
     if (SESyncResults.lambda_min > -options.min_eig_num_tol) {
@@ -474,9 +472,9 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   // Compute the primal optimal SDP solution Lambda and its objective value
   Matrix Lambda_blocks = problem.compute_Lambda_blocks(SESyncResults.Yopt);
 
-  SESyncResults.trace_Lambda = 0;
+  SESyncResults.trLambda = 0;
   for (size_t i = 0; i < problem.num_poses(); i++)
-    SESyncResults.trace_Lambda +=
+    SESyncResults.trLambda +=
         Lambda_blocks
             .block(0, i * problem.dimension(), problem.dimension(),
                    problem.dimension())
@@ -488,13 +486,12 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   // Get the duality gap for the primal-dual pair (Y'*Y, Lambda) of SDP
   // estimates
 
-  SESyncResults.SDP_duality_gap =
-      SESyncResults.SDPval - SESyncResults.trace_Lambda;
+  SESyncResults.duality_gap = SESyncResults.SDPval - SESyncResults.trLambda;
 
   // Get an upper bound on the (global) suboptimality of the recovered (rounded)
   // pose estimates
-  SESyncResults.suboptimality_upper_bound =
-      SESyncResults.Fxhat - SESyncResults.trace_Lambda;
+  SESyncResults.suboptimality_bound =
+      SESyncResults.Fxhat - SESyncResults.trLambda;
 
   /// FINAL OUTPUT
 
@@ -505,18 +502,17 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     std::cout << "Norm of Riemannian gradient grad F(Y): "
               << SESyncResults.gradnorm << std::endl;
     std::cout << "Value of primal SDP solution tr(Lambda): "
-              << SESyncResults.trace_Lambda << std::endl;
+              << SESyncResults.trLambda << std::endl;
     std::cout << "Minimum eigenvalue of certificate matrix S - Lambda: "
               << SESyncResults.lambda_min << std::endl;
-    std::cout << "SDP duality gap: " << SESyncResults.SDP_duality_gap
-              << std::endl
+    std::cout << "SDP duality gap: " << SESyncResults.duality_gap << std::endl
               << std::endl;
     std::cout << "SE-SYNCHRONIZATION RESULTS:" << std::endl;
     std::cout << "Value of rounded pose estimates F(x): " << SESyncResults.Fxhat
               << std::endl;
     std::cout << "Suboptimality bound F(x) - tr(Lambda) of recovered pose "
                  "estimate: "
-              << SESyncResults.suboptimality_upper_bound << std::endl
+              << SESyncResults.suboptimality_bound << std::endl
               << std::endl;
     std::cout << "Total elapsed computation time: "
               << SESyncResults.total_computation_time << " seconds" << std::endl
