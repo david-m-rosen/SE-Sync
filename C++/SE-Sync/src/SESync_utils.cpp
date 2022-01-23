@@ -353,8 +353,7 @@ void construct_B_matrices(const measurements_t &measurements, SparseMatrix &B1,
   B3.setFromTriplets(triplets.begin(), triplets.end());
 }
 
-SparseMatrix
-construct_quadratic_form_data_matrix(const measurements_t &measurements) {
+SparseMatrix construct_M_matrix(const measurements_t &measurements) {
 
   size_t num_poses = 0;
   size_t d = (!measurements.empty() ? measurements[0].t.size() : 0);
@@ -561,7 +560,7 @@ Matrix project_to_SOd(const Matrix &M) {
   }
 }
 
-Scalar orbit_distance_dS(const Matrix &X, const Matrix &Y, Matrix *G_S) {
+Scalar dS(const Matrix &X, const Matrix &Y, Matrix *G_S) {
   size_t d = X.rows();
   size_t n = X.cols() / d;
 
@@ -591,7 +590,7 @@ Scalar orbit_distance_dS(const Matrix &X, const Matrix &Y, Matrix *G_S) {
   return dS;
 }
 
-Scalar orbit_distance_dO(const Matrix &X, const Matrix &Y, Matrix *G_O) {
+Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O) {
   size_t d = X.rows();
   size_t n = X.cols() / d;
 

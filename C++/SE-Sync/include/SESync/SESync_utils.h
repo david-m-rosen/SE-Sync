@@ -16,39 +16,44 @@ matrices used in the SE-Sync algorithm.
 
 namespace SESync {
 
+/** Given the name of a file containing a description of a special Euclidean
+ * synchronization problem expressed in the .g2o format (i.e. using "EDGE_SE2 or
+ * EDGE_SE3:QUAT" measurements), this function constructs and returns the
+ * corresponding vector of RelativePoseMeasurements, and reports the total
+ * number of poses in the pose-graph */
 measurements_t read_g2o_file(const std::string &filename, size_t &num_poses);
 
-/** Given a vector of relative pose measurements, this function computes and
+/** Given a vector of relative pose measurements, this function constructs and
  * returns the corresponding rotational connection Laplacian */
 SparseMatrix
 construct_rotational_connection_Laplacian(const measurements_t &measurements);
 
-/** Given a vector of relative pose measurements, this function computes and
+/** Given a vector of relative pose measurements, this function construct and
  * returns the associated oriented incidence matrix A */
 SparseMatrix
 construct_oriented_incidence_matrix(const measurements_t &measurements);
 
-/** Given a vector of relative pose measurements, this function computes and
+/** Given a vector of relative pose measurements, this function constructs and
  * returns the associated diagonal matrix of translational measurement
  * precisions */
 DiagonalMatrix
 construct_translational_precision_matrix(const measurements_t &measurements);
 
-/** Given a vector of relative pose measurements, this function computes and
+/** Given a vector of relative pose measurements, this function constructs and
  * returns the associated matrix of raw translational measurements */
 SparseMatrix
 construct_translational_data_matrix(const measurements_t &measurements);
 
-/** Given a vector of relative pose measurements, this function computes and
+/** Given a vector of relative pose measurements, this function constructs and
  * returns the B matrices defined in equation (69) of the tech report */
 void construct_B_matrices(const measurements_t &measurements, SparseMatrix &B1,
                           SparseMatrix &B2, SparseMatrix &B3);
 
-/** Given a vector of relative pose measurements, this function constructs the
- * matrix M parameterizing the objective in the translation-explicit formulation
- * of the SE-Sync problem (Problem 2) in the SE-Sync tech report) */
-SparseMatrix
-construct_quadratic_form_data_matrix(const measurements_t &measurements);
+/** Given a vector of relative pose measurements, this function constructs and
+ * returns the matrix M parameterizing the translation-explicit formulation of
+ * the special Euclidean synchronization problem (Problem 2 in the SE-Sync tech
+ * report) */
+SparseMatrix construct_M_matrix(const measurements_t &measurements);
 
 /** Given the measurement matrix B3 defined in equation (69c) of the tech report
  * and the problem dimension d, this function computes and returns the
@@ -67,18 +72,16 @@ Matrix project_to_SOd(const Matrix &M);
 
 /** Given two matrices X, Y in SO(d)^n, this function computes and returns the
  * orbit distance d_S(X,Y) between them and (optionally) the optimal
- * registration G_S aligning Y to X, as described in Appendix C.1 of the SE-Sync
- * tech report.
+ * registration G_S in SO(d) aligning Y to X, as described in Appendix C.1 of
+ * the SE-Sync tech report.
  */
-Scalar orbit_distance_dS(const Matrix &X, const Matrix &Y,
-                         Matrix *G_S = nullptr);
+Scalar dS(const Matrix &X, const Matrix &Y, Matrix *G_S = nullptr);
 
 /** Given two matrices X, Y in O(d)^n, this function computes and returns the
  * orbit distance d_O(X,Y) between them and (optionally) the optimal
- * registration G_O aligning Y to X, as described in Appendix C.1 of the SE-Sync
- * tech report.
+ * registration G_O in O(d) aligning Y to X, as described in Appendix C.1 of the
+ * SE-Sync tech report.
  */
-Scalar orbit_distance_dO(const Matrix &X, const Matrix &Y,
-                         Matrix *G_O = nullptr);
+Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O = nullptr);
 
 } // namespace SESync

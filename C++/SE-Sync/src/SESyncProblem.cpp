@@ -112,7 +112,7 @@ SESyncProblem::SESyncProblem(
 
   } else {
     // form == Explicit
-    M_ = construct_quadratic_form_data_matrix(measurements);
+    M_ = construct_M_matrix(measurements);
 
     /** Compute and cache preconditioning matrices, if required */
     if (preconditioner_ == Preconditioner::Jacobi) {
