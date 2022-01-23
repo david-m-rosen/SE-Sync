@@ -75,7 +75,10 @@ PYBIND11_MODULE(sesync, m) {
   /// Bindings for the RelativePoseMeasurement struct
 
   py::class_<SESync::RelativePoseMeasurement>(m, "RelativePoseMeasurement")
-      .def(py::init<>())
+      .def(py::init<>(),
+           "Default constructor: produces an ininitialized measurement")
+      .def(py::init<size_t, size_t, SESync::Matrix, SESync::Vector,
+                    SESync::Scalar, SESync::Scalar>())
       .def_readwrite("i", &SESync::RelativePoseMeasurement::i,
                      "Index of first pose (0-based)")
       .def_readwrite("j", &SESync::RelativePoseMeasurement::j,
