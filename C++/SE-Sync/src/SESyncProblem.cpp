@@ -21,15 +21,15 @@ SESyncProblem::SESyncProblem(
 
   // Construct B matrices
 
-  // Matrix B1 is required by all methods to construct chordal initializations
-  B1_ = construct_B1_matrix(measurements);
+  // Matrix B3 is required by all methods to construct chordal initializations
+  B3_ = construct_B3_matrix(measurements);
 
   if ((form_ == Formulation::Simplified) || (form_ == Formulation::Explicit)) {
     // When solving the Simplified or Explicit forms of the problem, we also
-    // require the matrices B2 and B3 to calculate chordal initializations
+    // require the matrices B1 and B2 to calculate chordal initializations
     // and/or recover the optimal assignment t(R) of the translational states
     // corresponding to the estimate for the robot orientations
-    construct_B2_B3_matrices(measurements, B2_, B3_);
+    construct_B1_B2_matrices(measurements, B1_, B2_);
   }
 
   /// Set dimensions of the problem

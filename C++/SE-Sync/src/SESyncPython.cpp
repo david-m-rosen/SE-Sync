@@ -308,23 +308,23 @@ PYBIND11_MODULE(sesync, m) {
         "Given a square d x d matrix, this function returns a closest element "
         "of SO(d)");
 
-  m.def("constuct_B1_matrix", &SESync::construct_B1_matrix,
+  m.def("constuct_B3_matrix", &SESync::construct_B3_matrix,
         "Given a list of relative pose measurements, this function "
-        "constructs and returns the matrix B1 defined in equation (69a) of the "
+        "constructs and returns the matrix B3 defined in equation (69c) of the "
         "SE-Sync tech report");
 
   m.def(
-      "construct_B2_B3_matrices",
+      "construct_B1_B2_matrices",
       [](const SESync::measurements_t &measurements)
           -> std::pair<SESync::SparseMatrix, SESync::SparseMatrix> {
-        SESync::SparseMatrix B2, B3;
+        SESync::SparseMatrix B1, B2;
 
-        SESync::construct_B2_B3_matrices(measurements, B2, B3);
+        SESync::construct_B1_B2_matrices(measurements, B1, B2);
 
-        return std::make_pair(B2, B3);
+        return std::make_pair(B1, B2);
       },
       "Given a list of relative pose measurements, this function "
-      "constructs and returns the matrices B2 and B3 defined in equation (69) "
+      "constructs and returns the matrices B1 and B2 defined in equation (69) "
       "of the SE-Sync tech report");
   m.def(
       "chordal_initialization", &SESync::chordal_initialization,

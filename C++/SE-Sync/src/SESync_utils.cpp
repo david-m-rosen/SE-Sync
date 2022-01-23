@@ -339,7 +339,60 @@ construct_translational_data_matrix(const measurements_t &measurements) {
   return T;
 }
 
-SparseMatrix construct_B1_matrix(const measurements_t &measurements) {
+SparseMatrix construct_B3_matrix(const measurements_t &measurements) {
+  size_t num_poses = 0;
+  size_t d = (!measurements.empty() ? measurements[0].R.rows() : 0);
+
+  std::vector<Eigen::Triplet<Scalar>> triplets;
+
+  // Useful quantities to cache
+  size_t d2 = d * d;
+  size_t d3 = d * d * d;
+
+  size_t i, j; // Indices for the tail and head of the given measurement
+  Scalar sqrttau;
+  size_t max_pair;
+
+  /// Construct matrix B3 from equation (69c) in the tech report
+  triplets.reserve((d3 + d2) * measurements.size());
+
+  for (size_t e = 0; e < measurements.size(); e++) {
+    Scalar sqrtkappa = std::sqrt(measurements[e].kappa);
+    const Matrix &R = measurements[e].R;
+
+    for (size_t r = 0; r < d; r++)
+      for (size_t c = 0; c < d; c++) {
+        i = measurements[e].i; // Tail of measurement
+        j = measurements[e].j; // Head of measurement
+
+        // Representation of the -sqrt(kappa) * Rt(i,j) \otimes I_d block
+        for (size_t l = 0; l < d; l++)
+          triplets.emplace_back(e * d2 + d * r + l, i * d2 + d * c + l,
+                                -sqrtkappa * R(c, r));
+      }
+
+    for (size_t l = 0; l < d2; l++)
+      triplets.emplace_back(e * d2 + l, j * d2 + l, sqrtkappa);
+
+    // Keep track of the number of poses we've seen
+    max_pair = std::max<size_t>(i, j);
+    if (max_pair > num_poses)
+      num_poses = max_pair;
+  }
+  num_poses++; // Account for zero-based indexing
+
+  SparseMatrix B3(d2 * measurements.size(), d2 * num_poses);
+  B3.setFromTriplets(triplets.begin(), triplets.end());
+
+  return B3;
+}
+
+void construct_B1_B2_matrices(const measurements_t &measurements,
+                              SparseMatrix &B1, SparseMatrix &B2) {
+  // Clear input matrices
+  B1.setZero();
+  B2.setZero();
+
   size_t num_poses = 0;
   size_t d = (!measurements.empty() ? measurements[0].R.rows() : 0);
 
@@ -376,30 +429,8 @@ SparseMatrix construct_B1_matrix(const measurements_t &measurements) {
   }
   num_poses++; // Account for zero-based indexing
 
-  SparseMatrix B1(d * measurements.size(), d * num_poses);
+  B1.resize(d * measurements.size(), d * num_poses);
   B1.setFromTriplets(triplets.begin(), triplets.end());
-
-  return B1;
-}
-
-void construct_B2_B3_matrices(const measurements_t &measurements,
-                              SparseMatrix &B2, SparseMatrix &B3) {
-  // Clear input matrices
-  B2.setZero();
-  B3.setZero();
-
-  size_t num_poses = 0;
-  size_t d = (!measurements.empty() ? measurements[0].R.rows() : 0);
-
-  std::vector<Eigen::Triplet<Scalar>> triplets;
-
-  // Useful quantities to cache
-  size_t d2 = d * d;
-  size_t d3 = d * d * d;
-
-  size_t i, j; // Indices for the tail and head of the given measurement
-  Scalar sqrttau;
-  size_t max_pair;
 
   /// Construct matrix B2 from equation (69b) in the tech report
   triplets.clear();
@@ -407,49 +438,16 @@ void construct_B2_B3_matrices(const measurements_t &measurements,
 
   for (size_t e = 0; e < measurements.size(); e++) {
     i = measurements[e].i;
-    j = measurements[e].j;
+
     sqrttau = sqrt(measurements[e].tau);
     for (size_t k = 0; k < d; k++)
       for (size_t r = 0; r < d; r++)
         triplets.emplace_back(d * e + r, d2 * i + d * k + r,
                               -sqrttau * measurements[e].t(k));
-
-    // Keep track of the number of poses we've seen
-    max_pair = std::max<size_t>(i, j);
-    if (max_pair > num_poses)
-      num_poses = max_pair;
   }
-
-  num_poses++; // Account for zero-based indexing
 
   B2.resize(d * measurements.size(), d2 * num_poses);
   B2.setFromTriplets(triplets.begin(), triplets.end());
-
-  /// Construct matrix B3 from equation (69c) in the tech report
-  triplets.clear();
-  triplets.reserve((d3 + d2) * measurements.size());
-
-  for (size_t e = 0; e < measurements.size(); e++) {
-    Scalar sqrtkappa = std::sqrt(measurements[e].kappa);
-    const Matrix &R = measurements[e].R;
-
-    for (size_t r = 0; r < d; r++)
-      for (size_t c = 0; c < d; c++) {
-        i = measurements[e].i; // Tail of measurement
-        j = measurements[e].j; // Head of measurement
-
-        // Representation of the -sqrt(kappa) * Rt(i,j) \otimes I_d block
-        for (size_t l = 0; l < d; l++)
-          triplets.emplace_back(e * d2 + d * r + l, i * d2 + d * c + l,
-                                -sqrtkappa * R(c, r));
-      }
-
-    for (size_t l = 0; l < d2; l++)
-      triplets.emplace_back(e * d2 + l, j * d2 + l, sqrtkappa);
-  }
-
-  B3.resize(d2 * measurements.size(), d2 * num_poses);
-  B3.setFromTriplets(triplets.begin(), triplets.end());
 }
 
 SparseMatrix construct_M_matrix(const measurements_t &measurements) {
