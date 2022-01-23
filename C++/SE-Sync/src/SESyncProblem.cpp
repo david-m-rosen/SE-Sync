@@ -19,8 +19,18 @@ SESyncProblem::SESyncProblem(
   // Construct oriented incidence matrix for the underlying pose graph
   A_ = construct_oriented_incidence_matrix(measurements);
 
-  // Construct B matrices (used to compute chordal initializations)
-  construct_B_matrices(measurements, B1_, B2_, B3_);
+  // Construct B matrices
+
+  // Matrix B1 is required by all methods to construct chordal initializations
+  B1_ = construct_B1_matrix(measurements);
+
+  if (form_ == Formulation::Simplified) {
+    // When solving the simplified form of the problem, we also require the
+    // matrices B2 and B3 to recover the optimal assignment t(R) of the
+    // translational states corresponding to the estimate for the robot
+    // orientations
+    construct_B2_B3_matrices(measurements, B2_, B3_);
+  }
 
   /// Set dimensions of the problem
   n_ = A_.rows();

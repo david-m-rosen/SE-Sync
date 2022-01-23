@@ -55,9 +55,13 @@ SparseMatrix
 construct_translational_data_matrix(const measurements_t &measurements);
 
 /** Given a vector of relative pose measurements, this function constructs and
- * returns the B matrices defined in equation (69) of the tech report */
-void construct_B_matrices(const measurements_t &measurements, SparseMatrix &B1,
-                          SparseMatrix &B2, SparseMatrix &B3);
+ * returns the matrix B1 defined in equation (69a) of the SE-Sync tech report */
+SparseMatrix construct_B1_matrix(const measurements_t &measurements);
+
+/** Given a vector of relative pose measurements, this function constructs and
+ * returns the matrices B1 and B2 defined in equation (69) of the tech report */
+void construct_B2_B3_matrices(const measurements_t &measurements,
+                              SparseMatrix &B2, SparseMatrix &B3);
 
 /** Given a vector of relative pose measurements, this function constructs and
  * returns the matrix M parameterizing the translation-explicit formulation of
