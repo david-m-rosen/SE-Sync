@@ -141,6 +141,82 @@ measurements_t read_g2o_file(const std::string &filename, size_t &num_poses) {
   return measurements;
 }
 
+SparseMatrix construct_rotational_weight_graph_Laplacian(
+    const measurements_t &measurements) {
+
+  std::vector<Eigen::Triplet<Scalar>> triplets;
+  triplets.reserve(4 * measurements.size());
+
+  size_t num_poses = 0;
+  size_t max_pair;
+  for (size_t m = 0; m < measurements.size(); m++) {
+
+    // L(W^rho)_ii += kappa
+    triplets.emplace_back(measurements[m].i, measurements[m].i,
+                          measurements[m].kappa);
+
+    // L(W^rho)_ij = -kappa
+    triplets.emplace_back(measurements[m].i, measurements[m].j,
+                          -measurements[m].kappa);
+
+    // L(W^rho)_ji = -kappa
+    triplets.emplace_back(measurements[m].j, measurements[m].i,
+                          -measurements[m].kappa);
+
+    // L(W^rho)_jj = kappa
+    triplets.emplace_back(measurements[m].j, measurements[m].j,
+                          measurements[m].kappa);
+
+    max_pair = std::max<size_t>(measurements[m].i, measurements[m].j);
+    if (max_pair > num_poses)
+      num_poses = max_pair;
+  }
+
+  num_poses++; // Account for 0-based indexing
+
+  SparseMatrix LWrho(num_poses, num_poses);
+  LWrho.setFromTriplets(triplets.begin(), triplets.end());
+  return LWrho;
+}
+
+SparseMatrix construct_translational_weight_graph_Laplacian(
+    const measurements_t &measurements) {
+
+  std::vector<Eigen::Triplet<Scalar>> triplets;
+  triplets.reserve(4 * measurements.size());
+
+  size_t num_poses = 0;
+  size_t max_pair;
+  for (size_t m = 0; m < measurements.size(); m++) {
+
+    // L(W^tau)_ii += tau
+    triplets.emplace_back(measurements[m].i, measurements[m].i,
+                          measurements[m].tau);
+
+    // L(W^tau)_ij = -tau
+    triplets.emplace_back(measurements[m].i, measurements[m].j,
+                          -measurements[m].tau);
+
+    // L(W^tau)_ji = -tau
+    triplets.emplace_back(measurements[m].j, measurements[m].i,
+                          -measurements[m].tau);
+
+    // L(W^tau)_jj = tau
+    triplets.emplace_back(measurements[m].j, measurements[m].j,
+                          measurements[m].tau);
+
+    max_pair = std::max<size_t>(measurements[m].i, measurements[m].j);
+    if (max_pair > num_poses)
+      num_poses = max_pair;
+  }
+
+  num_poses++; // Account for 0-based indexing
+
+  SparseMatrix LWtau(num_poses, num_poses);
+  LWtau.setFromTriplets(triplets.begin(), triplets.end());
+  return LWtau;
+}
+
 SparseMatrix
 construct_rotational_connection_Laplacian(const measurements_t &measurements) {
 

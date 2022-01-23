@@ -268,10 +268,22 @@ PYBIND11_MODULE(sesync, m) {
       "pose-graph");
 
   m.def(
-      "construct_rotational_connection_Laplacian",
-      &SESync::construct_rotational_connection_Laplacian,
+      "construct_rotational_weight_graph_Laplacian",
+      &SESync::construct_rotational_weight_graph_Laplacian,
       "Given a vector of relative pose measurements, this function constructs "
-      "and  returns the corresponding rotational connection Laplacian ");
+      "and returns the Laplacian of the rotational weight graph L(W^rho)");
+
+  m.def(
+      "construct_translational_weight_graph_Laplacian",
+      &SESync::construct_translational_weight_graph_Laplacian,
+      "Given a vector of relative pose measurements, this function constructs "
+      "and returns the Laplacian of the translational weight graph L(W^tau)");
+
+  m.def("construct_rotational_connection_Laplacian",
+        &SESync::construct_rotational_connection_Laplacian,
+        "Given a vector of relative pose measurements, this function "
+        "constructs "
+        "and  returns the corresponding rotational connection Laplacian ");
   m.def("construct_oriented_incidence_matrix",
         &SESync::construct_oriented_incidence_matrix,
         "Given a list of relative pose measurements, this function constructs "

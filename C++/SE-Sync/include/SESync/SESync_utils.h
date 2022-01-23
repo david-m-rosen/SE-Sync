@@ -24,6 +24,16 @@ namespace SESync {
 measurements_t read_g2o_file(const std::string &filename, size_t &num_poses);
 
 /** Given a vector of relative pose measurements, this function constructs and
+ * returns the Laplacian of the rotational weight graph L(W^rho) */
+SparseMatrix
+construct_rotational_weight_graph_Laplacian(const measurements_t &measurements);
+
+/** Given a vector of relative pose measurements, this function constructs and
+ * returns the Laplacian of the translational weight graph L(W^tau) */
+SparseMatrix construct_translational_weight_graph_Laplacian(
+    const measurements_t &measurements);
+
+/** Given a vector of relative pose measurements, this function constructs and
  * returns the corresponding rotational connection Laplacian */
 SparseMatrix
 construct_rotational_connection_Laplacian(const measurements_t &measurements);
