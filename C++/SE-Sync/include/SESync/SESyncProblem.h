@@ -43,17 +43,17 @@ private:
   /// PROBLEM DATA
 
   /** The specific formulation of the SE-Sync problem to be solved
-(translation-implicit, translation-explicit, or robust) */
+(simplified, translation-explicit, or rotation-only) */
   Formulation form_;
 
-  /** Number of poses */
+  /** Number of states */
   size_t n_ = 0;
 
   /** Number of measurements */
   size_t m_ = 0;
 
-  /** Dimensional parameter d for the special Euclidean group SE(d) over which
-   * this problem is defined */
+  /** Dimensional parameter d for the special Euclidean group SE(d) or special
+   * orthogonal group SO(d) over which this problem is defined */
   size_t d_ = 0;
 
   /** Relaxation rank */
@@ -73,24 +73,24 @@ private:
 
   /** The rotational connection Laplacian for the special Euclidean
    * synchronization problem, cf. eq. 14 of the SE-Sync tech report.  Only
-   * used in Implicit mode.*/
+   * used in Simplified or SOSync modes.*/
   SparseMatrix LGrho_;
 
   /** The weighted reduced oriented incidence matrix Ared Omega^(1/2) (cf.
-   * eq. 39 of the SE-Sync tech report).  Only used in Implicit mode. */
+   * eq. 39 of the SE-Sync tech report).  Only used in Simplified mode. */
   SparseMatrix Ared_SqrtOmega_;
 
   /** The transpose of the above matrix; we cache this for computational
-   * efficiency, since it's used frequently.  Only used in Implicit mode.
+   * efficiency, since it's used frequently.  Only used in Simplified mode.
    */
   SparseMatrix SqrtOmega_AredT_;
 
   /** The weighted translational data matrix Omega^(1/2) T (cf. eqs. 22-24
-   * of the SE-Sync tech report.  Only used in Implicit mode. */
+   * of the SE-Sync tech report.  Only used in Simplified mode. */
   SparseMatrix SqrtOmega_T_;
 
   /** The transpose of the above matrix; we cache this for computational
-   * efficiency, since it's used frequently.  Only used in Implicit mode. */
+   * efficiency, since it's used frequently.  Only used in Simplified mode. */
   SparseMatrix TT_SqrtOmega_;
 
   /** An Eigen sparse linear solver that encodes the Cholesky factor L used
@@ -236,11 +236,14 @@ public:
   SY, where S is the matrix that determines the quadratic form defining the
   objective  F(Y) := tr(S * Y' * Y) for the SE-Sync problem.  More precisely:
   *
-  * If formulation == Implicit, this returns Q * Y, where Q is as defined in
-  equation (24) of the SE-Sync tech report.
+  * If formulation == Simplified, this returns Q * Y, where Q is as defined in
+  * equation (24) of the SE-Sync tech report.
   *
   * If formulation == Explicit, this returns M * Y, where M is as defined in
-  equation (18) of the SE-Sync tech report. */
+  * equation (18) of the SE-Sync tech report.
+  *
+  * If formulation == SOSync, this returns LGrho * Y, where LGrho is the
+  * rotational connection Laplacian */
   Matrix data_matrix_product(const Matrix &Y) const;
 
   /** Given a matrix Y, this function computes and returns F(Y), the value of
@@ -294,14 +297,15 @@ public:
   Matrix retract(const Matrix &Y, const Matrix &dotY) const;
 
   /** Given a point Y in the domain D of the rank-r relaxation of the SE-Sync
-   * optimization problem, this function computes and returns a matrix X = [t |
-   * R] comprised of translations and rotations for a set of feasible poses for
-   * the original estimation problem obtained by rounding the point Y */
+   * optimization problem, this function computes and returns a matrix
+   * X = [t | R] comprised of translations and rotations for a set of feasible
+   * poses for the original estimation problem obtained by rounding the point Y
+   */
   Matrix round_solution(const Matrix Y) const;
 
   /** Given a critical point Y of the rank-r relaxation of the SE-Sync
    * optimization problem, this function computes and returns a d x dn matrix
-   * comprised of dxd block elements of the associated block-diagonal Lagrange
+   * comprised of d x d block elements of the associated block-diagonal Lagrange
    * multiplier matrix associated with the orthonormality constraints on the
    * generalized orientations of the poses (cf. eq. (119) in the SE-Sync tech
    * report) */

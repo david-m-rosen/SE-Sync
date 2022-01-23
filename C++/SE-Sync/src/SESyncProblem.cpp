@@ -25,7 +25,7 @@ SESyncProblem::SESyncProblem(
   /// Set dimensions of the problem
   n_ = A_.rows();
   m_ = A_.cols();
-  d_ = (!measurements.empty() ? measurements[0].t.size() : 0);
+  d_ = (!measurements.empty() ? measurements[0].R.rows() : 0);
   r_ = d_;
 
   /// Set dimensions of the product of Stiefel manifolds in which the
@@ -34,50 +34,57 @@ SESyncProblem::SESyncProblem(
   SP_.set_n(n_);
   SP_.set_p(r_);
 
-  if (form_ == Formulation::Simplified) {
+  if (form_ == Formulation::Simplified || form_ == Formulation::SOSync) {
     /// Construct data matrices required for the implicit formulation of the
     /// SE-Sync problem
 
     // Construct rotational connection Laplacian
     LGrho_ = construct_rotational_connection_Laplacian(measurements);
 
-    // Construct square root of the (diagonal) matrix of translational
-    // measurement precisions
-    DiagonalMatrix SqrtOmega =
-        construct_translational_precision_matrix(measurements)
-            .diagonal()
-            .cwiseSqrt()
-            .asDiagonal();
+    if (form_ == Formulation::Simplified) {
 
-    // Construct Ared * SqrtOmega
-    Ared_SqrtOmega_ = A_.topRows(n_ - 1) * SqrtOmega;
+      // Construct the auxiliary data (matrices and cached factorizations)
+      // needed to compute products with the objective matrix Q
 
-    // We cache the transpose of the above matrix as well to avoid having to
-    // dynamically recompute this as an intermediate step each time the
-    // transpose operator is applied
-    SqrtOmega_AredT_ = Ared_SqrtOmega_.transpose();
+      // Construct square root of the (diagonal) matrix of translational
+      // measurement precisions
+      DiagonalMatrix SqrtOmega =
+          construct_translational_precision_matrix(measurements)
+              .diagonal()
+              .cwiseSqrt()
+              .asDiagonal();
 
-    // Construct translational data matrix T
-    SparseMatrix T = construct_translational_data_matrix(measurements);
+      // Construct Ared * SqrtOmega
+      Ared_SqrtOmega_ = A_.topRows(n_ - 1) * SqrtOmega;
 
-    SqrtOmega_T_ = SqrtOmega * T;
-    // Likewise, we also cache this transpose
-    TT_SqrtOmega_ = SqrtOmega_T_.transpose();
+      // We cache the transpose of the above matrix as well to avoid having to
+      // dynamically recompute this as an intermediate step each time the
+      // transpose operator is applied
+      SqrtOmega_AredT_ = Ared_SqrtOmega_.transpose();
 
-    /// Construct matrices necessary to compute orthogonal projection onto the
-    /// kernel of the weighted reduced oriented incidence matrix Ared_SqrtOmega
-    if (projection_factorization_ == ProjectionFactorization::Cholesky) {
-      // Compute and cache the Cholesky factor L of Ared * Omega * Ared^T
-      L_.compute(Ared_SqrtOmega_ * SqrtOmega_AredT_);
-    } else {
-      // Compute the QR decomposition of Omega^(1/2) * Ared^T (cf. eq. (98) of
-      // the tech report).Note that Eigen's sparse QR factorization can only be
-      // called on matrices stored in compressed format
-      SqrtOmega_AredT_.makeCompressed();
+      // Construct translational data matrix T
+      SparseMatrix T = construct_translational_data_matrix(measurements);
 
-      QR_ = new SparseQRFactorization();
-      QR_->compute(SqrtOmega_AredT_);
-    }
+      SqrtOmega_T_ = SqrtOmega * T;
+      // Likewise, we also cache this transpose
+      TT_SqrtOmega_ = SqrtOmega_T_.transpose();
+
+      /// Construct matrices necessary to compute orthogonal projection onto the
+      /// kernel of the weighted reduced oriented incidence matrix
+      /// Ared_SqrtOmega
+      if (projection_factorization_ == ProjectionFactorization::Cholesky) {
+        // Compute and cache the Cholesky factor L of Ared * Omega * Ared^T
+        L_.compute(Ared_SqrtOmega_ * SqrtOmega_AredT_);
+      } else {
+        // Compute the QR decomposition of Omega^(1/2) * Ared^T (cf. eq. (98) of
+        // the tech report).Note that Eigen's sparse QR factorization can only
+        // be called on matrices stored in compressed format
+        SqrtOmega_AredT_.makeCompressed();
+
+        QR_ = new SparseQRFactorization();
+        QR_->compute(SqrtOmega_AredT_);
+      }
+    } // if (form_ == Formulation::Simplified)
 
     /** Compute and cache preconditioning matrices, if required */
     if (preconditioner_ == Preconditioner::Jacobi) {
@@ -155,22 +162,18 @@ void SESyncProblem::set_relaxation_rank(size_t rank) {
 Matrix SESyncProblem::data_matrix_product(const Matrix &Y) const {
   if (form_ == Formulation::Simplified)
     return Q_product(Y);
-  else
+  else if (form_ == Formulation::Explicit)
     return M_ * Y;
+  else // form_ == Formulation::SOSync
+    return LGrho_ * Y;
 }
 
 Scalar SESyncProblem::evaluate_objective(const Matrix &Y) const {
-  if (form_ == Formulation::Simplified)
-    return (Y * Q_product(Y.transpose())).trace();
-  else // form == Explicit
-    return (Y * M_ * Y.transpose()).trace();
+  return (Y * data_matrix_product(Y.transpose())).trace();
 }
 
 Matrix SESyncProblem::Euclidean_gradient(const Matrix &Y) const {
-  if (form_ == Formulation::Simplified)
-    return 2 * data_matrix_product(Y.transpose()).transpose();
-  else // form == Explicit
-    return 2 * Y * M_;
+  return 2 * data_matrix_product(Y.transpose()).transpose();
 }
 
 Matrix SESyncProblem::Riemannian_gradient(const Matrix &Y,
@@ -184,8 +187,8 @@ Matrix SESyncProblem::Riemannian_gradient(const Matrix &Y) const {
 
 Matrix SESyncProblem::Riemannian_Hessian_vector_product(
     const Matrix &Y, const Matrix &nablaF_Y, const Matrix &dotY) const {
-  if (form_ == Formulation::Simplified)
-    return SP_.Proj(Y, 2 * Q_product(dotY.transpose()).transpose() -
+  if (form_ == Formulation::Simplified || form_ == Formulation::SOSync)
+    return SP_.Proj(Y, 2 * data_matrix_product(dotY.transpose()).transpose() -
                            SP_.SymBlockDiagProduct(dotY, Y, nablaF_Y));
   else {
     // Euclidean Hessian-vector product
@@ -222,7 +225,7 @@ Matrix SESyncProblem::precondition(const Matrix &Y, const Matrix &dotY) const {
 
 Matrix SESyncProblem::tangent_space_projection(const Matrix &Y,
                                                const Matrix &dotY) const {
-  if (form_ == Formulation::Simplified)
+  if (form_ == Formulation::Simplified || form_ == Formulation::SOSync)
     return SP_.Proj(Y, dotY);
   else {
     // form == Explicit
@@ -241,7 +244,7 @@ Matrix SESyncProblem::tangent_space_projection(const Matrix &Y,
 }
 
 Matrix SESyncProblem::retract(const Matrix &Y, const Matrix &dotY) const {
-  if (form_ == Formulation::Simplified)
+  if (form_ == Formulation::Simplified || form_ == Formulation::SOSync)
     return SP_.retract(Y, dotY);
   else // form == Explicit
   {
@@ -273,7 +276,9 @@ Matrix SESyncProblem::round_solution(const Matrix Y) const {
   Vector determinants(n_);
 
   // Compute the offset at which the rotation matrix blocks begin
-  size_t rot_offset = (form_ == Formulation::Simplified ? 0 : n_);
+  size_t rot_offset =
+      ((form_ == Formulation::Simplified || form_ == Formulation::SOSync) ? 0
+                                                                          : n_);
 
   size_t ng0 = 0; // This will count the number of blocks whose
   // determinants have positive sign
@@ -302,11 +307,14 @@ Matrix SESyncProblem::round_solution(const Matrix Y) const {
     R.block(0, rot_offset + i * d_, d_, d_) =
         project_to_SOd(R.block(0, rot_offset + i * d_, d_, d_));
 
-  if (form_ == Formulation::Explicit)
+  if ((form_ == Formulation::Explicit) || (form_ == Formulation::SOSync)) {
+    // In this case, either the matrix R already includes the translation
+    // estimates (Explicit), or we are solving the SO-Synchronization version of
+    // the problem (so they are not necessary)
     return R;
-  else // form == Explicit
-  {
-    // In this case, we also need to recover the corresponding translations
+  } else {
+    // form_ == Simplified:  In this case, we also need to recover the
+    // optimal translations corresponding to the estimated rotational states
     Matrix X(d_, (d_ + 1) * n_);
 
     // Set rotational states
@@ -329,7 +337,9 @@ Matrix SESyncProblem::compute_Lambda_blocks(const Matrix &Y) const {
   Matrix Lambda_blocks(d_, n_ * d_);
 
   // Index of the row/column at which the rotational blocks begin in matrix X
-  size_t offset = (form_ == Formulation::Simplified ? 0 : n_);
+  size_t offset =
+      ((form_ == Formulation::Simplified || form_ == Formulation::SOSync) ? 0
+                                                                          : n_);
 
 #pragma omp parallel for
   for (size_t i = 0; i < n_; ++i) {
@@ -343,7 +353,9 @@ Matrix SESyncProblem::compute_Lambda_blocks(const Matrix &Y) const {
 SparseMatrix SESyncProblem::compute_Lambda_from_Lambda_blocks(
     const Matrix &Lambda_blocks) const {
 
-  size_t offset = (form_ == Formulation::Simplified ? 0 : n_);
+  size_t offset =
+      ((form_ == Formulation::Simplified || form_ == Formulation::SOSync) ? 0
+                                                                          : n_);
 
   std::vector<Eigen::Triplet<Scalar>> elements;
   elements.reserve(d_ * d_ * n_);
@@ -454,7 +466,7 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
 
 Matrix SESyncProblem::chordal_initialization() const {
   Matrix Y;
-  if (form_ == Formulation::Simplified) {
+  if ((form_ == Formulation::Simplified) || (form_ == Formulation::SOSync)) {
     Y = Matrix::Zero(r_, n_ * d_);
     Y.topRows(d_) = SESync::chordal_initialization(d_, B3_);
   } else // form == explicit
@@ -474,7 +486,7 @@ Matrix SESyncProblem::chordal_initialization() const {
 
 Matrix SESyncProblem::random_sample() const {
   Matrix Y;
-  if (form_ == Formulation::Simplified)
+  if ((form_ == Formulation::Simplified) || (form_ == Formulation::SOSync))
     // Randomly sample a point on the Stiefel manifold
     Y = SP_.random_sample();
   else // form == Explicit
@@ -503,7 +515,8 @@ SESyncProblem::SMinusLambdaProdFunctor::SMinusLambdaProdFunctor(
     const SESyncProblem *prob, const Matrix &Y, Scalar sigma)
     : problem_(prob), dim_(prob->dimension()), sigma_(sigma) {
 
-  if (problem_->formulation() == Formulation::Simplified) {
+  if ((problem_->formulation() == Formulation::Simplified) ||
+      (problem_->formulation() == Formulation::SOSync)) {
     rows_ = problem_->dimension() * problem_->num_poses();
     cols_ = problem_->dimension() * problem_->num_poses();
   } else // mode == Explicit
@@ -525,7 +538,8 @@ void SESyncProblem::SMinusLambdaProdFunctor::perform_op(Scalar *x,
 
   // Offset corresponding to the first index in X and Y associated with
   // rotational blocks
-  size_t offset = (problem_->formulation() == Formulation::Simplified
+  size_t offset = (((problem_->formulation() == Formulation::Simplified) ||
+                    (problem_->formulation() == Formulation::SOSync))
                        ? 0
                        : problem_->num_poses());
 

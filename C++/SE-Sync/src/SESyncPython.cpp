@@ -23,9 +23,11 @@ PYBIND11_MODULE(sesync, m) {
       "The specific formulation of the synchronization problem to solve")
       .value("Simplified", SESync::Formulation::Simplified,
              "Translational states have been analytically eliminated")
-      .value(
-          "Explicit", SESync::Formulation::Explicit,
-          "Translational states are explicitly included in the optimization");
+      .value("Explicit", SESync::Formulation::Explicit,
+             "Translational states are explicitly included in the optimization")
+      .value("SOSync", SESync::Formulation::SOSync,
+             "Rotation synchronization (rotation averaging) only: ignore all "
+             "translational data");
 
   // Matrix factorization to use when computing orthogonal projections
   py::enum_<SESync::ProjectionFactorization>(

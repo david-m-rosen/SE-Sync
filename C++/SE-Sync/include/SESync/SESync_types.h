@@ -38,7 +38,11 @@ enum class Formulation {
    * synchronization problem that explicitly estimates both rotational and
    * translational states (cf. Problem 2 in the SE-Sync tech report).
    */
-  Explicit
+  Explicit,
+
+  /** Construct and solve the rotation synchronization (rotation averaging)
+     problem determined by the rotational data (ignoring all translations) */
+  SOSync
 };
 
 /** The type of factorization to use when computing the action of the orthogonal

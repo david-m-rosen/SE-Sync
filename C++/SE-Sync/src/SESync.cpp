@@ -58,8 +58,10 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     std::cout << " SE-Sync problem formulation: ";
     if (problem.formulation() == Formulation::Simplified)
       std::cout << "Simplified";
-    else // Explicit)
+    else if (problem.formulation() == Formulation::Explicit)
       std::cout << "Explicit";
+    else // formulation == SOSync
+      std::cout << "SO-Sync";
     std::cout << std::endl;
     std::cout << " Initial level of Riemannian staircase: " << options.r0
               << std::endl;
@@ -73,7 +75,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     std::cout << " Tolerance for accepting an eigenvalue as numerically "
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
-    if (options.formulation == Formulation::Simplified) {
+    if (problem.formulation() == Formulation::Simplified) {
       std::cout << " Using "
                 << (problem.projection_factorization() ==
                             ProjectionFactorization::Cholesky
@@ -463,7 +465,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   // extract only the *rotational* elements of xhat if the SE synchronization
   // problem was solved using the simplified formulation
   SESyncResults.Fxhat =
-      (options.formulation == Formulation::Simplified
+      (problem.formulation() == Formulation::Simplified
            ? problem.evaluate_objective(SESyncResults.xhat.block(
                  0, problem.num_poses(), problem.dimension(),
                  problem.dimension() * problem.num_poses()))

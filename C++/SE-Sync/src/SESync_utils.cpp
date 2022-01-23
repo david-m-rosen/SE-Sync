@@ -224,7 +224,7 @@ construct_rotational_connection_Laplacian(const measurements_t &measurements) {
   // index encountered, which in turn provides the number
   // of poses
 
-  size_t d = (!measurements.empty() ? measurements[0].t.size() : 0);
+  size_t d = (!measurements.empty() ? measurements[0].R.rows() : 0);
 
   // Each measurement contributes 2*d elements along the diagonal of the
   // connection Laplacian, and 2*d^2 elements on a pair of symmetric
@@ -317,7 +317,7 @@ construct_translational_data_matrix(const measurements_t &measurements) {
 
   size_t num_poses = 0;
 
-  size_t d = (!measurements.empty() ? measurements[0].t.size() : 0);
+  size_t d = (!measurements.empty() ? measurements[0].R.rows() : 0);
 
   std::vector<Eigen::Triplet<Scalar>> triplets;
   triplets.reserve(d * measurements.size());
@@ -348,7 +348,7 @@ void construct_B_matrices(const measurements_t &measurements, SparseMatrix &B1,
   B3.setZero();
 
   size_t num_poses = 0;
-  size_t d = (!measurements.empty() ? measurements[0].t.size() : 0);
+  size_t d = (!measurements.empty() ? measurements[0].R.rows() : 0);
 
   std::vector<Eigen::Triplet<Scalar>> triplets;
 
@@ -432,7 +432,7 @@ void construct_B_matrices(const measurements_t &measurements, SparseMatrix &B1,
 SparseMatrix construct_M_matrix(const measurements_t &measurements) {
 
   size_t num_poses = 0;
-  size_t d = (!measurements.empty() ? measurements[0].t.size() : 0);
+  size_t d = (!measurements.empty() ? measurements[0].R.rows() : 0);
 
   std::vector<Eigen::Triplet<Scalar>> triplets;
 
