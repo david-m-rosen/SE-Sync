@@ -374,7 +374,8 @@ PYBIND11_MODULE(PySESync, m) {
          const SESync::SESyncOpts &options,
          const SESync::Matrix &Y0) -> SESync::SESyncResult {
         // Redirect emitted output from (C++) stdout to (Python) sys.stdout
-        py::scoped_ostream_redirect stream();
+        py::scoped_ostream_redirect stream(
+            std::cout, py::module::import("sys").attr("stdout"));
         return SESync::SESync(measurements, options, Y0);
       },
       py::arg("measurements"), py::arg("options") = SESync::SESyncOpts(),
