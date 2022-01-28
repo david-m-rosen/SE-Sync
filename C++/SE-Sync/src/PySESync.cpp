@@ -10,7 +10,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(sesync, m) {
+PYBIND11_MODULE(PySESync, m) {
 
   m.doc() = "A library for certifiably correct synchronization over the "
             "special Euclidean group.";

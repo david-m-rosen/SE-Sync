@@ -153,8 +153,8 @@ endif()
 # PYTHON BINDINGS
 if(${BUILD_PYTHON_BINDINGS})
   find_package(pybind11 REQUIRED)
-  pybind11_add_module(sesync SHARED ${SESync_SOURCE_DIR}/SESyncPython.cpp)
-  target_link_libraries(sesync PRIVATE ${PROJECT_NAME})
+  pybind11_add_module(PySESync SHARED ${SESync_SOURCE_DIR}/PySESync.cpp)
+  target_link_libraries(PySESync PRIVATE ${PROJECT_NAME})
 endif()
 
 

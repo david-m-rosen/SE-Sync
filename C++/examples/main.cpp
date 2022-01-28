@@ -31,6 +31,8 @@ int main(int argc, char **argv) {
 
   SESyncOpts opts;
   opts.verbose = true; // Print output to stdout
+  opts.r0 = measurements[0].R.rows();
+  opts.formulation = Formulation::SOSync;
   opts.num_threads = 4;
 
 #ifdef GPERFTOOLS
