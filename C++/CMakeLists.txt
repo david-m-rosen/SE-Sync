@@ -152,9 +152,23 @@ endif()
 
 # PYTHON BINDINGS
 if(${BUILD_PYTHON_BINDINGS})
+  
+  # Find the appropriate Python3 interpreter
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  
+  # Find pybind11
   find_package(pybind11 REQUIRED)
-  pybind11_add_module(PySESync SHARED ${SESync_SOURCE_DIR}/PySESync.cpp)
+  
+  # Determine the location of this user's site-packages directory
+  execute_process ( COMMAND ${Python3_EXECUTABLE} -m site --user-site OUTPUT_VARIABLE Python3_USER_SITE_LIB OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  # Add the Python module to this project
+  pybind11_add_module(PySESync MODULE ${SESync_SOURCE_DIR}/PySESync.cpp)
   target_link_libraries(PySESync PRIVATE ${PROJECT_NAME})
+  
+  # Build this Python library in the user's local site-packages directory (as reported by Python itself), so that it can be automatically be found and imported by the Python interpreter
+  message(STATUS "Building SE-Sync Python library in ${Python3_USER_SITE_LIB}")
+  set_target_properties(PySESync PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${Python3_USER_SITE_LIB})
 endif()
 
 
