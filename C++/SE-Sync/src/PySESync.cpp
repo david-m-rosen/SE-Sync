@@ -231,7 +231,7 @@ PYBIND11_MODULE(PySESync, m) {
           "A vector containing the sequence of minimum eigenvalues of the "
           "certificate matrix constructed at the critical point recovered from "
           "optimization at each level of the Riemannian Staircase")
-      .def_readwrite("min_eig_mat_ops", &SESync::SESyncResult::min_eig_mat_ops)
+      .def_readwrite("min_eig_mat_ops", &SESync::SESyncResult::min_eig_mv_ops)
       .def_readwrite(
           "min_eig_comp_times", &SESync::SESyncResult::min_eig_comp_times,
           "A vector containing the elapsed time of the minimum eigenvalue "

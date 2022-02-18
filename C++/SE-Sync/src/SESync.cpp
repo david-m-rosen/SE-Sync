@@ -332,12 +332,12 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Compute the minimum eigenvalue lambda and corresponding eigenvector
     // of Q - Lambda
-    size_t num_min_eig_iterations;
+    size_t num_min_eig_mv_ops;
     auto eig_start_time = Stopwatch::tick();
     bool eigenvalue_convergence = problem.compute_S_minus_Lambda_min_eig(
         SESyncResults.Yopt, SESyncResults.lambda_min, SESyncResults.v_min,
-        num_min_eig_iterations, options.max_eig_iterations,
-        options.min_eig_num_tol, options.num_Lanczos_vectors);
+        num_min_eig_mv_ops, options.max_eig_iterations, options.min_eig_num_tol,
+        options.num_Lanczos_vectors);
     double eig_elapsed_time = Stopwatch::tock(eig_start_time);
 
     // Check eigenvalue convergence
@@ -352,7 +352,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Record results of eigenvalue computation
     SESyncResults.minimum_eigenvalues.push_back(SESyncResults.lambda_min);
-    SESyncResults.min_eig_mat_ops.push_back(num_min_eig_iterations);
+    SESyncResults.min_eig_mv_ops.push_back(num_min_eig_mv_ops);
     SESyncResults.min_eig_comp_times.push_back(eig_elapsed_time);
 
     // Test nonnegativity of minimum eigenvalue
@@ -362,7 +362,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
         std::cout << "Found second-order critical point! Minimum eigenvalue: "
                   << SESyncResults.lambda_min
                   << ".  Elapsed computation time: " << eig_elapsed_time
-                  << " seconds (" << num_min_eig_iterations
+                  << " seconds (" << num_min_eig_mv_ops
                   << " matrix-vector multiplications)." << std::endl;
       SESyncResults.status = GlobalOpt;
       break;
@@ -374,7 +374,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
         std::cout << "Saddle point detected! Minimum eigenvalue: "
                   << SESyncResults.lambda_min
                   << ".  Elapsed computation time: " << eig_elapsed_time
-                  << " seconds (" << num_min_eig_iterations
+                  << " seconds (" << num_min_eig_mv_ops
                   << " matrix-vector multiplications)." << std::endl;
 
         std::cout << "Computing escape direction ... " << std::endl;

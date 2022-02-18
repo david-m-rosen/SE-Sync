@@ -322,13 +322,13 @@ public:
   SparseMatrix compute_Lambda(const Matrix &Y) const;
 
   /** Given a critical point Y in the domain of the optimization problem, this
-   *function computes the smallest eigenvalue lambda_min of S - Lambda and its
-   *associated eigenvector v.  Returns a Boolean value indicating whether the
-   *Lanczos method used to estimate the smallest eigenpair converged to
-   *within the required tolerance. */
+   * function computes the smallest eigenvalue lambda_min of S - Lambda and its
+   * associated eigenvector v.  Returns a Boolean value indicating whether the
+   * Lanczos method used to estimate the smallest eigenpair converged to
+   * within the required tolerance. */
   bool compute_S_minus_Lambda_min_eig(
       const Matrix &Y, Scalar &min_eigenvalue, Vector &min_eigenvector,
-      size_t &num_iterations, size_t max_iterations = 10000,
+      size_t &num_mat_vec_prods, size_t max_iterations = 10000,
       Scalar min_eigenvalue_nonnegativity_tolerance = 1e-5,
       size_t num_Lanczos_vectors = 20) const;
 

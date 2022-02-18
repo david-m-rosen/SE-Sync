@@ -231,7 +231,7 @@ struct SESyncResult {
   /** A vector containing the number of matrix-vector multiplication operations
    * performed for the minimum-eigenvalue computation at each level of the
    * Riemannian Staircase */
-  std::vector<size_t> min_eig_mat_ops;
+  std::vector<size_t> min_eig_mv_ops;
 
   /** A vector containing the elapsed time of the minimum eigenvalue computation
    * at each level of the Riemannian Staircase */

@@ -390,9 +390,12 @@ SparseMatrix SESyncProblem::compute_Lambda(const Matrix &Y) const {
 
 bool SESyncProblem::compute_S_minus_Lambda_min_eig(
     const Matrix &Y, Scalar &min_eigenvalue, Vector &min_eigenvector,
-    size_t &num_iterations, size_t max_iterations,
+    size_t &num_mat_vec_prods, size_t max_iterations,
     Scalar min_eigenvalue_nonnegativity_tolerance,
     size_t num_Lanczos_vectors) const {
+
+  num_mat_vec_prods = 0;
+
   // First, compute the largest-magnitude eigenvalue of this matrix
   SMinusLambdaProdFunctor lm_op(this, Y);
   Spectra::SymEigsSolver<Scalar, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN,
@@ -403,6 +406,8 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
 
   int num_converged = largest_magnitude_eigensolver.compute(
       max_iterations, 1e-4, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN);
+
+  num_mat_vec_prods += largest_magnitude_eigensolver.num_operations();
 
   // Check convergence and bail out if necessary
   if (num_converged != 1)
@@ -464,13 +469,14 @@ bool SESyncProblem::compute_S_minus_Lambda_min_eig(
       max_iterations, min_eigenvalue_nonnegativity_tolerance / lambda_lm,
       Spectra::SELECT_EIGENVALUE::LARGEST_MAGN);
 
+  num_mat_vec_prods += min_eigensolver.num_operations();
+
   if (num_converged != 1)
     return false;
 
   min_eigenvector = min_eigensolver.eigenvectors(1);
   min_eigenvector.normalize(); // Ensure that this is a unit vector
   min_eigenvalue = min_eigensolver.eigenvalues()(0) + 2 * lambda_lm;
-  num_iterations = min_eigensolver.num_iterations();
   return true;
 }
 
