@@ -66,9 +66,9 @@ measurements_t read_g2o_file(const std::string &filename, size_t &num_poses) {
       measurement.t = Eigen::Matrix<Scalar, 2, 1>(dx, dy);
       measurement.R = Eigen::Rotation2D<Scalar>(dtheta).toRotationMatrix();
 
-      Eigen::Matrix<Scalar, 2, 2> TranCov;
-      TranCov << I11, I12, I12, I22;
-      measurement.tau = 2 / TranCov.inverse().trace();
+      Eigen::Matrix<Scalar, 2, 2> TranInfo;
+      TranInfo << I11, I12, I12, I22;
+      measurement.tau = 2 / TranInfo.inverse().trace();
 
       measurement.kappa = I33;
 
@@ -108,16 +108,16 @@ measurements_t read_g2o_file(const std::string &filename, size_t &num_poses) {
 
       // Compute and store the optimal (information-divergence-minimizing) value
       // of the parameter tau
-      Eigen::Matrix<Scalar, 3, 3> TranCov;
-      TranCov << I11, I12, I13, I12, I22, I23, I13, I23, I33;
-      measurement.tau = 3 / TranCov.inverse().trace();
+      Eigen::Matrix<Scalar, 3, 3> TranInfo;
+      TranInfo << I11, I12, I13, I12, I22, I23, I13, I23, I33;
+      measurement.tau = 3 / TranInfo.inverse().trace();
 
       // Compute and store the optimal (information-divergence-minimizing value
       // of the parameter kappa
 
-      Eigen::Matrix<Scalar, 3, 3> RotCov;
-      RotCov << I44, I45, I46, I45, I55, I56, I46, I56, I66;
-      measurement.kappa = 3 / (2 * RotCov.inverse().trace());
+      Eigen::Matrix<Scalar, 3, 3> RotInfo;
+      RotInfo << I44, I45, I46, I45, I55, I56, I46, I56, I66;
+      measurement.kappa = 3 / (2 * RotInfo.inverse().trace());
 
     } else if ((token == "VERTEX_SE2") || (token == "VERTEX_SE3:QUAT")) {
       // This is just initialization information, so do nothing
