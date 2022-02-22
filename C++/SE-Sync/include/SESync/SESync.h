@@ -1,7 +1,7 @@
-/** This file provides a convenient functional interface to the SESync
+/** This file provides a convenient functional interface to the SE-Sync
  * algorithm.
  *
- * Copyright (C) 2016 - 2018 by David M. Rosen (dmrosen@mit.edu)
+ * Copyright (C) 2016 - 2022 by David M. Rosen (dmrosen@mit.edu)
  */
 
 #pragma once
