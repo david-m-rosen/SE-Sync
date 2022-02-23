@@ -166,7 +166,7 @@ public:
 
   /// ACCESSORS
 
-  /** Returns the specific formulation of this SE-Sync problem */
+  /** Returns the specific formulation of this problem */
   Formulation formulation() const { return form_; }
 
   /** Returns the type of matrix factorization used to compute the action of the
@@ -185,8 +185,9 @@ public:
     return reg_Chol_precon_max_cond_;
   }
 
-  /** Returns the number of poses appearing in this problem */
-  size_t num_poses() const { return n_; }
+  /** Returns the number of states (poses or rotations) appearing in this
+   * problem */
+  size_t num_states() const { return n_; }
 
   /** Returns the number of measurements in this problem */
   size_t num_measurements() const { return m_; }
@@ -195,15 +196,12 @@ public:
    * over which this problem is defined */
   size_t dimension() const { return d_; }
 
-  /** Returns the relaxation rank r of this problem */
+  /** Returns the current relaxation rank r of this problem */
   size_t relaxation_rank() const { return r_; }
 
   /** Returns the oriented incidence matrix A of the underlying measurement
    * graph over which this problem is defined */
   const SparseMatrix &oriented_incidence_matrix() const { return A_; }
-
-  /** Returns the StiefelProduct manifold underlying this SE-Sync problem */
-  const StiefelProduct &Stiefel_product_manifold() const { return SP_; }
 
   /// OPTIMIZATION AND GEOMETRY
 
@@ -247,68 +245,66 @@ public:
   Matrix data_matrix_product(const Matrix &Y) const;
 
   /** Given a matrix Y, this function computes and returns F(Y), the value of
-   * the objective evaluated at X */
+   * the objective evaluated at Y */
   Scalar evaluate_objective(const Matrix &Y) const;
 
   /** Given a matrix Y, this function computes and returns nabla F(Y), the
    * *Euclidean* gradient of F at Y. */
   Matrix Euclidean_gradient(const Matrix &Y) const;
 
-  /** Given a matrix Y in the domain D of the SE-Sync optimization problem and
-   * the *Euclidean* gradient nabla F(Y) at Y, this function computes and
-   * returns the *Riemannian* gradient grad F(Y) of F at Y */
+  /** Given a matrix Y in the domain D of the relaxation and the *Euclidean*
+   * gradient nabla F(Y) at Y, this function computes and returns the
+   * *Riemannian* gradient grad F(Y) of F at Y */
   Matrix Riemannian_gradient(const Matrix &Y, const Matrix &nablaF_Y) const;
 
-  /** Given a matrix Y in the domain D of the SE-Sync optimization problem, this
-   * function computes and returns grad F(Y), the *Riemannian* gradient of F
-   * at Y */
+  /** Given a matrix Y in the domain D of the relaxation, this function computes
+   * and returns grad F(Y), the *Riemannian* gradient of F at Y */
   Matrix Riemannian_gradient(const Matrix &Y) const;
 
-  /** Given a matrix Y in the domain D of the SE-Sync optimization problem, the
-   * *Euclidean* gradient nablaF_Y of F at Y, and a tangent vector dotY in
-   * T_D(Y), the tangent space of the domain of the optimization problem at Y,
-   * this function computes and returns Hess F(Y)[dotY], the action of the
+  /** Given a matrix Y in the domain D of the relaxation, the *Euclidean*
+   * gradient nablaF_Y of F at Y, and a tangent vector dotY in T_Y(D), the
+   * tangent space of the domain of the optimization problem at Y, this function
+   * computes and returns Hess F(Y)[dotY], the action of the
    * Riemannian Hessian on dotY */
   Matrix Riemannian_Hessian_vector_product(const Matrix &Y,
                                            const Matrix &nablaF_Y,
                                            const Matrix &dotY) const;
 
-  /** Given a matrix Y in the domain D of the SE-Sync optimization problem, and
-   * a tangent vector dotY in T_D(Y), the tangent space of the domain of the
-   * optimization problem at Y, this function computes and returns Hess
+  /** Given a matrix Y in the domain D of the relaxation and a tangent vector
+   * dotY in T_Y(D), the tangent space of the domain of the optimization problem
+   * at Y, this function computes and returns Hess
    * F(Y)[dotY], the action of the Riemannian Hessian on dotX */
   Matrix Riemannian_Hessian_vector_product(const Matrix &Y,
                                            const Matrix &dotY) const;
 
-  /** Given a matrix Y in the domain D of the SE-Sync optimization problem, and
-   * a tangent vector dotY in T_D(Y), this function applies the selected
-   * preconditioning strategy to dotY */
+  /** Given a matrix Y in the domain D of the relaxation and a tangent vector
+   * dotY in T_Y(D), this function applies the selected preconditioning strategy
+   * to dotY */
   Matrix precondition(const Matrix &Y, const Matrix &dotY) const;
 
-  /** Given a matrix Y in the domain D of the SE-Sync optimization problem and a
-  tangent vector dotY in T_Y(E), the tangent space of Y considered as a generic
-  matrix, this function computes and returns the orthogonal projection of dotY
-  onto T_D(Y), the tangent space of the domain D at Y*/
+  /** Given a matrix Y in the domain D of the relaxation and a tangent vector
+   * dotY in T_Y(E), the tangent space of Y considered as a generic matrix, this
+   * function computes and returns the orthogonal projection of dotY onto
+   * T_D(Y), the tangent space of the domain D at Y*/
   Matrix tangent_space_projection(const Matrix &Y, const Matrix &dotY) const;
 
-  /** Given a matrix Y in the domain D of the SE-Sync optimization problem and a
-   * tangent vector dotY in T_D(Y), this function returns the point Yplus in D
-   * obtained by retracting along dotY */
+  /** Given a matrix Y in the domain D of the relaxation and a tangent vector
+   * dotY in T_D(Y), this function returns the point Yplus in D obtained by
+   * retracting along dotY */
   Matrix retract(const Matrix &Y, const Matrix &dotY) const;
 
-  /** Given a point Y in the domain D of the rank-r relaxation of the SE-Sync
-   * optimization problem, this function computes and returns a matrix
-   * X = [t | R] comprised of translations and rotations for a set of feasible
-   * poses for the original estimation problem obtained by rounding the point Y
+  /** Given a point Y in the domain D of the rank-r relaxation, this function
+   * computes and returns a matrix X = [t | R] composed of translations and
+   * rotations for a set of feasible poses for the original estimation problem
+   * obtained by rounding the point Y
    */
   Matrix round_solution(const Matrix Y) const;
 
-  /** Given a critical point Y of the rank-r relaxation of the SE-Sync
-   * optimization problem, this function computes and returns a d x dn matrix
-   * comprised of d x d block elements of the associated block-diagonal Lagrange
-   * multiplier matrix associated with the orthonormality constraints on the
-   * generalized orientations of the poses (cf. eq. (119) in the SE-Sync tech
-   * report) */
+  /** Given a critical point Y of the rank-r relaxation, this function computes
+   * and returns a d x dn matrix comprised of d x d block elements of the
+   * associated block-diagonal Lagrange multiplier matrix associated with the
+   * orthonormality constraints on the generalized orientations of the poses
+   * (cf. eq. (119) in the SE-Sync tech report) */
   Matrix compute_Lambda_blocks(const Matrix &Y) const;
 
   /** Given the d x dn block matrix containing the diagonal blocks of Lambda,
@@ -316,9 +312,8 @@ public:
   SparseMatrix
   compute_Lambda_from_Lambda_blocks(const Matrix &Lambda_blocks) const;
 
-  /** Given a critical point Y of the rank-r relaxation of the SE-Sync
-   * optimization problem, this function computes and returns the corresponding
-   * Lagrange multiplier matrix Lambda */
+  /** Given a critical point Y of the rank-r relaxation, this function computes
+   * and returns the corresponding Lagrange multiplier matrix Lambda */
   SparseMatrix compute_Lambda(const Matrix &Y) const;
 
   /** Given a critical point Y in the domain of the optimization problem, this

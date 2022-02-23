@@ -1,5 +1,6 @@
 #include "SESync/RelativePoseMeasurement.h"
 #include "SESync/SESync.h"
+#include "SESync/SESyncProblem.h"
 #include "SESync/SESync_types.h"
 #include "SESync/SESync_utils.h"
 
@@ -149,6 +150,9 @@ PYBIND11_MODULE(PySESync, m) {
                      &SESync::SESyncOpts::projection_factorization,
                      "Type of cached matrix factorization to use for computing "
                      "orthogonal projections")
+      .def_readwrite("preconditioner", &SESync::SESyncOpts::preconditioner,
+                     "The preconditioning strategy to use in the Riemannian "
+                     "trust-region algorithm")
       .def_readwrite(
           "reg_Chol_precon_max_cond",
           &SESync::SESyncOpts::reg_Cholesky_precon_max_condition_number)
@@ -367,6 +371,109 @@ PYBIND11_MODULE(PySESync, m) {
       "a pair consisting of (1) the orbit distance d_O(X,Y) between them and "
       "(2) the optimal registration G_O in O(d) aligning Y to X");
 
+  /// Bindings for SESyncProblem class
+  py::class_<SESync::SESyncProblem>(
+      m, "SESyncProblem",
+      "This class encapsulates an instance of the rank-restricted Riemannian "
+      "form of the semidefinite relaxation of a special Euclidean.  It "
+      "contains all of the precomputed and cached data matrices necessary to "
+      "describe the problem and run the optimization algorithm, as well as "
+      "functions for performing geometric operations on the underlying "
+      "manifold (tangent space projection and retraction) and evaluating the "
+      "optimization objective and its gradient and Hessian operator. ")
+      .def(py::init<>(), "Default constructor: produces an empyt "
+                         "(uninitialized) problem instance")
+      .def(py::init<SESync::measurements_t, SESync::Formulation,
+                    SESync::ProjectionFactorization, SESync::Preconditioner,
+                    SESync::Scalar>(),
+           py::arg("measurements"),
+           py::arg("formulation") = SESync::Formulation::Simplified,
+           py::arg("projection_factorization") =
+               SESync::ProjectionFactorization::Cholesky,
+           py::arg("preconditioner") =
+               SESync::Preconditioner::IncompleteCholesky,
+           py::arg("reg_chol_precon_max_cond") = 1e6, "Basic constructor.")
+      .def("set_relaxation_rank", &SESync::SESyncProblem::set_relaxation_rank,
+           "Set maximum rank of the rank-restricted semidefinite relaxation.")
+      .def("formulation", &SESync::SESyncProblem::formulation,
+           "Get the specific formulation of this problem")
+      .def(
+          "projection_factorization",
+          &SESync::SESyncProblem::projection_factorization,
+          "Returns the type of matrix factorization used to compute the action "
+          "of the orthogonal projection operator Pi when solving a Simplified "
+          "instance of the special Euclidean synchronization problem")
+      .def("preconditioner", &SESync::SESyncProblem::preconditioner,
+           "Get the preconditioning strategy")
+      .def("num_states", &SESync::SESyncProblem::num_states,
+           "Get the number of states (poses or rotations) appearing in this "
+           "problem")
+      .def("num_measurements", &SESync::SESyncProblem::num_measurements,
+           "Get the number of measurements appearing in this problem")
+      .def("dimension", &SESync::SESyncProblem::dimension,
+           "Get the dimension d of the group SE(d) or SO(d) over which this "
+           "problem is defined")
+      .def("relaxation_rank", &SESync::SESyncProblem::relaxation_rank,
+           "Get the current relaxation rank r of this problem")
+      .def("oriented_incidence_matrix",
+           &SESync::SESyncProblem::oriented_incidence_matrix,
+           "Returns the oriented incidence matrix A of the underlying "
+           "measurement graph over which the problem is defined")
+      .def("Pi_product", &SESync::SESyncProblem::Pi_product,
+           "Given a matrix X, this function computes and returns the "
+           "orthogonal projection Pi*X")
+      .def("Q_product", &SESync::SESyncProblem::Q_product,
+           "Given a matrix X, computes the product Q*X")
+      .def("data_matrix_product", &SESync::SESyncProblem::data_matrix_product,
+           "Given a matrix Y, this function computes and returns the matrix "
+           "product SY, where S is the symmetric matrix parameterizing the "
+           "quadratic objective")
+      .def("evaluate_objective", &SESync::SESyncProblem::evaluate_objective,
+           "Evaluate the objective of the rank-restricted relaxation")
+      .def("Euclidean_gradient", &SESync::SESyncProblem::Euclidean_gradient,
+           "Evaluate the Euclidean gradient of the objective")
+      .def("Riemannian_gradient",
+           static_cast<SESync::Matrix (SESync::SESyncProblem::*)(
+               const SESync::Matrix &) const>(
+               &SESync::SESyncProblem::Riemannian_gradient),
+           "Evaluate the Riemannian gradient of the objective")
+      .def("Riemannian_Hessian_vector_product",
+           static_cast<SESync::Matrix (SESync::SESyncProblem::*)(
+               const SESync::Matrix &, const SESync::Matrix &) const>(
+               &SESync::SESyncProblem::Riemannian_Hessian_vector_product),
+           "Given a matrix Y in the domain D of the relaxation and a tangent "
+           "vector dotY in T_Y(D), this function computes and returns Hess "
+           "F(Y)[dotY], the action of the Riemannian Hessian on dotY")
+      .def("precondition", &SESync::SESyncProblem::precondition,
+           "Given a matrix Y in the domain D of the relaxation and a tangent "
+           "vector dotY in T_D(Y), this function applies the selected "
+           "preconditioning strategy to dotY")
+      .def("tangent_space_projection",
+           &SESync::SESyncProblem::tangent_space_projection,
+           "Given a matrix Y in the domain D of the relaxation and a tangent "
+           "vector dotY of the ambient Eucliean space at Y, this function "
+           "computes and returns the orthogonal projection of dotY onto T_D(Y)")
+      .def("retract", &SESync::SESyncProblem::retract,
+           "Given a matrix Y in the domain of the relaxation and a tangent "
+           "vector dotY in T_Y(D), this function computes the retraction of Y "
+           "along dotY")
+      .def("round_solution", &SESync::SESyncProblem::round_solution,
+           "Given a point Y in the domain D of the rank-r relaxation, this "
+           "function computes and returns a matrix X = [t|R] composed of "
+           "translations and rotations for a set of feasible poses for the "
+           "original estimation problem obtained by rounding the point Y")
+      .def("compute_Lambda", &SESync::SESyncProblem::compute_Lambda,
+           "Given a critical point Y of the rank-r relaxation, this function "
+           "computes and returns the corresponding Lagrange multiplier matrix "
+           "Lambda")
+      .def("chordal_initialization",
+           &SESync::SESyncProblem::chordal_initialization,
+           "This function computes and returns a chordal initialization for "
+           "the rank-restricted semidefinite relaxation")
+      .def("random_sample", &SESync::SESyncProblem::random_sample,
+           "Randomly sample a point in the domain of the rank-restricted "
+           "semidefinite relaxation");
+
   /// Bindings for the main SESync driver
   m.def(
       "SESync",
@@ -381,7 +488,23 @@ PYBIND11_MODULE(PySESync, m) {
       py::arg("measurements"), py::arg("options") = SESync::SESyncOpts(),
       py::arg("Y0") = SESync::Matrix(),
       "Main SE-Sync function:  Given a list of relative pose measurements "
-      "specifying a special Euclidean synchronization problem, this function "
+      "specifying a special Euclidean synchronization problem, this "
+      "function "
       "computes and returns an estimated solution using the SE-Sync "
+      "algorithm ");
+
+  m.def(
+      "SESync",
+      [](SESync::SESyncProblem &problem, const SESync::SESyncOpts &options,
+         const SESync::Matrix &Y0) -> SESync::SESyncResult {
+        // Redirect emitted output from (C++) stdout to (Python) sys.stdout
+        py::scoped_ostream_redirect stream(
+            std::cout, py::module::import("sys").attr("stdout"));
+        return SESync::SESync(problem, options, Y0);
+      },
+      py::arg("problem"), py::arg("options") = SESync::SESyncOpts(),
+      py::arg("Y0") = SESync::Matrix(),
+      "Main SE-Sync function:  Given an SESyncProblem instance, this "
+      "function computes and returns an estimated solution using the SE-Sync "
       "algorithm ");
 }

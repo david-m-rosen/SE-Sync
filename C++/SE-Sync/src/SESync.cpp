@@ -467,15 +467,15 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   SESyncResults.Fxhat =
       (problem.formulation() == Formulation::Simplified
            ? problem.evaluate_objective(SESyncResults.xhat.block(
-                 0, problem.num_poses(), problem.dimension(),
-                 problem.dimension() * problem.num_poses()))
+                 0, problem.num_states(), problem.dimension(),
+                 problem.dimension() * problem.num_states()))
            : problem.evaluate_objective(SESyncResults.xhat));
 
   // Compute the primal optimal SDP solution Lambda and its objective value
   Matrix Lambda_blocks = problem.compute_Lambda_blocks(SESyncResults.Yopt);
 
   SESyncResults.trLambda = 0;
-  for (size_t i = 0; i < problem.num_poses(); i++)
+  for (size_t i = 0; i < problem.num_states(); i++)
     SESyncResults.trLambda +=
         Lambda_blocks
             .block(0, i * problem.dimension(), problem.dimension(),

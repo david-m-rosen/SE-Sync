@@ -533,12 +533,12 @@ SESyncProblem::SMinusLambdaProdFunctor::SMinusLambdaProdFunctor(
 
   if ((problem_->formulation() == Formulation::Simplified) ||
       (problem_->formulation() == Formulation::SOSync)) {
-    rows_ = problem_->dimension() * problem_->num_poses();
-    cols_ = problem_->dimension() * problem_->num_poses();
+    rows_ = problem_->dimension() * problem_->num_states();
+    cols_ = problem_->dimension() * problem_->num_states();
   } else // mode == Explicit
   {
-    rows_ = (problem_->dimension() + 1) * problem_->num_poses();
-    cols_ = (problem_->dimension() + 1) * problem_->num_poses();
+    rows_ = (problem_->dimension() + 1) * problem_->num_states();
+    cols_ = (problem_->dimension() + 1) * problem_->num_states();
   }
 
   // Compute and cache this on construction
@@ -557,10 +557,10 @@ void SESyncProblem::SMinusLambdaProdFunctor::perform_op(Scalar *x,
   size_t offset = (((problem_->formulation() == Formulation::Simplified) ||
                     (problem_->formulation() == Formulation::SOSync))
                        ? 0
-                       : problem_->num_poses());
+                       : problem_->num_states());
 
 #pragma omp parallel for
-  for (size_t i = 0; i < problem_->num_poses(); ++i)
+  for (size_t i = 0; i < problem_->num_states(); ++i)
     Y.segment(offset + i * dim_, dim_) -=
         Lambda_blocks_.block(0, i * dim_, dim_, dim_) *
         X.segment(offset + i * dim_, dim_);
