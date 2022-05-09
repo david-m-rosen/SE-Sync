@@ -1,9 +1,6 @@
 [submodule "C++/Optimization"]
 	path = C++/Optimization
 	url = https://github.com/david-m-rosen/Optimization.git
-[submodule "C++/Eigen"]
-	path = C++/Eigen
-	url = https://github.com/eigenteam/eigen-git-mirror.git
 [submodule "C++/Spectra"]
 	path = C++/Spectra
 	url = https://github.com/yixuan/spectra.git

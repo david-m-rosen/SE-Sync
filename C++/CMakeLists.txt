@@ -35,7 +35,14 @@ set(ENABLE_VISUALIZATION OFF CACHE BOOL "Enable visualization module.")
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "Build Python bindings.")
 
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Eigen/cmake" CACHE STRING "The CMake module path used for this project")
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE STRING "The CMake module path used for this project")
+
+
+# Find (system) Eigen library
+find_package(Eigen3 REQUIRED)
+if(EIGEN3_FOUND)
+message(STATUS "Found Eigen3 library: ${EIGEN3_INCLUDE_DIR}\n")
+endif()
 
 if(${ENABLE_VECTORIZATION})
 message(STATUS "Enabling SIMD/AVX instruction sets")
@@ -60,11 +67,6 @@ message(STATUS "")
 
 
 # SESYNC DEPENDENCIES
-
-# FIND EIGEN3
-set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Eigen)
-message(STATUS "Eigen3 include directory: ${EIGEN3_INCLUDE_DIR}\n")
-
 
 # FIND ADDITIONAL LIBRARIES
 # These next operations make use of the .cmake files shipped with Eigen3

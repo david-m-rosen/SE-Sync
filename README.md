@@ -21,11 +21,11 @@ The C++ implementation of SE-Sync can be built and exported as a CMake project. 
 
 #### C++ quick installation guide
 
-The following installation instructions have been verified on Ubuntu 18.04:
+The following installation instructions have been verified on Ubuntu 20.04:
 
 *Step 1:*  Install dependencies
 ```
-$ sudo apt-get install build-essential cmake-gui liblapack-dev libblas-dev libsuitesparse-dev
+$ sudo apt-get install build-essential cmake-gui libeigen3-dev liblapack-dev libblas-dev libsuitesparse-dev
 ```
 
 *Step 2:*  Clone the repository
