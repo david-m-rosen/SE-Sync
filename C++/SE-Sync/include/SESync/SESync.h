@@ -69,7 +69,7 @@ struct SESyncOpts {
   /** An optional user-supplied function that can be used to instrument/monitor
    * the performance of the internal Riemannian truncated-Newton trust-region
    * optimization algorithm as it runs. */
-  std::experimental::optional<SESyncTNTUserFunction> user_function;
+  std::optional<SESyncTNTUserFunction> user_function;
 
   /// SE-SYNC PARAMETERS
 
