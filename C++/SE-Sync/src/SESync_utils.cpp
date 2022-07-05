@@ -7,7 +7,9 @@
 #include <Eigen/Geometry>
 #include <Eigen/SPQRSupport>
 
-#include "Optimization/
+#include "ILDL/ILDL.h"
+#include "Optimization/LinearAlgebra/LOBPCG.h"
+
 #include "SESync/SESync_utils.h"
 
 namespace SESync {
@@ -710,12 +712,12 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O) {
   return dO;
 }
 
-bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &lambda,
+bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &theta,
                      Vector &x, size_t &num_iters, Scalar tau,
                      size_t max_iters) {
   // Don't forget to set this on input!
   num_iters = 0;
-  lambda = 0;
+  theta = 0;
 
   unsigned int n = S.rows();
 
@@ -749,15 +751,38 @@ bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &lambda,
     /// If control reaches here, then lambda_min(S) < -eta, so we must compute
     /// an approximate minimum eigenpair using LOBPCG
 
-    // Incomplete symmetric indefinite factorization of M
-    Preconditioners::ILDL Sfact;
-
     Vector Theta; // Vector to hold Ritz values of S
     Matrix X;     // Matrix to hold eigenvector estimates for S
     size_t num_converged;
 
+    /// Set up matrix-vector multiplication operator with regularized
+    /// certificate matrix M
+
     // Matrix-vector multiplication with regularized certificate matrix M
-    LinearOperator Mop = [&M](const Matrix &X) -> Matrix { return M * X; };
+    Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> Mop =
+        [&M](const Matrix &X) -> Matrix { return M * X; };
+
+    /// Set up preconditioning operator T
+
+    // Incomplete symmetric indefinite factorization of M
+    Preconditioners::ILDL Mfact;
+
+    // Compute symmetric indefinite factorization to use for preconditioning
+    Mfact.compute(M);
+
+    Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> T =
+        [&Mfact](const Matrix &X) -> Matrix {
+      // Preallocate output matrix TX
+      Matrix TX(X.rows(), X.cols());
+
+#pragma omp parallel for
+      for (unsigned int i = 0; i < X.cols(); ++i) {
+        // Calculate TX by preconditioning the columns of X one-by-one
+        TX.col(i) = Mfact.solve(X.col(i), true);
+      }
+
+      return TX;
+    };
 
     // Custom stopping criterion: terminate if EITHER of the following
     // conditions hold:
@@ -771,7 +796,7 @@ bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &lambda,
         [tau,
          eta](size_t i,
               const Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>
-                  &A,
+                  &M,
               const std::optional<
                   Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>
                   &B,
@@ -780,49 +805,26 @@ bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &lambda,
                   &T,
               size_t nev, const Vector &Theta, const Matrix &X, const Vector &r,
               size_t nc) {
-          // Calculate lambda_min(A) from Theta
+          // Calculate lambda_min(S) from Theta
           double lambda_min = Theta(0) - eta;
 
           return ((r(0) <= tau * fabs(lambda_min)) && (lambda_min < -eta / 2));
         };
 
-    if (precondition) {
-
-      // Compute symmetric indefinite factorization to use for preconditioning
-      Sfact.compute(S);
-
-      LinearOperator T = [&Sfact](const Matrix &X) -> Matrix {
-        // Preallocate output matrix TX
-        Matrix TX(X.rows(), X.cols());
-
-#pragma omp parallel for
-        for (unsigned int i = 0; i < X.cols(); ++i) {
-          // Calculate TX by preconditioning the columns of X one-by-one
-          TX.col(i) = Sfact.solve(X.col(i), true);
-        }
-
-        return TX;
-      };
-
-      // Run preconditioned LOBPCG
-      std::tie(Theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
-          Sop, std::optional<LinearOperator>(),
-          std::optional<LinearOperator>(T), n, block_size, 1, max_iters,
-          num_iters, num_converged, 0.0,
-          std::optional<
-              Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix>>(
-              stopfun));
-    } else {
-      std::tie(Theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
-          Sop, std::optional<LinearOperator>(), std::optional<LinearOperator>(),
-          n, block_size, 1, max_iters, num_iters, num_converged, 0.0,
-          std::optional<
-              Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix>>(
-              stopfun));
-    }
+    /// Run preconditioned LOBPCG
+    std::tie(Theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+        Mop,
+        std::optional<
+            Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(),
+        std::optional<
+            Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(T),
+        n, m, 1, max_iters, num_iters, num_converged, 0.0,
+        std::optional<
+            Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix>>(
+            stopfun));
 
     // Extract eigenvalue estimate
-    lambda = Theta(0) - eta;
+    theta = Theta(0) - eta;
 
     // Extract eigenvector estimate
     x = X.col(0);
