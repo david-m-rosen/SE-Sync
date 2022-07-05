@@ -98,4 +98,16 @@ Scalar dS(const Matrix &X, const Matrix &Y, Matrix *G_S = nullptr);
  */
 Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O = nullptr);
 
+/** Given a symmetric matrix S, this function tests whether the regularized
+ * matrix M := S + eta*I is positive-semidefinite, and if it is not, computes
+ * and returns a vector x in R^n satisfying x'Sx <= 0, using the fast solution
+ * verification method (Algorithm 3) proposed in the paper:
+ *
+ * "Accelerating Certifiable Estimation with Preconditioned Eigensolvers"
+ *
+ */
+bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &lambda,
+                     Vector &x, size_t &num_iters, Scalar tau = 1e-2,
+                     size_t max_iters = 1000);
+
 } // namespace SESync

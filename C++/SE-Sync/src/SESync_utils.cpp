@@ -3,9 +3,11 @@
 #include <iostream>
 #include <sstream>
 
+#include <Eigen/CholmodSupport>
 #include <Eigen/Geometry>
 #include <Eigen/SPQRSupport>
 
+#include "Optimization/
 #include "SESync/SESync_utils.h"
 
 namespace SESync {
@@ -707,4 +709,127 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O) {
   }
   return dO;
 }
+
+bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &lambda,
+                     Vector &x, size_t &num_iters, Scalar tau,
+                     size_t max_iters) {
+  // Don't forget to set this on input!
+  num_iters = 0;
+  lambda = 0;
+
+  unsigned int n = S.rows();
+
+  /// STEP 1:  Test positive-semidefiniteness of regularized certificate matrix
+  /// M := S + eta * Id via direct factorization
+
+  SparseMatrix Id(n, n);
+  Id.setIdentity();
+  SparseMatrix M = S + eta * Id;
+
+  /// Test positive-semidefiniteness via direct Cholesky factorization
+  Eigen::CholmodSupernodalLLT<SparseMatrix> MChol;
+
+  /// Set various options for the factorization
+
+  // Bail out early if non-positive-semidefiniteness is detected
+  MChol.cholmod().quick_return_if_not_posdef = 1;
+
+  // We know that we might be handling a non-PSD matrix, so suppress Cholmod's
+  // printed error output
+  MChol.cholmod().print = 0;
+
+  // Calculate Cholesky decomposition!
+  MChol.compute(M);
+
+  // Test whether the Cholesky decomposition succeeded
+  bool PSD = (MChol.info() == Eigen::Success);
+
+  if (!PSD) {
+
+    /// If control reaches here, then lambda_min(S) < -eta, so we must compute
+    /// an approximate minimum eigenpair using LOBPCG
+
+    // Incomplete symmetric indefinite factorization of M
+    Preconditioners::ILDL Sfact;
+
+    Vector Theta; // Vector to hold Ritz values of S
+    Matrix X;     // Matrix to hold eigenvector estimates for S
+    size_t num_converged;
+
+    // Matrix-vector multiplication with regularized certificate matrix M
+    LinearOperator Mop = [&M](const Matrix &X) -> Matrix { return M * X; };
+
+    // Custom stopping criterion: terminate if EITHER of the following
+    // conditions hold:
+    //
+    // 1.  The minimum eigenpair is estimated to a relative accuracy tau:
+    //     || S*x - theta*x || < tau * |theta|
+    //
+    // 2.  x'* S * x < - eta / 2
+
+    Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix> stopfun =
+        [tau,
+         eta](size_t i,
+              const Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>
+                  &A,
+              const std::optional<
+                  Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>
+                  &B,
+              const std::optional<
+                  Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>
+                  &T,
+              size_t nev, const Vector &Theta, const Matrix &X, const Vector &r,
+              size_t nc) {
+          // Calculate lambda_min(A) from Theta
+          double lambda_min = Theta(0) - eta;
+
+          return ((r(0) <= tau * fabs(lambda_min)) && (lambda_min < -eta / 2));
+        };
+
+    if (precondition) {
+
+      // Compute symmetric indefinite factorization to use for preconditioning
+      Sfact.compute(S);
+
+      LinearOperator T = [&Sfact](const Matrix &X) -> Matrix {
+        // Preallocate output matrix TX
+        Matrix TX(X.rows(), X.cols());
+
+#pragma omp parallel for
+        for (unsigned int i = 0; i < X.cols(); ++i) {
+          // Calculate TX by preconditioning the columns of X one-by-one
+          TX.col(i) = Sfact.solve(X.col(i), true);
+        }
+
+        return TX;
+      };
+
+      // Run preconditioned LOBPCG
+      std::tie(Theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+          Sop, std::optional<LinearOperator>(),
+          std::optional<LinearOperator>(T), n, block_size, 1, max_iters,
+          num_iters, num_converged, 0.0,
+          std::optional<
+              Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix>>(
+              stopfun));
+    } else {
+      std::tie(Theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+          Sop, std::optional<LinearOperator>(), std::optional<LinearOperator>(),
+          n, block_size, 1, max_iters, num_iters, num_converged, 0.0,
+          std::optional<
+              Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix>>(
+              stopfun));
+    }
+
+    // Extract eigenvalue estimate
+    lambda = Theta(0) - eta;
+
+    // Extract eigenvector estimate
+    x = X.col(0);
+
+  } // if(!PSD)
+
+  return PSD;
+}
+
 } // namespace SESync
