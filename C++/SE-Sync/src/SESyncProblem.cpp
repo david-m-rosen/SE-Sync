@@ -1,8 +1,7 @@
-#include "Spectra/MatOp/SparseSymMatProd.h"
-#include "Spectra/SymEigsSolver.h" // Spectra's symmetric eigensolver
-
 #include "SESync/SESyncProblem.h"
 #include "SESync/SESync_utils.h"
+
+#include "Optimization/LinearAlgebra/LOBPCG.h"
 
 #include <random>
 
@@ -110,29 +109,40 @@ SESyncProblem::SESyncProblem(
     } else if (preconditioner_ == Preconditioner::IncompleteCholesky)
       iChol_precon_ = new IncompleteCholeskyFactorization(LGrho_);
     else if (preconditioner_ == Preconditioner::RegularizedCholesky) {
-      // Compute maximum eigenvalue of LGrho
+      /// Estimate maximum eigenvalue of LGrho
 
-      // NB: Spectra's built-in SparseSymProduct matrix assumes that input
-      // matrices are stored in COLUMN-MAJOR order
-      Eigen::SparseMatrix<Scalar, Eigen::ColMajor> LGrho_col_major(LGrho_);
+      // Here we use the fact that LGrho >= 0, so that
+      // ||LGrho||_2 = lambda_max(LGrho) = - lambda_min(-LGrho)
 
-      Spectra::SparseSymMatProd<Scalar> op(LGrho_col_major);
-      Spectra::SymEigsSolver<Scalar, Spectra::LARGEST_MAGN,
-                             Spectra::SparseSymMatProd<Scalar>>
-          max_eig_solver(&op, 1, 3);
-      max_eig_solver.init();
+      Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>
+          neg_LGrho_op =
+              [this](const Matrix &X) -> Matrix { return -(this->LGrho_ * X); };
 
-      int max_iterations = 10000;
-      Scalar tol = 1e-4; // We only require a relatively loose estimate here ...
-      int nconv = max_eig_solver.compute(max_iterations, tol);
+      size_t num_iters;
+      size_t nc;
+      Vector theta;
+      Matrix X;
+      std::tie(theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+          neg_LGrho_op,
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+              std::nullopt),
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+              std::nullopt),
+          LGrho_.rows(), 5, 1, 100, num_iters, nc, 1e-2);
 
-      Scalar lambda_max = max_eig_solver.eigenvalues()(0);
+      // Extract estimated norm of LGrho
+      double lambda_max = -theta(0);
+
+      /// Calculate and cache regularized Cholesky decomposition
+
       reg_Chol_precon_.compute(
           LGrho_ +
           SparseMatrix(Vector::Constant(LGrho_.rows(),
                                         lambda_max / reg_Chol_precon_max_cond_)
                            .asDiagonal()));
-    }
+    } // else if (preconditioner_ == Preconditioner::RegularizedCholesky)
 
   } else {
     // form == Explicit
@@ -144,30 +154,42 @@ SESyncProblem::SESyncProblem(
     } else if (preconditioner_ == Preconditioner::IncompleteCholesky)
       iChol_precon_ = new IncompleteCholeskyFactorization(M_);
     else if (preconditioner_ == Preconditioner::RegularizedCholesky) {
-      // Compute maximum eigenvalue of M
 
-      // NB: Spectra's built-in SparseSymProduct matrix assumes that input
-      // matrices are stored in COLUMN-MAJOR order
-      Eigen::SparseMatrix<Scalar, Eigen::ColMajor> M_col_major(M_);
+      /// Estimate maximum eigenvalue of M
 
-      Spectra::SparseSymMatProd<Scalar> op(M_col_major);
-      Spectra::SymEigsSolver<Scalar, Spectra::LARGEST_MAGN,
-                             Spectra::SparseSymMatProd<Scalar>>
-          max_eig_solver(&op, 1, 3);
-      max_eig_solver.init();
+      // Here we use the fact that M >= 0, so that
+      // M = lambda_max(M) = - lambda_min(-M)
 
-      int max_iterations = 10000;
-      Scalar tol = 1e-4; // We only require a relatively loose estimate here ...
-      int nconv = max_eig_solver.compute(max_iterations, tol);
+      Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> neg_M_op =
+          [this](const Matrix &X) -> Matrix { return -(this->M_ * X); };
 
-      Scalar lambda_max = max_eig_solver.eigenvalues()(0);
+      size_t num_iters;
+      size_t nc;
+      Vector theta;
+      Matrix X;
+      std::tie(theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+          neg_M_op,
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+              std::nullopt),
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+              std::nullopt),
+          M_.rows(), 5, 1, 100, num_iters, nc, 1e-2);
+
+      // Extract estimated norm of LGrho
+      double lambda_max = -theta(0);
+
+      /// Calculate and cache regularized Cholesky decomposition
+
       reg_Chol_precon_.compute(
           M_ +
           SparseMatrix(Vector::Constant(M_.rows(),
                                         lambda_max / reg_Chol_precon_max_cond_)
                            .asDiagonal()));
-    }
-  }
+    } // else if (preconditioner_ == Preconditioner::RegularizedCholesky)
+
+  } // form == Explicit
 }
 
 void SESyncProblem::set_relaxation_rank(size_t rank) {
