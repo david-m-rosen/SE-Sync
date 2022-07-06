@@ -4,6 +4,8 @@
 #include "SESync/SESync_types.h"
 #include "SESync/SESync_utils.h"
 
+#include <tuple>
+
 #include <pybind11/eigen.h>
 #include <pybind11/iostream.h>
 #include <pybind11/pybind11.h>
@@ -134,17 +136,22 @@ PYBIND11_MODULE(PySESync, m) {
                      "Initial level of the Riemannian Staircase")
       .def_readwrite("rmax", &SESync::SESyncOpts::rmax,
                      "Maximum level of the Riemannian Staircase to explore")
-      .def_readwrite("max_eig_iters", &SESync::SESyncOpts::max_eig_iterations,
-                     "Maximum number of Lanczos iterations to admit for the "
-                     "minimum-eigenvalue computation")
       .def_readwrite("min_eig_num_tol", &SESync::SESyncOpts::min_eig_num_tol,
                      "Numerical tolerance for accepting the minimum eigenvalue "
                      "of the certificate matrix as nonnegative; this should be "
                      "a small positive constant.")
-      .def_readwrite("num_Lanczos_vectors",
-                     &SESync::SESyncOpts::num_Lanczos_vectors,
-                     "The number of Lanczos vectors to use in the "
-                     "minimum-eigenvalue computation")
+      .def_readwrite("LOBPCG_block_size",
+                     &SESync::SESyncOpts::LOBPCG_block_size,
+                     "Block size to use in LOBPCG when computing a minimum "
+                     "eigenpair of the certificate matrix")
+      .def_readwrite(
+          "min_eig_LOBPCG_tol", &SESync::SESyncOpts::min_eig_LOBPCG_tol,
+          "LOBPCG stopping tolerance for computing a minimum eigenpair of "
+          "the certficiate matrix")
+      .def_readwrite("min_eig_max_LOBPCG_iterations",
+                     &SESync::SESyncOpts::min_eig_max_LOBPCG_iterations,
+                     "Maximum number of LOBPCG iterations to permit for the "
+                     "minimum-eigenpair computation")
 
       .def_readwrite("projection_factorization",
                      &SESync::SESyncOpts::projection_factorization,
@@ -370,6 +377,26 @@ PYBIND11_MODULE(PySESync, m) {
       " Given two matrices X, Y in O(d)^n, this function computes and returns "
       "a pair consisting of (1) the orbit distance d_O(X,Y) between them and "
       "(2) the optimal registration G_O in O(d) aligning Y to X");
+
+  m.def(
+      "fast_verification",
+      [](const SESync::SparseMatrix &S, SESync::Scalar eta, size_t m,
+         SESync::Scalar tau, size_t max_iters)
+          -> std::tuple<bool, SESync::Scalar, SESync::Vector, size_t> {
+        SESync::Scalar theta;
+        SESync::Vector x;
+        size_t num_iters;
+
+        bool PSD = SESync::fast_verification(S, eta, m, theta, x, num_iters,
+                                             tau, max_iters);
+
+        return std::make_tuple(PSD, theta, x, num_iters);
+      },
+      "Given a symmetric sparse matrix S and a numerical tolerance eta, this "
+      "function returns a tuple consisting of a boolean value indicating "
+      "whether S + eta * I is positive-semidefinite, and if it is not, an "
+      "estimate (theta, x) for the minimum eigenpair of S, and the number of "
+      "iterations required by LOBPCG to estimate this minimum eigenpair ");
 
   /// Bindings for SESyncProblem class
   py::class_<SESync::SESyncProblem>(

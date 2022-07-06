@@ -102,11 +102,11 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O = nullptr);
  * described in the paper "Accelerating Certifiable Estimation with
  * Preconditioned Eigensolvers".
  *
- * Given a symmetric matrix S, this function returns a Boolean value indicating
- * whether the regularized matrix M := S + eta * I is positive-semidefinite.  In
- * the event that M is *not* PSD, this function additionally computes a
- * direction of negative curvature x of S, and its associated Rayleight quotient
- * theta := x'Sx < 0, using the LOBPCG method.
+ * Given a symmetric sparse matrix S, this function returns a Boolean value
+ * indicating whether the regularized matrix M := S + eta * I is
+ * positive-semidefinite.  In the event that M is *not* PSD, this function
+ * additionally computes a direction of negative curvature x of S, and its
+ * associated Rayleight quotient theta := x'Sx < 0, using the LOBPCG method.
  *
  * Here:
  *
@@ -114,12 +114,12 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O = nullptr);
  * - num_iters is the number of iterations LOBPCG executed
  * - tau is the termination tolerance used in LOBPCG's minimum-eigenvalue
  *   computation: LOBPCG will terminate when the estimated minimum eigenpair
- *   satisfies ||S*x - theta*x|| <= tau * |theta|.  Note that tau must satisfy:
+ *   satisfies ||S*x - theta*x|| <= tau * |theta|.  Note that tau must satisfy
  *   tau in (0, 1).
  * - max_iters is the maximum number of LOBPCG iterations
  */
-bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &theta,
-                     Vector &x, size_t &num_iters, Scalar tau = 1e-2,
-                     size_t max_iters = 1000);
+bool fast_verification(const SparseMatrix &S, Scalar eta, size_t m,
+                       Scalar &theta, Vector &x, size_t &num_iters,
+                       Scalar tau = 1e-2, size_t max_iters = 1000);
 
 } // namespace SESync

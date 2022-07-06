@@ -95,6 +95,11 @@ message(STATUS "Found OpenMP! Turning on support for parallelization\n")
 endif()
 endif()
 
+# FIND SPECTRA
+# Spectra doesn't ship with a .cmake file, but it's header-only, so it suffices to simply determine it's top-level directory
+set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/include CACHE PATH "Path to top-level directory of Spectra template library")
+message(STATUS "Spectra include directory: ${SPECTRA_INCLUDE_DIR}\n")
+
 set(SESync_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/include)
 set(SESync_HDR_DIR ${SESync_INCLUDE_DIR}/SESync)
 set(SESync_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/src)

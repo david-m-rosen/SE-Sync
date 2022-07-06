@@ -712,9 +712,9 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O) {
   return dO;
 }
 
-bool verify_solution(const Matrix &S, Scalar eta, size_t m, Scalar &theta,
-                     Vector &x, size_t &num_iters, Scalar tau,
-                     size_t max_iters) {
+bool fast_verification(const SparseMatrix &S, Scalar eta, size_t m,
+                       Scalar &theta, Vector &x, size_t &num_iters, Scalar tau,
+                       size_t max_iters) {
   // Don't forget to set this on input!
   num_iters = 0;
   theta = 0;

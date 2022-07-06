@@ -82,19 +82,24 @@ struct SESyncOpts {
   /** The maximum level of the Riemannian Staircase to explore */
   size_t rmax = 10;
 
-  /** The maximum number of Lanczos iterations to admit for the
-   * minimum-eigenvalue computation */
-  size_t max_eig_iterations = 10000;
+  /** Tolerance for accepting the minimum eigenvalue of the
+   * certificate matrix as numerically nonnegative; this should be a small
+   * positive value e.g. 10^-6 */
+  Scalar min_eig_num_tol = 1e-6;
 
-  /** Numerical tolerance for accepting the minimum eigenvalue of the
-   * certificate matrix as numerically; this should be a small positive value
-   * e.g. 10^-4 */
-  Scalar min_eig_num_tol = 1e-5;
+  /** Block size to use in LOBPCG when computing a minimum eigenpair of the
+   * certificate matrix */
+  size_t LOBPCG_block_size = 5;
 
-  /** The number of Lanczos vectors to use in the minimum-eigenvalue computation
-   * (using the implicitly-restarted Arnoldi algorithm); must be in the range
-   * [1, (#poses) * (#problem dimension) - 1] */
-  size_t num_Lanczos_vectors = 20;
+  /** LOBPCG stopping tolerance for computing a minimum eigenpair of the
+   * certificate matrix: terminate when the minimum eigenpair estimate
+   * (theta, x) satisfies: ||S*x - theta*x|| < tau * |theta|.  Note that tau
+   * should be a small positive value in the range (0,1) */
+  Scalar min_eig_LOBPCG_tol = 1e-2;
+
+  /** The maximum number of LOBPCG iterations to permit for the
+   * minimum-eigenpair computation */
+  size_t min_eig_max_LOBPCG_iterations = 1000;
 
   /** Whether to use the Cholesky or QR factorization when computing the
    * orthogonal projection */

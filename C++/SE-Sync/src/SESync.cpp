@@ -28,13 +28,20 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     throw std::invalid_argument(
         "Maximum computation time must be a positive value");
 
-  if (options.max_eig_iterations < 0)
-    throw std::invalid_argument(
-        "Maximum number of Lanczos iterations must be a positive value");
-
   if (options.min_eig_num_tol <= 0)
     throw std::invalid_argument("Numerical tolerance for minimum eigenvalue "
                                 "nonnegativity must be a positive value");
+
+  if (options.LOBPCG_block_size < 1)
+    throw std::invalid_argument("LOBPCG block size must be a positive integer");
+
+  if (options.min_eig_LOBPCG_tol <= 0 || options.min_eig_LOBPCG_tol >= 1)
+    throw std::invalid_argument(
+        "LOBPCG stopping tolerance must be a value in the range (0,1)");
+
+  if (options.min_eig_max_LOBPCG_iterations <= 0)
+    throw std::invalid_argument(
+        "Maximum number of LOBPCG iterations must be a positive value");
 
   /// ALGORITHM DATA
 
@@ -67,14 +74,18 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << std::endl;
     std::cout << " Maximum level of Riemannian staircase: " << options.rmax
               << std::endl;
-    std::cout << " Number of Lanczos vectors to use in minimum eigenvalue "
-                 "computation: "
-              << options.num_Lanczos_vectors << std::endl;
-    std::cout << " Maximum number of iterations for eigenvalue computation: "
-              << options.max_eig_iterations << std::endl;
     std::cout << " Tolerance for accepting an eigenvalue as numerically "
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
+    std::cout << " LOBPCG block size to use in minimum-eigenpair computation: "
+              << options.LOBPCG_block_size << std::endl;
+    std::cout
+        << " LOBPCG stopping tolerance for minimum-eigenpair computation: "
+        << options.min_eig_LOBPCG_tol << std::endl;
+    std::cout << " Maximum number of LOBPCG iterations for minimum-eigenpair "
+                 "computation: "
+              << options.min_eig_max_LOBPCG_iterations << std::endl;
+
     if (problem.formulation() == Formulation::Simplified) {
       std::cout << " Using "
                 << (problem.projection_factorization() ==
@@ -332,38 +343,40 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Compute the minimum eigenvalue lambda and corresponding eigenvector
     // of Q - Lambda
-    size_t num_min_eig_mv_ops;
+    size_t num_lobpcg_iters;
     auto eig_start_time = Stopwatch::tick();
-    bool eigenvalue_convergence = problem.compute_S_minus_Lambda_min_eig(
-        SESyncResults.Yopt, SESyncResults.lambda_min, SESyncResults.v_min,
-        num_min_eig_mv_ops, options.max_eig_iterations, options.min_eig_num_tol,
-        options.num_Lanczos_vectors);
+
+    bool global_opt = problem.verify_solution(
+        SESyncResults.Yopt, options.min_eig_num_tol, options.LOBPCG_block_size,
+        SESyncResults.lambda_min, SESyncResults.v_min, num_lobpcg_iters,
+        options.min_eig_LOBPCG_tol, options.min_eig_max_LOBPCG_iterations);
     double eig_elapsed_time = Stopwatch::tock(eig_start_time);
 
     // Check eigenvalue convergence
-    if (!eigenvalue_convergence) {
+    if (!global_opt &&
+        SESyncResults.lambda_min >= -options.min_eig_num_tol / 2) {
       if (options.verbose)
-        std::cout << "WARNING!  EIGENVALUE COMPUTATION DID NOT CONVERGE TO "
-                     "DESIRED PRECISION!"
-                  << std::endl;
+        std::cout
+            << "WARNING! MINIMUM EIGENPAIR COMPUTATION DID NOT CONVERGE TO "
+               "DESIRED PRECISION!"
+            << std::endl;
       SESyncResults.status = EigImprecision;
       break;
     }
 
     // Record results of eigenvalue computation
     SESyncResults.minimum_eigenvalues.push_back(SESyncResults.lambda_min);
-    SESyncResults.min_eig_mv_ops.push_back(num_min_eig_mv_ops);
+    SESyncResults.min_eig_mv_ops.push_back(num_lobpcg_iters);
     SESyncResults.min_eig_comp_times.push_back(eig_elapsed_time);
 
     // Test nonnegativity of minimum eigenvalue
-    if (SESyncResults.lambda_min > -options.min_eig_num_tol) {
+    if (global_opt) {
       // results.Yopt is a second-order critical point (global optimum)!
       if (options.verbose)
-        std::cout << "Found second-order critical point! Minimum eigenvalue: "
-                  << SESyncResults.lambda_min
-                  << ".  Elapsed computation time: " << eig_elapsed_time
-                  << " seconds (" << num_min_eig_mv_ops
-                  << " matrix-vector multiplications)." << std::endl;
+        std::cout
+            << "Found second-order critical point! Elapsed computation time: "
+            << eig_elapsed_time << " seconds (" << num_lobpcg_iters
+            << " matrix-vector multiplications)." << std::endl;
       SESyncResults.status = GlobalOpt;
       break;
     } // global optimality
@@ -374,8 +387,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
         std::cout << "Saddle point detected! Minimum eigenvalue: "
                   << SESyncResults.lambda_min
                   << ".  Elapsed computation time: " << eig_elapsed_time
-                  << " seconds (" << num_min_eig_mv_ops
-                  << " matrix-vector multiplications)." << std::endl;
+                  << " seconds (" << num_lobpcg_iters << " LOBPCG iterations)."
+                  << std::endl;
 
         std::cout << "Computing escape direction ... " << std::endl;
       }
