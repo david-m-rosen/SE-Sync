@@ -145,11 +145,11 @@ PYBIND11_MODULE(PySESync, m) {
                      "Block size to use in LOBPCG when computing a minimum "
                      "eigenpair of the certificate matrix")
       .def_readwrite(
-          "min_eig_LOBPCG_tol", &SESync::SESyncOpts::min_eig_LOBPCG_tol,
+          "LOBPCG_tol", &SESync::SESyncOpts::LOBPCG_tol,
           "LOBPCG stopping tolerance for computing a minimum eigenpair of "
           "the certficiate matrix")
-      .def_readwrite("min_eig_max_LOBPCG_iterations",
-                     &SESync::SESyncOpts::min_eig_max_LOBPCG_iterations,
+      .def_readwrite("LOBPCG_max_iterations",
+                     &SESync::SESyncOpts::LOBPCG_max_iterations,
                      "Maximum number of LOBPCG iterations to permit for the "
                      "minimum-eigenpair computation")
 
@@ -200,8 +200,6 @@ PYBIND11_MODULE(PySESync, m) {
                      "dual SDP solutions")
       .def_readwrite("lambda_min", &SESync::SESyncResult::lambda_min,
                      "The minimum eigenvalue of the certificate matrix")
-      .def_readwrite("vmin", &SESync::SESyncResult::v_min,
-                     "An eigenvector corresponding to the minimum eigenvalue")
       .def_readwrite("Fxhat", &SESync::SESyncResult::Fxhat,
                      "The objective value of the rounded solution xhat")
       .def_readwrite("xhat", &SESync::SESyncResult::xhat,
@@ -242,9 +240,9 @@ PYBIND11_MODULE(PySESync, m) {
           "A vector containing the sequence of minimum eigenvalues of the "
           "certificate matrix constructed at the critical point recovered from "
           "optimization at each level of the Riemannian Staircase")
-      .def_readwrite("min_eig_mat_ops", &SESync::SESyncResult::min_eig_mv_ops)
+      .def_readwrite("LOBPCG_iters", &SESync::SESyncResult::LOBPCG_iters)
       .def_readwrite(
-          "min_eig_comp_times", &SESync::SESyncResult::min_eig_comp_times,
+          "verification_times", &SESync::SESyncResult::verification_times,
           "A vector containing the elapsed time of the minimum eigenvalue "
           "computation at each level of the Riemannian Staircase")
       .def_readwrite("iterates", &SESync::SESyncResult::iterates,

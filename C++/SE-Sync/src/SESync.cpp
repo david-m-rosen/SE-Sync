@@ -35,11 +35,11 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   if (options.LOBPCG_block_size < 1)
     throw std::invalid_argument("LOBPCG block size must be a positive integer");
 
-  if (options.min_eig_LOBPCG_tol <= 0 || options.min_eig_LOBPCG_tol >= 1)
+  if (options.LOBPCG_tol <= 0 || options.LOBPCG_tol >= 1)
     throw std::invalid_argument(
         "LOBPCG stopping tolerance must be a value in the range (0,1)");
 
-  if (options.min_eig_max_LOBPCG_iterations <= 0)
+  if (options.LOBPCG_max_iterations <= 0)
     throw std::invalid_argument(
         "Maximum number of LOBPCG iterations must be a positive value");
 
@@ -81,10 +81,10 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << options.LOBPCG_block_size << std::endl;
     std::cout
         << " LOBPCG stopping tolerance for minimum-eigenpair computation: "
-        << options.min_eig_LOBPCG_tol << std::endl;
+        << options.LOBPCG_tol << std::endl;
     std::cout << " Maximum number of LOBPCG iterations for minimum-eigenpair "
                  "computation: "
-              << options.min_eig_max_LOBPCG_iterations << std::endl;
+              << options.LOBPCG_max_iterations << std::endl;
 
     if (problem.formulation() == Formulation::Simplified) {
       std::cout << " Using "
@@ -344,13 +344,14 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     // Compute the minimum eigenvalue lambda and corresponding eigenvector
     // of Q - Lambda
     size_t num_lobpcg_iters;
-    auto eig_start_time = Stopwatch::tick();
+    auto verification_start_time = Stopwatch::tick();
 
+    Vector vmin;
     bool global_opt = problem.verify_solution(
         SESyncResults.Yopt, options.min_eig_num_tol, options.LOBPCG_block_size,
-        SESyncResults.lambda_min, SESyncResults.v_min, num_lobpcg_iters,
-        options.min_eig_LOBPCG_tol, options.min_eig_max_LOBPCG_iterations);
-    double eig_elapsed_time = Stopwatch::tock(eig_start_time);
+        SESyncResults.lambda_min, vmin, num_lobpcg_iters, options.LOBPCG_tol,
+        options.LOBPCG_max_iterations);
+    double verification_elapsed_time = Stopwatch::tock(verification_start_time);
 
     // Check eigenvalue convergence
     if (!global_opt &&
@@ -366,8 +367,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     // Record results of eigenvalue computation
     SESyncResults.minimum_eigenvalues.push_back(SESyncResults.lambda_min);
-    SESyncResults.min_eig_mv_ops.push_back(num_lobpcg_iters);
-    SESyncResults.min_eig_comp_times.push_back(eig_elapsed_time);
+    SESyncResults.LOBPCG_iters.push_back(num_lobpcg_iters);
+    SESyncResults.verification_times.push_back(verification_elapsed_time);
 
     // Test nonnegativity of minimum eigenvalue
     if (global_opt) {
@@ -375,7 +376,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       if (options.verbose)
         std::cout
             << "Found second-order critical point! Elapsed computation time: "
-            << eig_elapsed_time << " seconds (" << num_lobpcg_iters
+            << verification_elapsed_time << " seconds (" << num_lobpcg_iters
             << " matrix-vector multiplications)." << std::endl;
       SESyncResults.status = GlobalOpt;
       break;
@@ -385,10 +386,9 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       /// ESCAPE FROM SADDLE!
       if (options.verbose) {
         std::cout << "Saddle point detected! Minimum eigenvalue: "
-                  << SESyncResults.lambda_min
-                  << ".  Elapsed computation time: " << eig_elapsed_time
-                  << " seconds (" << num_lobpcg_iters << " LOBPCG iterations)."
-                  << std::endl;
+                  << SESyncResults.lambda_min << ".  Elapsed computation time: "
+                  << verification_elapsed_time << " seconds ("
+                  << num_lobpcg_iters << " LOBPCG iterations)." << std::endl;
 
         std::cout << "Computing escape direction ... " << std::endl;
       }
@@ -399,10 +399,9 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       problem.set_relaxation_rank(r + 1);
 
       Matrix Yplus;
-      bool escape_success =
-          escape_saddle(problem, SESyncResults.Yopt, SESyncResults.lambda_min,
-                        SESyncResults.v_min, options.grad_norm_tol,
-                        options.preconditioned_grad_norm_tol, Yplus);
+      bool escape_success = escape_saddle(
+          problem, SESyncResults.Yopt, SESyncResults.lambda_min, vmin,
+          options.grad_norm_tol, options.preconditioned_grad_norm_tol, Yplus);
 
       if (escape_success) {
         // Update initialization point for next level in the Staircase
@@ -433,7 +432,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       std::cout << "Found global optimum!" << std::endl;
       break;
     case EigImprecision:
-      std::cout << "WARNING: Minimum eigenvalue computation did not achieve "
+      std::cout << "WARNING: Minimum-eigenpair computation did not achieve "
                    "sufficient accuracy; solution may not be globally optimal!"
                 << std::endl;
       break;
