@@ -95,19 +95,11 @@ message(STATUS "Found OpenMP! Turning on support for parallelization\n")
 endif()
 endif()
 
-# FIND SPECTRA
-# Spectra doesn't ship with a .cmake file, but it's header-only, so it suffices to simply determine it's top-level directory
-set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/include CACHE PATH "Path to top-level directory of Spectra template library")
-message(STATUS "Spectra include directory: ${SPECTRA_INCLUDE_DIR}\n")
-
 set(SESync_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/include)
 set(SESync_HDR_DIR ${SESync_INCLUDE_DIR}/SESync)
 set(SESync_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/src)
 set(SESync_EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 
-# Set the include directories for this project
-# Spectra is only used internally by the SE-Sync library
-set(SESync_PRIVATE_INCLUDES ${SPECTRA_INCLUDE_DIR} CACHE INTERNAL "")
 # The SE-Sync headers and and Eigen 3, SPQR, and Cholmod are all referenced by the header files of the SE-Sync library, hence must be PUBLICLY included (i.e. clients using the SE-Sync headers must also include these headers)
 set(SESync_INCLUDES ${SESync_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} ${SPQR_INCLUDES} ${CHOLMOD_INCLUDES} CACHE INTERNAL "")
 
@@ -188,7 +180,7 @@ add_subdirectory(examples)
 # Add add entry for this project into CMake's package registry, so that this project can be found by other CMake projects
 export(PACKAGE ${PROJECT_NAME})
 # Create a configuration file for this project, so that it can be imported by other CMake projects
-export(TARGETS ${PROJECT_NAME} Optimization ILDL LSChol FILE ${PROJECT_NAME}Config.cmake)
+export(TARGETS ${PROJECT_NAME} Optimization ILDL FILE ${PROJECT_NAME}Config.cmake)
 
 
 # EXPORT SE-SYNC VISUALIZATION LIBRARY
