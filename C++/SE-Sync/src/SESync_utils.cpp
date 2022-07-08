@@ -712,9 +712,9 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O) {
   return dO;
 }
 
-bool fast_verification(const SparseMatrix &S, Scalar eta, size_t m,
+bool fast_verification(const SparseMatrix &S, Scalar eta, size_t nx,
                        Scalar &theta, Vector &x, size_t &num_iters, Scalar tau,
-                       size_t max_iters) {
+                       size_t max_iters, Scalar max_fill_factor, Scalar drop_tol) {
   // Don't forget to set this on input!
   num_iters = 0;
   theta = 0;
@@ -765,10 +765,13 @@ bool fast_verification(const SparseMatrix &S, Scalar eta, size_t m,
     /// Set up preconditioning operator T
 
     // Incomplete symmetric indefinite factorization of M
-    Preconditioners::ILDL Mfact;
 
-    // Compute symmetric indefinite factorization to use for preconditioning
-    Mfact.compute(M);
+    // Set drop tolerance and max fill factor for ILDL preconditioner
+    Preconditioners::ILDLOpts ildl_opts;
+    ildl_opts.max_fill_factor = max_fill_factor;
+    ildl_opts.drop_tol = drop_tol;
+
+    Preconditioners::ILDL Mfact(M, ildl_opts);
 
     Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> T =
         [&Mfact](const Matrix &X) -> Matrix {
@@ -818,7 +821,7 @@ bool fast_verification(const SparseMatrix &S, Scalar eta, size_t m,
             Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(),
         std::optional<
             Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(T),
-        n, m, 1, max_iters, num_iters, num_converged, 0.0,
+        n, nx, 1, max_iters, num_iters, num_converged, 0.0,
         std::optional<
             Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix>>(
             stopfun));

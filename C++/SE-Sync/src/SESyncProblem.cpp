@@ -420,9 +420,11 @@ SparseMatrix SESyncProblem::compute_Lambda(const Matrix &Y) const {
   return compute_Lambda_from_Lambda_blocks(Lambda_blocks);
 }
 
-bool SESyncProblem::verify_solution(const Matrix &Y, Scalar eta, size_t m,
+bool SESyncProblem::verify_solution(const Matrix &Y, Scalar eta, size_t nx,
                                     Scalar &theta, Vector &x, size_t &num_iters,
-                                    Scalar tau, size_t max_LOBPCG_iters) const {
+                                    Scalar tau, size_t max_LOBPCG_iters,
+                                    Scalar max_fill_factor,
+                                    Scalar drop_tol) const {
 
   /// Construct certificate matrix S
 
@@ -440,8 +442,8 @@ bool SESyncProblem::verify_solution(const Matrix &Y, Scalar eta, size_t m,
 
   /// Test positive-semidefiniteness of certificate matrix S using fast
   /// verification method
-  bool PSD =
-      fast_verification(S, eta, m, theta, x, num_iters, tau, max_LOBPCG_iters);
+  bool PSD = fast_verification(S, eta, nx, theta, x, num_iters, tau,
+                               max_LOBPCG_iters, max_fill_factor, drop_tol);
 
   if (!PSD && (form_ == Formulation::Simplified)) {
     // Extract the (trailing) portion of the tangent vector corresponding to the

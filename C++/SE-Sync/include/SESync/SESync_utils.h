@@ -2,7 +2,7 @@
 set of pose-graph SLAM measurements and constructing the corresponding data
 matrices used in the SE-Sync algorithm.
  *
- * Copyright (C) 2016 - 2018 by David M. Rosen (dmrosen@mit.edu)
+ * Copyright (C) 2016 - 2022 by David M. Rosen (dmrosen@mit.edu)
  */
 
 #pragma once
@@ -110,16 +110,23 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O = nullptr);
  *
  * Here:
  *
- * - m is the size of the block to use in LOBPCG
+ * - nx is the size of the block to use in LOBPCG
  * - num_iters is the number of iterations LOBPCG executed
  * - tau is the termination tolerance used in LOBPCG's minimum-eigenvalue
  *   computation: LOBPCG will terminate when the estimated minimum eigenpair
  *   satisfies ||S*x - theta*x|| <= tau * |theta|.  Note that tau must satisfy
  *   tau in (0, 1).
  * - max_iters is the maximum number of LOBPCG iterations
+ * - 'max_fill_factor' and 'drop_tol' are parameters controlling the sparsity of
+ *   the incomplete symmetric indefinite factorization-based preconditioner used
+ *   in conjunction with LOBPCG: each column of the inexact sparse triangular
+ *   factor L is guanteed to have at most max_fill_factor * (nnz(A) / dim(A))
+ *   nonzero elements, and any elements l in L_k (the kth column of L)
+ *   satisfying |l| <= drop_tol * |L_k|_1 will be set to 0.
  */
-bool fast_verification(const SparseMatrix &S, Scalar eta, size_t m,
+bool fast_verification(const SparseMatrix &S, Scalar eta, size_t nx,
                        Scalar &theta, Vector &x, size_t &num_iters,
-                       Scalar tau = 1e-2, size_t max_iters = 1000);
+                       Scalar tau = 1e-2, size_t max_iters = 1000,
+                       Scalar max_fill_factor = 3, Scalar drop_tol = 1e-3);
 
 } // namespace SESync

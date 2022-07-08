@@ -39,6 +39,14 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     throw std::invalid_argument(
         "LOBPCG stopping tolerance must be a value in the range (0,1)");
 
+  if (options.LOBPCG_max_fill_factor <= 0)
+    throw std::invalid_argument("Maximum fill factor for LOBPCG preconditioner "
+                                "must be a positive value");
+
+  if (options.LOBPCG_drop_tol <= 0 || options.LOBPCG_drop_tol > 1)
+    throw std::invalid_argument("Drop tolerance for LOBPCG preconditioner must "
+                                "be a positive value in the range (0, 1]");
+
   if (options.LOBPCG_max_iterations <= 0)
     throw std::invalid_argument(
         "Maximum number of LOBPCG iterations must be a positive value");
@@ -79,6 +87,10 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << options.min_eig_num_tol << std::endl;
     std::cout << " LOBPCG block size to use in minimum-eigenpair computation: "
               << options.LOBPCG_block_size << std::endl;
+    std::cout << " LOBPCG preconditioner maximum fill factor: "
+              << options.LOBPCG_max_fill_factor << std::endl;
+    std::cout << " LOBPCG preconditioner drop tolerance: "
+              << options.LOBPCG_drop_tol << std::endl;
     std::cout
         << " LOBPCG stopping tolerance for minimum-eigenpair computation: "
         << options.LOBPCG_tol << std::endl;
@@ -350,7 +362,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     bool global_opt = problem.verify_solution(
         SESyncResults.Yopt, options.min_eig_num_tol, options.LOBPCG_block_size,
         SESyncResults.lambda_min, vmin, num_lobpcg_iters, options.LOBPCG_tol,
-        options.LOBPCG_max_iterations);
+        options.LOBPCG_max_iterations, options.LOBPCG_max_fill_factor,
+        options.LOBPCG_drop_tol);
     double verification_elapsed_time = Stopwatch::tock(verification_start_time);
 
     // Check eigenvalue convergence

@@ -144,6 +144,9 @@ PYBIND11_MODULE(PySESync, m) {
                      &SESync::SESyncOpts::LOBPCG_block_size,
                      "Block size to use in LOBPCG when computing a minimum "
                      "eigenpair of the certificate matrix")
+      .def_readwrite("LOBPCG_max_fill_factor",
+                     &SESync::SESyncOpts::LOBPCG_max_fill_factor)
+      .def_readwrite("LOBPCG_drop_tol", &SESync::SESyncOpts::LOBPCG_drop_tol)
       .def_readwrite(
           "LOBPCG_tol", &SESync::SESyncOpts::LOBPCG_tol,
           "LOBPCG stopping tolerance for computing a minimum eigenpair of "
@@ -379,14 +382,16 @@ PYBIND11_MODULE(PySESync, m) {
   m.def(
       "fast_verification",
       [](const SESync::SparseMatrix &S, SESync::Scalar eta, size_t m,
-         SESync::Scalar tau, size_t max_iters)
+         SESync::Scalar tau, size_t max_iters, SESync::Scalar max_fill_factor,
+         SESync::Scalar drop_tol)
           -> std::tuple<bool, SESync::Scalar, SESync::Vector, size_t> {
         SESync::Scalar theta;
         SESync::Vector x;
         size_t num_iters;
 
-        bool PSD = SESync::fast_verification(S, eta, m, theta, x, num_iters,
-                                             tau, max_iters);
+        bool PSD =
+            SESync::fast_verification(S, eta, m, theta, x, num_iters, tau,
+                                      max_iters, max_fill_factor, drop_tol);
 
         return std::make_tuple(PSD, theta, x, num_iters);
       },

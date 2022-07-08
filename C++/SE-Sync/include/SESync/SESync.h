@@ -91,6 +91,16 @@ struct SESyncOpts {
    * certificate matrix */
   size_t LOBPCG_block_size = 5;
 
+  /// The next parameters control the sparsity of the incomplete symmetric
+  /// indefinite factorization-based preconditioner used in conjunction with
+  /// LOBPCG: 'max_fill_factor' and 'drop_tol' are parameters controlling the
+  /// each column of the inexact sparse triangular *factor L is guanteed to have
+  /// at most max_fill_factor *(nnz(A) / dim(A)) nonzero elements, and any
+  /// elements l in L_k(the kth column of L) satisfying |l| <= drop_tol *
+  /// |L_k|_1 will be set to 0.
+  Scalar LOBPCG_max_fill_factor = 3;
+  Scalar LOBPCG_drop_tol = 1e-3;
+
   /** LOBPCG stopping tolerance for computing a minimum eigenpair of the
    * certificate matrix: terminate when the minimum eigenpair estimate
    * (theta, x) satisfies: ||S*x - theta*x|| < tau * |theta|.  Note that tau
@@ -101,8 +111,8 @@ struct SESyncOpts {
    * minimum-eigenpair computation */
   size_t LOBPCG_max_iterations = 1000;
 
-  /** Whether to use the Cholesky or QR factorization when computing the
-   * orthogonal projection */
+  /** Whether to use the Cholesky or QR factorization when
+   * computing the orthogonal projection */
   ProjectionFactorization projection_factorization =
       ProjectionFactorization::Cholesky;
 
@@ -263,9 +273,9 @@ SESyncResult SESync(const measurements_t &measurements,
  *  point.  Here:
  *
  * - problem is the specific special Euclidean synchronization problem we are
- *     attempting to solve
+ *   attempting to solve
  * - Y is the critical point (saddle point) obtained at the current level of the
- *     Riemannian Staircase
+ *   Riemannian Staircase
  * - lambda_min is the (negative) minimum eigenvalue of the matrix Q - Lambda
  * - v_min is the eigenvector corresponding to lambda_min
  * - gradient_tolerance is a *lower bound* on the norm of the Riemannian
