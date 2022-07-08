@@ -84,12 +84,12 @@ struct SESyncOpts {
 
   /** Tolerance for accepting the minimum eigenvalue of the
    * certificate matrix as numerically nonnegative; this should be a small
-   * positive value e.g. 10^-6 */
-  Scalar min_eig_num_tol = 1e-6;
+   * positive value e.g. 10^-3 */
+  Scalar min_eig_num_tol = 1e-3;
 
   /** Block size to use in LOBPCG when computing a minimum eigenpair of the
    * certificate matrix */
-  size_t LOBPCG_block_size = 5;
+  size_t LOBPCG_block_size = 4;
 
   /// The next parameters control the sparsity of the incomplete symmetric
   /// indefinite factorization-based preconditioner used in conjunction with
@@ -101,15 +101,9 @@ struct SESyncOpts {
   Scalar LOBPCG_max_fill_factor = 3;
   Scalar LOBPCG_drop_tol = 1e-3;
 
-  /** LOBPCG stopping tolerance for computing a minimum eigenpair of the
-   * certificate matrix: terminate when the minimum eigenpair estimate
-   * (theta, x) satisfies: ||S*x - theta*x|| < tau * |theta|.  Note that tau
-   * should be a small positive value in the range (0,1) */
-  Scalar LOBPCG_tol = 1e-2;
-
   /** The maximum number of LOBPCG iterations to permit for the
    * minimum-eigenpair computation */
-  size_t LOBPCG_max_iterations = 1000;
+  size_t LOBPCG_max_iterations = 100;
 
   /** Whether to use the Cholesky or QR factorization when
    * computing the orthogonal projection */
@@ -196,9 +190,6 @@ struct SESyncResult {
    */
   Scalar duality_gap;
 
-  /** The minimum eigenvalue of the certificate matrix */
-  Scalar lambda_min;
-
   /** The objective value of the rounded solution xhat in SE(d)^n */
   Scalar Fxhat;
 
@@ -235,10 +226,11 @@ struct SESyncResult {
    * values and gradients were obtained */
   std::vector<std::vector<double>> elapsed_optimization_times;
 
-  /** A vector containing the sequence of minimum eigenvalues of the certificate
-   * matrix constructed from the critical point recovered from the
-   * optimization at each level of the Riemannian Staircase */
-  std::vector<Scalar> minimum_eigenvalues;
+  /** A vector containing the sequence of curvatures theta := x'*S*x of the
+   * certificate matrices S along the computed escape directions x from
+   * suboptimal critical points at each level of the Riemannian Staircase
+   */
+  std::vector<Scalar> escape_direction_curvatures;
 
   /** A vector containing the number of LOBPCG iterations performed for the
    * minimum-eigenpair computation at each level of the Riemannian Staircase */
@@ -302,9 +294,8 @@ SESyncResult SESync(const measurements_t &measurements,
  * contains the point at which to initialize the optimization at the next level
  * of the Riemannian Staircase
  */
-bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
-                   Scalar lambda_min, const Vector &v_min,
-                   Scalar gradient_tolerance,
+bool escape_saddle(const SESyncProblem &problem, const Matrix &Y, Scalar theta,
+                   const Vector &v, Scalar gradient_tolerance,
                    Scalar preconditioned_gradient_tolerance, Matrix &Yplus);
 
 } // namespace SESync

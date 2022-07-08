@@ -422,7 +422,7 @@ SparseMatrix SESyncProblem::compute_Lambda(const Matrix &Y) const {
 
 bool SESyncProblem::verify_solution(const Matrix &Y, Scalar eta, size_t nx,
                                     Scalar &theta, Vector &x, size_t &num_iters,
-                                    Scalar tau, size_t max_LOBPCG_iters,
+                                    size_t max_LOBPCG_iters,
                                     Scalar max_fill_factor,
                                     Scalar drop_tol) const {
 
@@ -442,7 +442,7 @@ bool SESyncProblem::verify_solution(const Matrix &Y, Scalar eta, size_t nx,
 
   /// Test positive-semidefiniteness of certificate matrix S using fast
   /// verification method
-  bool PSD = fast_verification(S, eta, nx, theta, x, num_iters, tau,
+  bool PSD = fast_verification(S, eta, nx, theta, x, num_iters,
                                max_LOBPCG_iters, max_fill_factor, drop_tol);
 
   if (!PSD && (form_ == Formulation::Simplified)) {

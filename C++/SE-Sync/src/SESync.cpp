@@ -35,10 +35,6 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   if (options.LOBPCG_block_size < 1)
     throw std::invalid_argument("LOBPCG block size must be a positive integer");
 
-  if (options.LOBPCG_tol <= 0 || options.LOBPCG_tol >= 1)
-    throw std::invalid_argument(
-        "LOBPCG stopping tolerance must be a value in the range (0,1)");
-
   if (options.LOBPCG_max_fill_factor <= 0)
     throw std::invalid_argument("Maximum fill factor for LOBPCG preconditioner "
                                 "must be a positive value");
@@ -85,16 +81,14 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     std::cout << " Tolerance for accepting an eigenvalue as numerically "
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
-    std::cout << " LOBPCG block size to use in minimum-eigenpair computation: "
+    std::cout << " LOBPCG block size to use in escape direction computation: "
               << options.LOBPCG_block_size << std::endl;
     std::cout << " LOBPCG preconditioner maximum fill factor: "
               << options.LOBPCG_max_fill_factor << std::endl;
     std::cout << " LOBPCG preconditioner drop tolerance: "
               << options.LOBPCG_drop_tol << std::endl;
-    std::cout
-        << " LOBPCG stopping tolerance for minimum-eigenpair computation: "
-        << options.LOBPCG_tol << std::endl;
-    std::cout << " Maximum number of LOBPCG iterations for minimum-eigenpair "
+
+    std::cout << " Maximum number of LOBPCG iterations for escape direction "
                  "computation: "
               << options.LOBPCG_max_iterations << std::endl;
 
@@ -353,25 +347,23 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     /// Check second-order optimality
 
-    // Compute the minimum eigenvalue lambda and corresponding eigenvector
-    // of Q - Lambda
     size_t num_lobpcg_iters;
     auto verification_start_time = Stopwatch::tick();
 
-    Vector vmin;
+    Vector v;     // Escape direction
+    Scalar theta; // Curvature of certificate matrix along escape direction
+
     bool global_opt = problem.verify_solution(
         SESyncResults.Yopt, options.min_eig_num_tol, options.LOBPCG_block_size,
-        SESyncResults.lambda_min, vmin, num_lobpcg_iters, options.LOBPCG_tol,
-        options.LOBPCG_max_iterations, options.LOBPCG_max_fill_factor,
-        options.LOBPCG_drop_tol);
+        theta, v, num_lobpcg_iters, options.LOBPCG_max_iterations,
+        options.LOBPCG_max_fill_factor, options.LOBPCG_drop_tol);
     double verification_elapsed_time = Stopwatch::tock(verification_start_time);
 
     // Check eigenvalue convergence
-    if (!global_opt &&
-        SESyncResults.lambda_min >= -options.min_eig_num_tol / 2) {
+    if (!global_opt && theta >= -options.min_eig_num_tol / 2) {
       if (options.verbose)
         std::cout
-            << "WARNING! MINIMUM EIGENPAIR COMPUTATION DID NOT CONVERGE TO "
+            << "WARNING! ESCAPE DIRECTION COMPUTATION DID NOT CONVERGE TO "
                "DESIRED PRECISION!"
             << std::endl;
       SESyncResults.status = EigImprecision;
@@ -379,18 +371,16 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     }
 
     // Record results of eigenvalue computation
-    SESyncResults.minimum_eigenvalues.push_back(SESyncResults.lambda_min);
+    SESyncResults.escape_direction_curvatures.push_back(theta);
     SESyncResults.LOBPCG_iters.push_back(num_lobpcg_iters);
     SESyncResults.verification_times.push_back(verification_elapsed_time);
 
-    // Test nonnegativity of minimum eigenvalue
     if (global_opt) {
       // results.Yopt is a second-order critical point (global optimum)!
       if (options.verbose)
         std::cout
             << "Found second-order critical point! Elapsed computation time: "
-            << verification_elapsed_time << " seconds (" << num_lobpcg_iters
-            << " matrix-vector multiplications)." << std::endl;
+            << verification_elapsed_time << " seconds." << std::endl;
       SESyncResults.status = GlobalOpt;
       break;
     } // global optimality
@@ -398,12 +388,10 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
       /// ESCAPE FROM SADDLE!
       if (options.verbose) {
-        std::cout << "Saddle point detected! Minimum eigenvalue: "
-                  << SESyncResults.lambda_min << ".  Elapsed computation time: "
+        std::cout << "Saddle point detected! Curvature along escape direction: "
+                  << theta << ".  Elapsed computation time: "
                   << verification_elapsed_time << " seconds ("
                   << num_lobpcg_iters << " LOBPCG iterations)." << std::endl;
-
-        std::cout << "Computing escape direction ... " << std::endl;
       }
 
       // Augment the rank of the rank-restricted semidefinite relaxation in
@@ -413,8 +401,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
       Matrix Yplus;
       bool escape_success = escape_saddle(
-          problem, SESyncResults.Yopt, SESyncResults.lambda_min, vmin,
-          options.grad_norm_tol, options.preconditioned_grad_norm_tol, Yplus);
+          problem, SESyncResults.Yopt, theta, v, options.grad_norm_tol,
+          options.preconditioned_grad_norm_tol, Yplus);
 
       if (escape_success) {
         // Update initialization point for next level in the Staircase
@@ -445,7 +433,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       std::cout << "Found global optimum!" << std::endl;
       break;
     case EigImprecision:
-      std::cout << "WARNING: Minimum-eigenpair computation did not achieve "
+      std::cout << "WARNING: Escape direction computation did not achieve "
                    "sufficient accuracy; solution may not be globally optimal!"
                 << std::endl;
       break;
@@ -530,8 +518,6 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << SESyncResults.gradnorm << std::endl;
     std::cout << "Value of primal SDP solution tr(Lambda): "
               << SESyncResults.trLambda << std::endl;
-    std::cout << "Minimum eigenvalue of certificate matrix S - Lambda: "
-              << SESyncResults.lambda_min << std::endl;
     std::cout << "SDP duality gap: " << SESyncResults.duality_gap << std::endl
               << std::endl;
     std::cout << "SE-SYNCHRONIZATION RESULTS:" << std::endl;
@@ -569,20 +555,19 @@ SESyncResult SESync(const measurements_t &measurements,
   return SESync(problem, options, Y0);
 }
 
-bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
-                   Scalar lambda_min, const Vector &v_min,
-                   Scalar gradient_tolerance,
+bool escape_saddle(const SESyncProblem &problem, const Matrix &Y, Scalar theta,
+                   const Vector &v, Scalar gradient_tolerance,
                    Scalar preconditioned_gradient_tolerance, Matrix &Yplus) {
 
-  /** v_min is an eigenvector corresponding to a negative eigenvalue of Q -
-   * Lambda, so the KKT conditions for the semidefinite relaxation are not
-   * satisfied; this implies that Y is a saddle point of the rank-restricted
-   * semidefinite  optimization.  Fortunately, v_min can be used to compute a
-   * descent  direction from this saddle point, as described in Theorem 3.9
-   * of the paper "A Riemannian Low-Rank Method for Optimization over
-   * Semidefinite  Matrices with Block-Diagonal Constraints". Define the vector
-   * Ydot := e_{r+1} * v'; this is a tangent vector to the domain of the SDP
-   * and provides a direction of negative curvature */
+  /** v is an eigenvector corresponding to a negative eigenvalue of Q - Lambda,
+   * so the KKT conditions for the semidefinite relaxation are not satisfied;
+   * this implies that Y is a saddle point of the rank-restricted semidefinite
+   * optimization.  Fortunately, v_min can be used to compute a descent
+   * direction from this saddle point, as described in Theorem 3.9 of the paper
+   * "A Riemannian Low-Rank Method for Optimization over Semidefinite  Matrices
+   * with Block-Diagonal Constraints". Define the vector Ydot := e_{r+1} * v';
+   * this is a tangent vector to the domain of the SDP and provides a direction
+   * of negative curvature */
 
   // Function value at current iterate (saddle point)
   Scalar FY = problem.evaluate_objective(Y);
@@ -597,7 +582,7 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   Y_augmented.topRows(r - 1) = Y;
 
   Matrix Ydot = Matrix::Zero(r, Y.cols());
-  Ydot.bottomRows<1>() = v_min.transpose();
+  Ydot.bottomRows<1>() = v.transpose();
 
   // Set the initial step length to the greater of 10 times the distance needed
   // to arrive at a trial point whose gradient is large enough to avoid
@@ -606,7 +591,7 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   // steplength,
   Scalar alpha_min = 1e-6; // Minimum stepsize
   Scalar alpha =
-      std::max(16 * alpha_min, 10 * gradient_tolerance / fabs(lambda_min));
+      std::max(16 * alpha_min, 10 * gradient_tolerance / fabs(theta));
 
   // Vectors of trial stepsizes and corresponding function values
   std::vector<double> alphas;

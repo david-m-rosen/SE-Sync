@@ -713,8 +713,9 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O) {
 }
 
 bool fast_verification(const SparseMatrix &S, Scalar eta, size_t nx,
-                       Scalar &theta, Vector &x, size_t &num_iters, Scalar tau,
-                       size_t max_iters, Scalar max_fill_factor, Scalar drop_tol) {
+                       Scalar &theta, Vector &x, size_t &num_iters,
+                       size_t max_iters, Scalar max_fill_factor,
+                       Scalar drop_tol) {
   // Don't forget to set this on input!
   num_iters = 0;
   theta = 0;
@@ -762,41 +763,13 @@ bool fast_verification(const SparseMatrix &S, Scalar eta, size_t nx,
     Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> Mop =
         [&M](const Matrix &X) -> Matrix { return M * X; };
 
-    /// Set up preconditioning operator T
-
-    // Incomplete symmetric indefinite factorization of M
-
-    // Set drop tolerance and max fill factor for ILDL preconditioner
-    Preconditioners::ILDLOpts ildl_opts;
-    ildl_opts.max_fill_factor = max_fill_factor;
-    ildl_opts.drop_tol = drop_tol;
-
-    Preconditioners::ILDL Mfact(M, ildl_opts);
-
-    Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> T =
-        [&Mfact](const Matrix &X) -> Matrix {
-      // Preallocate output matrix TX
-      Matrix TX(X.rows(), X.cols());
-
-#pragma omp parallel for
-      for (unsigned int i = 0; i < X.cols(); ++i) {
-        // Calculate TX by preconditioning the columns of X one-by-one
-        TX.col(i) = Mfact.solve(X.col(i), true);
-      }
-
-      return TX;
-    };
-
-    // Custom stopping criterion: terminate if EITHER of the following
-    // conditions hold:
+    // Custom stopping criterion: terminate as soon as a direction of
+    // sufficiently negative curvature is found:
     //
-    // 1.  The minimum eigenpair is estimated to a relative accuracy tau:
-    //     || S*x - theta*x || < tau * |theta|
+    // x'* S * x < - eta / 2
     //
-    // 2.  x'* S * x < - eta / 2
-
     Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix> stopfun =
-        [tau,
+        [&S,
          eta](size_t i,
               const Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>
                   &M,
@@ -808,29 +781,98 @@ bool fast_verification(const SparseMatrix &S, Scalar eta, size_t nx,
                   &T,
               size_t nev, const Vector &Theta, const Matrix &X, const Vector &r,
               size_t nc) {
-          // Calculate lambda_min(S) from Theta
-          double lambda_min = Theta(0) - eta;
-
-          return ((r(0) <= tau * fabs(lambda_min)) && (lambda_min < -eta / 2));
+          // Calculate curvature along estimated minimum eigenvector X0
+          Scalar theta = X.col(0).dot(S * X.col(0));
+          return (theta < -eta / 2);
         };
 
-    /// Run preconditioned LOBPCG
+    /// STEP 2:  Try computing a minimum eigenpair of M using *unpreconditioned*
+    /// LOBPCG.
+
+    // This is a useful computational enhancement for the case in
+    // which M has an "obvious" (i.e. well-separated or large-magnitude)
+    // negative eigenpair, since in that case LOBPCG permits us to
+    // well-approximate this eigenpair *without* the need to construct the
+    // preconditioner T
+
+    /// Run preconditioned LOBPCG, using at most 15% of the total allocated
+    /// iterations
+
+    double unprecon_iter_frac = .15;
     std::tie(Theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
         Mop,
         std::optional<
             Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(),
         std::optional<
-            Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(T),
-        n, nx, 1, max_iters, num_iters, num_converged, 0.0,
+            Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(),
+        n, nx, 1, static_cast<size_t>(unprecon_iter_frac * max_iters),
+        num_iters, num_converged, 0.0,
         std::optional<
             Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix>>(
             stopfun));
 
-    // Extract eigenvalue estimate
-    theta = Theta(0) - eta;
-
     // Extract eigenvector estimate
     x = X.col(0);
+
+    // Calculate curvature along x
+    theta = x.dot(S * x);
+
+    if (!(theta < -eta / 2)) {
+
+      /// STEP 3:  RUN PRECONDITIONED LOBPCG
+
+      // We did *not* find a direction of sufficiently negative curvature in the
+      // alloted number of iterations, so now run preconditioned LOBPCG.  This
+      // is most useful for the "hard" cases, in which M has a strictly negative
+      // minimum eigenpair that is small-magnitude (i.e. near-zero).
+
+      /// Set up preconditioning operator T
+
+      // Incomplete symmetric indefinite factorization of M
+
+      // Set drop tolerance and max fill factor for ILDL preconditioner
+      Preconditioners::ILDLOpts ildl_opts;
+      ildl_opts.max_fill_factor = max_fill_factor;
+      ildl_opts.drop_tol = drop_tol;
+
+      Preconditioners::ILDL Mfact(M, ildl_opts);
+
+      Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> T =
+          [&Mfact](const Matrix &X) -> Matrix {
+        // Preallocate output matrix TX
+        Matrix TX(X.rows(), X.cols());
+
+#pragma omp parallel for
+        for (unsigned int i = 0; i < X.cols(); ++i) {
+          // Calculate TX by preconditioning the columns of X one-by-one
+          TX.col(i) = Mfact.solve(X.col(i), true);
+        }
+
+        return TX;
+      };
+
+      /// Run preconditioned LOBPCG using the remaining alloted LOBPCG
+      /// iterations
+      std::tie(Theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+          Mop,
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(),
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(T),
+          n, nx, 1, static_cast<size_t>((1.0 - unprecon_iter_frac) * max_iters),
+          num_iters, num_converged, 0.0,
+          std::optional<
+              Optimization::LinearAlgebra::LOBPCGUserFunction<Vector, Matrix>>(
+              stopfun));
+
+      // Extract eigenvector estimate
+      x = X.col(0);
+
+      // Calculate curvature along x
+      theta = x.dot(S * x);
+
+      num_iters += static_cast<size_t>(unprecon_iter_frac * num_iters);
+    } // if (!(theta < -eta / 2))
 
   } // if(!PSD)
 

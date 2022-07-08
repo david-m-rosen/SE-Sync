@@ -147,10 +147,6 @@ PYBIND11_MODULE(PySESync, m) {
       .def_readwrite("LOBPCG_max_fill_factor",
                      &SESync::SESyncOpts::LOBPCG_max_fill_factor)
       .def_readwrite("LOBPCG_drop_tol", &SESync::SESyncOpts::LOBPCG_drop_tol)
-      .def_readwrite(
-          "LOBPCG_tol", &SESync::SESyncOpts::LOBPCG_tol,
-          "LOBPCG stopping tolerance for computing a minimum eigenpair of "
-          "the certficiate matrix")
       .def_readwrite("LOBPCG_max_iterations",
                      &SESync::SESyncOpts::LOBPCG_max_iterations,
                      "Maximum number of LOBPCG iterations to permit for the "
@@ -201,8 +197,6 @@ PYBIND11_MODULE(PySESync, m) {
       .def_readwrite("duality_gap", &SESync::SESyncResult::duality_gap,
                      "Duality gap between the estimates for the primal and "
                      "dual SDP solutions")
-      .def_readwrite("lambda_min", &SESync::SESyncResult::lambda_min,
-                     "The minimum eigenvalue of the certificate matrix")
       .def_readwrite("Fxhat", &SESync::SESyncResult::Fxhat,
                      "The objective value of the rounded solution xhat")
       .def_readwrite("xhat", &SESync::SESyncResult::xhat,
@@ -239,7 +233,7 @@ PYBIND11_MODULE(PySESync, m) {
           "optimization at each level of the Riemannian Staircase at which the "
           "corresponding function values and gradients were obtained")
       .def_readwrite(
-          "min_eigs", &SESync::SESyncResult::minimum_eigenvalues,
+          "min_eigs", &SESync::SESyncResult::escape_direction_curvatures,
           "A vector containing the sequence of minimum eigenvalues of the "
           "certificate matrix constructed at the critical point recovered from "
           "optimization at each level of the Riemannian Staircase")
@@ -381,8 +375,8 @@ PYBIND11_MODULE(PySESync, m) {
 
   m.def(
       "fast_verification",
-      [](const SESync::SparseMatrix &S, SESync::Scalar eta, size_t m,
-         SESync::Scalar tau, size_t max_iters, SESync::Scalar max_fill_factor,
+      [](const SESync::SparseMatrix &S, SESync::Scalar eta, size_t nx,
+         size_t max_iters, SESync::Scalar max_fill_factor,
          SESync::Scalar drop_tol)
           -> std::tuple<bool, SESync::Scalar, SESync::Vector, size_t> {
         SESync::Scalar theta;
@@ -390,7 +384,7 @@ PYBIND11_MODULE(PySESync, m) {
         size_t num_iters;
 
         bool PSD =
-            SESync::fast_verification(S, eta, m, theta, x, num_iters, tau,
+            SESync::fast_verification(S, eta, nx, theta, x, num_iters,
                                       max_iters, max_fill_factor, drop_tol);
 
         return std::make_tuple(PSD, theta, x, num_iters);

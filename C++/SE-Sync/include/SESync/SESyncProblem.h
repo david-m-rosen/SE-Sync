@@ -342,10 +342,6 @@ public:
    * - num_iters is a return value providing the number of LOBPCG iterations
    *   used to compute the direction of negative curvature x (only set if S(Y) +
    *   eta * I is *not* PSD)
-   * - tau is the termination tolerance used in LOBPCG's minimum-eigenvalue
-   *   computation: LOBPCG will terminate when the estimated minimum eigenpair
-   *   satisfies ||S*x - theta*x|| <= tau * |theta|.  Note that tau must
-   *   satisfy tau in (0, 1).
    * - max_LOBPCG_iters is the maximum number of LOBPCG iterations to perform
    * - 'max_fill_factor' and 'drop_tol' are parameters controlling the sparsity
    *   of the incomplete symmetric indefinite factorization-based preconditioner
@@ -355,7 +351,7 @@ public:
    *   column of L) satisfying |l| <= drop_tol * |L_k|_1 will be set to 0
    */
   bool verify_solution(const Matrix &Y, Scalar eta, size_t nx, Scalar &theta,
-                       Vector &x, size_t &num_iters, Scalar tau = 1e-2,
+                       Vector &x, size_t &num_iters,
                        size_t max_LOBPCG_iters = 1000,
                        Scalar max_fill_factor = 3,
                        Scalar drop_tol = 1e-3) const;

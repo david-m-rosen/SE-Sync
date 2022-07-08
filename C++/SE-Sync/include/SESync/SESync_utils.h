@@ -112,10 +112,6 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O = nullptr);
  *
  * - nx is the size of the block to use in LOBPCG
  * - num_iters is the number of iterations LOBPCG executed
- * - tau is the termination tolerance used in LOBPCG's minimum-eigenvalue
- *   computation: LOBPCG will terminate when the estimated minimum eigenpair
- *   satisfies ||S*x - theta*x|| <= tau * |theta|.  Note that tau must satisfy
- *   tau in (0, 1).
  * - max_iters is the maximum number of LOBPCG iterations
  * - 'max_fill_factor' and 'drop_tol' are parameters controlling the sparsity of
  *   the incomplete symmetric indefinite factorization-based preconditioner used
@@ -126,7 +122,7 @@ Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O = nullptr);
  */
 bool fast_verification(const SparseMatrix &S, Scalar eta, size_t nx,
                        Scalar &theta, Vector &x, size_t &num_iters,
-                       Scalar tau = 1e-2, size_t max_iters = 1000,
-                       Scalar max_fill_factor = 3, Scalar drop_tol = 1e-3);
+                       size_t max_iters = 1000, Scalar max_fill_factor = 3,
+                       Scalar drop_tol = 1e-3);
 
 } // namespace SESync
