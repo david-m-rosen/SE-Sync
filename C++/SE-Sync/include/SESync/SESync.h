@@ -145,7 +145,7 @@ enum SESyncStatus {
   SaddlePoint,
 
   /** The algorithm converged to a first-order critical point, but the
-   * minimum-eigenvalue computation did not converge to sufficient precision to
+   * minimum-eigenpair computation did not converge to sufficient precision to
    * enable its characterization */
   EigImprecision,
 
