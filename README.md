@@ -21,7 +21,7 @@ The C++ implementation of SE-Sync can be built and exported as a CMake project. 
 
 #### C++ quick installation guide
 
-The following installation instructions have been verified on Ubuntu 20.04:
+The following installation instructions have been verified on Ubuntu 22.04:
 
 *Step 1:*  Install dependencies
 ```
@@ -52,7 +52,7 @@ $ cd build && cmake ..
 
 *Step 6:*  Build code
 ```
-$ make [-jN, where N is the number of cores to use for parallel compilation]
+$ make -j
 ```
 
 *Step 7:*  Run the example command-line utility on some tasty data :-D!
@@ -108,6 +108,15 @@ month = sep,
 year = {2017},
 }
 
+@misc{Rosen2022Accelerating,
+  title = {Accelerating Certifiable Estimation with Preconditioned Eigensolvers},
+  author = {Rosen, David M.},
+  month = may,
+  year = {2022},
+  publisher = {arXiv},
+  doi = {10.48550/ARXIV.2207.05257},
+  url = {https://arxiv.org/abs/2207.05257},
+}
 
 ```
 
