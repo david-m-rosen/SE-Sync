@@ -70,9 +70,8 @@ message(STATUS "")
 
 # FIND ADDITIONAL LIBRARIES
 # These next operations make use of the .cmake files shipped with Eigen3
-# find_package(SPQR REQUIRED)
-# find_package(Cholmod REQUIRED)
-# find_package(BLAS REQUIRED)
+find_package(SPQR REQUIRED)
+find_package(BLAS REQUIRED)
 
 
 # Find Optimization library
@@ -101,7 +100,7 @@ set(SESync_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/src)
 set(SESync_EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 
 # The SE-Sync headers and and Eigen 3, SPQR, and Cholmod are all referenced by the header files of the SE-Sync library, hence must be PUBLICLY included (i.e. clients using the SE-Sync headers must also include these headers)
-set(SESync_INCLUDES ${SESync_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} ${SPQR_INCLUDES} ${CHOLMOD_INCLUDES} CACHE INTERNAL "")
+set(SESync_INCLUDES ${SESync_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} ${SPQR_INCLUDES} CACHE INTERNAL "")
 
 
 # SE-SYNC PROJECT
@@ -127,7 +126,7 @@ ${SESync_SOURCE_DIR}/SESync.cpp
 add_library(${PROJECT_NAME} SHARED ${SESync_HDRS} ${SESync_SRCS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${SESync_PRIVATE_INCLUDES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SESync_INCLUDES})
-target_link_libraries(${PROJECT_NAME} Optimization ILDL ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
+target_link_libraries(${PROJECT_NAME} Optimization ILDL ${BLAS_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
 
 if(OPENMP_FOUND)
 # Add additional compilation flags to enable OpenMP support
@@ -178,6 +177,7 @@ add_subdirectory(examples)
 # EXPORT SE-SYNC LIBRARY
 
 # Add add entry for this project into CMake's package registry, so that this project can be found by other CMake projects
+set(CMAKE_EXPORT_PACKAGE_REGISTRY TRUE)  # This flag is required to actually export the package for CMake versions >= 3.15
 export(PACKAGE ${PROJECT_NAME})
 # Create a configuration file for this project, so that it can be imported by other CMake projects
 export(TARGETS ${PROJECT_NAME} Optimization ILDL FILE ${PROJECT_NAME}Config.cmake)
