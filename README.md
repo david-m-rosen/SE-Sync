@@ -63,7 +63,13 @@ $ ./SE-Sync ../../../data/sphere2500.g2o
 
 ### Python
 
-Python bindings for the C++ SE-Sync library can also be built using [pybind11](https://pybind11.readthedocs.io/en/stable/index.html); to do so, simply set `BUILD_PYTHON_BINDINGS` when configuring the CMake project.  See this [notebook](https://github.com/david-m-rosen/SE-Sync/blob/master/C%2B%2B/examples/PySESync.ipynb) for a minimal working example demonstrating the use of SE-Sync's Python interface.
+Python bindings for the C++ SE-Sync library can also be built using [pybind11](https://pybind11.readthedocs.io/en/stable/index.html).  To do so, install the additional Python dependencies using the command:
+
+```
+$ sudo apt-get install python3 python3-dev pybind11-dev jupyter-notebook 
+```
+
+and then set `BUILD_PYTHON_BINDINGS` when configuring the CMake project.  See this [notebook](https://github.com/david-m-rosen/SE-Sync/blob/master/C%2B%2B/examples/PySESync.ipynb) for a minimal working example demonstrating the use of SE-Sync's Python interface.
 
 ## References
 
@@ -151,6 +157,6 @@ If you use the MATLAB implementation of SE-Sync, please also cite the following 
 
 ## Copyright and License 
 
-The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016 - 2018 by David M. Rosen, and are distributed under the terms of the GNU Lesser General Public License (LGPL) version 3 (or later).  Please see the [LICENSE](https://github.com/david-m-rosen/SE-Sync/blob/master/LICENSE) for more information.
+The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016-2022 by David M. Rosen, and are distributed under the terms of the GNU Lesser General Public License (LGPL) version 3 (or later).  Please see the [LICENSE](https://github.com/david-m-rosen/SE-Sync/blob/master/LICENSE) for more information.
 
 Contact: drosen2000@gmail.com
