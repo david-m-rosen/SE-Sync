@@ -117,7 +117,6 @@ year = {2017},
   doi = {10.48550/ARXIV.2207.05257},
   url = {https://arxiv.org/abs/2207.05257},
 }
-
 ```
 
 and the following [paper](https://pdfs.semanticscholar.org/90b8/a3b089509dfea2fb83b2e49d77a443b2a3f7.pdf) of Absil et al., which describes the Riemannian trust-region (RTR) method that SE-Sync employs:
