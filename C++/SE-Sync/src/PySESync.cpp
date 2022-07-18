@@ -4,6 +4,8 @@
 #include "SESync/SESync_types.h"
 #include "SESync/SESync_utils.h"
 
+#include <tuple>
+
 #include <pybind11/eigen.h>
 #include <pybind11/iostream.h>
 #include <pybind11/pybind11.h>
@@ -134,17 +136,21 @@ PYBIND11_MODULE(PySESync, m) {
                      "Initial level of the Riemannian Staircase")
       .def_readwrite("rmax", &SESync::SESyncOpts::rmax,
                      "Maximum level of the Riemannian Staircase to explore")
-      .def_readwrite("max_eig_iters", &SESync::SESyncOpts::max_eig_iterations,
-                     "Maximum number of Lanczos iterations to admit for the "
-                     "minimum-eigenvalue computation")
       .def_readwrite("min_eig_num_tol", &SESync::SESyncOpts::min_eig_num_tol,
                      "Numerical tolerance for accepting the minimum eigenvalue "
                      "of the certificate matrix as nonnegative; this should be "
                      "a small positive constant.")
-      .def_readwrite("num_Lanczos_vectors",
-                     &SESync::SESyncOpts::num_Lanczos_vectors,
-                     "The number of Lanczos vectors to use in the "
-                     "minimum-eigenvalue computation")
+      .def_readwrite("LOBPCG_block_size",
+                     &SESync::SESyncOpts::LOBPCG_block_size,
+                     "Block size to use in LOBPCG when computing a minimum "
+                     "eigenpair of the certificate matrix")
+      .def_readwrite("LOBPCG_max_fill_factor",
+                     &SESync::SESyncOpts::LOBPCG_max_fill_factor)
+      .def_readwrite("LOBPCG_drop_tol", &SESync::SESyncOpts::LOBPCG_drop_tol)
+      .def_readwrite("LOBPCG_max_iterations",
+                     &SESync::SESyncOpts::LOBPCG_max_iterations,
+                     "Maximum number of LOBPCG iterations to permit for the "
+                     "minimum-eigenpair computation")
 
       .def_readwrite("projection_factorization",
                      &SESync::SESyncOpts::projection_factorization,
@@ -191,10 +197,6 @@ PYBIND11_MODULE(PySESync, m) {
       .def_readwrite("duality_gap", &SESync::SESyncResult::duality_gap,
                      "Duality gap between the estimates for the primal and "
                      "dual SDP solutions")
-      .def_readwrite("lambda_min", &SESync::SESyncResult::lambda_min,
-                     "The minimum eigenvalue of the certificate matrix")
-      .def_readwrite("vmin", &SESync::SESyncResult::v_min,
-                     "An eigenvector corresponding to the minimum eigenvalue")
       .def_readwrite("Fxhat", &SESync::SESyncResult::Fxhat,
                      "The objective value of the rounded solution xhat")
       .def_readwrite("xhat", &SESync::SESyncResult::xhat,
@@ -231,13 +233,13 @@ PYBIND11_MODULE(PySESync, m) {
           "optimization at each level of the Riemannian Staircase at which the "
           "corresponding function values and gradients were obtained")
       .def_readwrite(
-          "min_eigs", &SESync::SESyncResult::minimum_eigenvalues,
+          "min_eigs", &SESync::SESyncResult::escape_direction_curvatures,
           "A vector containing the sequence of minimum eigenvalues of the "
           "certificate matrix constructed at the critical point recovered from "
           "optimization at each level of the Riemannian Staircase")
-      .def_readwrite("min_eig_mat_ops", &SESync::SESyncResult::min_eig_mv_ops)
+      .def_readwrite("LOBPCG_iters", &SESync::SESyncResult::LOBPCG_iters)
       .def_readwrite(
-          "min_eig_comp_times", &SESync::SESyncResult::min_eig_comp_times,
+          "verification_times", &SESync::SESyncResult::verification_times,
           "A vector containing the elapsed time of the minimum eigenvalue "
           "computation at each level of the Riemannian Staircase")
       .def_readwrite("iterates", &SESync::SESyncResult::iterates,
@@ -370,6 +372,28 @@ PYBIND11_MODULE(PySESync, m) {
       " Given two matrices X, Y in O(d)^n, this function computes and returns "
       "a pair consisting of (1) the orbit distance d_O(X,Y) between them and "
       "(2) the optimal registration G_O in O(d) aligning Y to X");
+
+  m.def(
+      "fast_verification",
+      [](const SESync::SparseMatrix &S, SESync::Scalar eta, size_t nx,
+         size_t max_iters, SESync::Scalar max_fill_factor,
+         SESync::Scalar drop_tol)
+          -> std::tuple<bool, SESync::Scalar, SESync::Vector, size_t> {
+        SESync::Scalar theta;
+        SESync::Vector x;
+        size_t num_iters;
+
+        bool PSD =
+            SESync::fast_verification(S, eta, nx, theta, x, num_iters,
+                                      max_iters, max_fill_factor, drop_tol);
+
+        return std::make_tuple(PSD, theta, x, num_iters);
+      },
+      "Given a symmetric sparse matrix S and a numerical tolerance eta, this "
+      "function returns a tuple consisting of a boolean value indicating "
+      "whether S + eta * I is positive-semidefinite, and if it is not, an "
+      "estimate (theta, x) for the minimum eigenpair of S, and the number of "
+      "iterations required by LOBPCG to estimate this minimum eigenpair ");
 
   /// Bindings for SESyncProblem class
   py::class_<SESync::SESyncProblem>(

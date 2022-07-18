@@ -1,11 +1,11 @@
-# dmrosen 18-May-2017
+# dmrosen 4-July-2022
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.19)
 
 # PROJECT CONFIGURATION
 project(SESync LANGUAGES C CXX VERSION 1.0.0)
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON) # We require C++ 14
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON) # We require C++ 17 or later
 
 
 # Set build type to 'RelWithDebInfo' if one was not specified by the user
@@ -35,7 +35,14 @@ set(ENABLE_VISUALIZATION OFF CACHE BOOL "Enable visualization module.")
 set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "Build Python bindings.")
 
 # Add the .cmake files that ship with Eigen3 to the CMake module path (useful for finding other stuff)
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Eigen/cmake" CACHE STRING "The CMake module path used for this project")
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE STRING "The CMake module path used for this project")
+
+
+# Find (system) Eigen library
+find_package(Eigen3 3.4 REQUIRED)
+if(EIGEN3_FOUND)
+message(STATUS "Found Eigen3 library: ${EIGEN3_INCLUDE_DIR}\n")
+endif()
 
 if(${ENABLE_VECTORIZATION})
 message(STATUS "Enabling SIMD/AVX instruction sets")
@@ -61,23 +68,23 @@ message(STATUS "")
 
 # SESYNC DEPENDENCIES
 
-# FIND EIGEN3
-set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Eigen)
-message(STATUS "Eigen3 include directory: ${EIGEN3_INCLUDE_DIR}\n")
-
-
 # FIND ADDITIONAL LIBRARIES
 # These next operations make use of the .cmake files shipped with Eigen3
 find_package(SPQR REQUIRED)
-find_package(Cholmod REQUIRED)
 find_package(BLAS REQUIRED)
 
 
 # Find Optimization library
-set(OPTIMIZATION_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Optimization/ CACHE PATH "Path to top-level directory of Optimization (the one containing CMakeLists.txt)")
+set(OPTIMIZATION_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Optimization/ CACHE PATH "Path to top-level directory of Optimization library (the one containing CMakeLists.txt)")
 
 # Run the Optimization package's CMake file
 add_subdirectory(${OPTIMIZATION_DIR})
+
+# Find Preconditioners library
+set(PRECONDITIONERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Preconditioners/ CACHE PATH "Path to top-level directory of Preconditioners library (the one containing CMakeLists.txt)")
+
+# Run the Preconditioners package's CMake file
+add_subdirectory(${PRECONDITIONERS_DIR})
 
 # PERFORMANCE IMPROVEMENTS
 if(${ENABLE_OPENMP})
@@ -87,22 +94,13 @@ message(STATUS "Found OpenMP! Turning on support for parallelization\n")
 endif()
 endif()
 
-
-# FIND SPECTRA
-# Spectra doesn't ship with a .cmake file, but it's header-only, so it suffices to simply determine it's top-level directory
-set(SPECTRA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Spectra/include CACHE PATH "Path to top-level directory of Spectra template library")
-message(STATUS "Spectra include directory: ${SPECTRA_INCLUDE_DIR}\n")
-
 set(SESync_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/include)
 set(SESync_HDR_DIR ${SESync_INCLUDE_DIR}/SESync)
 set(SESync_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SE-Sync/src)
 set(SESync_EXAMPLES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 
-# Set the include directories for this project
-# Spectra is only used internally by the SE-Sync library
-set(SESync_PRIVATE_INCLUDES ${SPECTRA_INCLUDE_DIR} CACHE INTERNAL "")
 # The SE-Sync headers and and Eigen 3, SPQR, and Cholmod are all referenced by the header files of the SE-Sync library, hence must be PUBLICLY included (i.e. clients using the SE-Sync headers must also include these headers)
-set(SESync_INCLUDES ${SESync_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} ${SPQR_INCLUDES} ${CHOLMOD_INCLUDES} CACHE INTERNAL "")
+set(SESync_INCLUDES ${SESync_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} ${SPQR_INCLUDES} CACHE INTERNAL "")
 
 
 # SE-SYNC PROJECT
@@ -124,12 +122,11 @@ ${SESync_SOURCE_DIR}/SESyncProblem.cpp
 ${SESync_SOURCE_DIR}/SESync.cpp
 )
 
-
 # Build the SE-Sync library
 add_library(${PROJECT_NAME} SHARED ${SESync_HDRS} ${SESync_SRCS})
 target_include_directories(${PROJECT_NAME} PRIVATE ${SESync_PRIVATE_INCLUDES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SESync_INCLUDES})
-target_link_libraries(${PROJECT_NAME} Optimization ${BLAS_LIBRARIES} ${CHOLMOD_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
+target_link_libraries(${PROJECT_NAME} Optimization ILDL ${BLAS_LIBRARIES} ${SPQR_LIBRARIES} ${M} ${LAPACK})
 
 if(OPENMP_FOUND)
 # Add additional compilation flags to enable OpenMP support
@@ -154,7 +151,7 @@ endif()
 if(${BUILD_PYTHON_BINDINGS})
   
   # Find the appropriate Python3 interpreter
-  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
   
   # Find pybind11
   find_package(pybind11 REQUIRED)
@@ -180,9 +177,10 @@ add_subdirectory(examples)
 # EXPORT SE-SYNC LIBRARY
 
 # Add add entry for this project into CMake's package registry, so that this project can be found by other CMake projects
+set(CMAKE_EXPORT_PACKAGE_REGISTRY TRUE)  # This flag is required to actually export the package for CMake versions >= 3.15
 export(PACKAGE ${PROJECT_NAME})
 # Create a configuration file for this project, so that it can be imported by other CMake projects
-export(TARGETS ${PROJECT_NAME} Optimization FILE ${PROJECT_NAME}Config.cmake)
+export(TARGETS ${PROJECT_NAME} Optimization ILDL FILE ${PROJECT_NAME}Config.cmake)
 
 
 # EXPORT SE-SYNC VISUALIZATION LIBRARY

@@ -21,11 +21,11 @@ The C++ implementation of SE-Sync can be built and exported as a CMake project. 
 
 #### C++ quick installation guide
 
-The following installation instructions have been verified on Ubuntu 18.04:
+The following installation instructions have been verified on Ubuntu 22.04:
 
 *Step 1:*  Install dependencies
 ```
-$ sudo apt-get install build-essential cmake-gui liblapack-dev libblas-dev libsuitesparse-dev
+$ sudo apt-get install build-essential cmake-gui libeigen3-dev liblapack-dev libblas-dev libsuitesparse-dev
 ```
 
 *Step 2:*  Clone the repository
@@ -52,7 +52,7 @@ $ cd build && cmake ..
 
 *Step 6:*  Build code
 ```
-$ make [-jN, where N is the number of cores to use for parallel compilation]
+$ make -j
 ```
 
 *Step 7:*  Run the example command-line utility on some tasty data :-D!
@@ -63,7 +63,13 @@ $ ./SE-Sync ../../../data/sphere2500.g2o
 
 ### Python
 
-Python bindings for the C++ SE-Sync library can also be built using [pybind11](https://pybind11.readthedocs.io/en/stable/index.html); to do so, simply set `BUILD_PYTHON_BINDINGS` when configuring the CMake project.  See this [notebook](https://github.com/david-m-rosen/SE-Sync/blob/master/C%2B%2B/examples/PySESync.ipynb) for a minimal working example demonstrating the use of SE-Sync's Python interface.
+Python bindings for the C++ SE-Sync library can also be built using [pybind11](https://pybind11.readthedocs.io/en/stable/index.html).  To do so, install the additional Python dependencies using the command:
+
+```
+$ sudo apt-get install python3 python3-dev pybind11-dev jupyter-notebook 
+```
+
+and then set `BUILD_PYTHON_BINDINGS` when configuring the CMake project.  See this [notebook](https://github.com/david-m-rosen/SE-Sync/blob/master/C%2B%2B/examples/PySESync.ipynb) for a minimal working example demonstrating the use of SE-Sync's Python interface.
 
 ## References
 
@@ -108,10 +114,18 @@ month = sep,
 year = {2017},
 }
 
-
+@misc{Rosen2022Accelerating,
+  title = {Accelerating Certifiable Estimation with Preconditioned Eigensolvers},
+  author = {Rosen, David M.},
+  month = may,
+  year = {2022},
+  publisher = {arXiv},
+  doi = {10.48550/ARXIV.2207.05257},
+  url = {https://arxiv.org/abs/2207.05257},
+}
 ```
 
-and the following [paper](https://pdfs.semanticscholar.org/90b8/a3b089509dfea2fb83b2e49d77a443b2a3f7.pdf) of Absil et al., which describes the Riemannian trust-region (RTR) method that SE-Sync employs:
+and the following [paper](https://link.springer.com/article/10.1007/s10208-005-0179-9) of Absil et al., which describes the Riemannian trust-region (RTR) method that SE-Sync employs:
 
 ```
 @article{Absil2007Trust,
@@ -143,6 +157,6 @@ If you use the MATLAB implementation of SE-Sync, please also cite the following 
 
 ## Copyright and License 
 
-The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016 - 2018 by David M. Rosen, and are distributed under the terms of the GNU Lesser General Public License (LGPL) version 3 (or later).  Please see the [LICENSE](https://github.com/david-m-rosen/SE-Sync/blob/master/LICENSE) for more information.
+The C++ and MATLAB implementations of SE-Sync contained herein are copyright (C) 2016-2022 by David M. Rosen, and are distributed under the terms of the GNU Lesser General Public License (LGPL) version 3 (or later).  Please see the [LICENSE](https://github.com/david-m-rosen/SE-Sync/blob/master/LICENSE) for more information.
 
 Contact: drosen2000@gmail.com

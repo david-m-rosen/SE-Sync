@@ -1,8 +1,7 @@
-#include "Spectra/MatOp/SparseSymMatProd.h"
-#include "Spectra/SymEigsSolver.h" // Spectra's symmetric eigensolver
-
 #include "SESync/SESyncProblem.h"
 #include "SESync/SESync_utils.h"
+
+#include "Optimization/LinearAlgebra/LOBPCG.h"
 
 #include <random>
 
@@ -19,17 +18,24 @@ SESyncProblem::SESyncProblem(
   // Construct oriented incidence matrix for the underlying pose graph
   A_ = construct_oriented_incidence_matrix(measurements);
 
-  // Construct B matrices
+  /// Construct B matrices
 
   // Matrix B3 is required by all methods to construct chordal initializations
   B3_ = construct_B3_matrix(measurements);
 
-  if ((form_ == Formulation::Simplified) || (form_ == Formulation::Explicit)) {
+  if (form_ != Formulation::SOSync) {
     // When solving the Simplified or Explicit forms of the problem, we also
     // require the matrices B1 and B2 to calculate chordal initializations
     // and/or recover the optimal assignment t(R) of the translational states
     // corresponding to the estimate for the robot orientations
     construct_B1_B2_matrices(measurements, B1_, B2_);
+  }
+
+  /// Construct M matrix
+  // This is needed for any formulation in which translation measurements are
+  // present
+  if (form_ != Formulation::SOSync) {
+    M_ = construct_M_matrix(measurements);
   }
 
   /// Set dimensions of the problem
@@ -45,8 +51,8 @@ SESyncProblem::SESyncProblem(
   SP_.set_p(r_);
 
   if (form_ == Formulation::Simplified || form_ == Formulation::SOSync) {
-    /// Construct data matrices required for the implicit formulation of the
-    /// SE-Sync problem
+    /// Construct data matrices required for the implicit or rotation-only
+    /// formulations of the problem
 
     // Construct rotational connection Laplacian
     LGrho_ = construct_rotational_connection_Laplacian(measurements);
@@ -103,33 +109,43 @@ SESyncProblem::SESyncProblem(
     } else if (preconditioner_ == Preconditioner::IncompleteCholesky)
       iChol_precon_ = new IncompleteCholeskyFactorization(LGrho_);
     else if (preconditioner_ == Preconditioner::RegularizedCholesky) {
-      // Compute maximum eigenvalue of LGrho
+      /// Estimate maximum eigenvalue of LGrho
 
-      // NB: Spectra's built-in SparseSymProduct matrix assumes that input
-      // matrices are stored in COLUMN-MAJOR order
-      Eigen::SparseMatrix<Scalar, Eigen::ColMajor> LGrho_col_major(LGrho_);
+      // Here we use the fact that LGrho >= 0, so that
+      // ||LGrho||_2 = lambda_max(LGrho) = - lambda_min(-LGrho)
 
-      Spectra::SparseSymMatProd<Scalar> op(LGrho_col_major);
-      Spectra::SymEigsSolver<Scalar, Spectra::LARGEST_MAGN,
-                             Spectra::SparseSymMatProd<Scalar>>
-          max_eig_solver(&op, 1, 3);
-      max_eig_solver.init();
+      Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>
+          neg_LGrho_op =
+              [this](const Matrix &X) -> Matrix { return -(this->LGrho_ * X); };
 
-      int max_iterations = 10000;
-      Scalar tol = 1e-4; // We only require a relatively loose estimate here ...
-      int nconv = max_eig_solver.compute(max_iterations, tol);
+      size_t num_iters;
+      size_t nc;
+      Vector theta;
+      Matrix X;
+      std::tie(theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+          neg_LGrho_op,
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+              std::nullopt),
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+              std::nullopt),
+          LGrho_.rows(), 5, 1, 100, num_iters, nc, 1e-2);
 
-      Scalar lambda_max = max_eig_solver.eigenvalues()(0);
+      // Extract estimated norm of LGrho
+      double lambda_max = -theta(0);
+
+      /// Calculate and cache regularized Cholesky decomposition
+
       reg_Chol_precon_.compute(
           LGrho_ +
           SparseMatrix(Vector::Constant(LGrho_.rows(),
                                         lambda_max / reg_Chol_precon_max_cond_)
                            .asDiagonal()));
-    }
+    } // else if (preconditioner_ == Preconditioner::RegularizedCholesky)
 
   } else {
     // form == Explicit
-    M_ = construct_M_matrix(measurements);
 
     /** Compute and cache preconditioning matrices, if required */
     if (preconditioner_ == Preconditioner::Jacobi) {
@@ -138,30 +154,42 @@ SESyncProblem::SESyncProblem(
     } else if (preconditioner_ == Preconditioner::IncompleteCholesky)
       iChol_precon_ = new IncompleteCholeskyFactorization(M_);
     else if (preconditioner_ == Preconditioner::RegularizedCholesky) {
-      // Compute maximum eigenvalue of M
 
-      // NB: Spectra's built-in SparseSymProduct matrix assumes that input
-      // matrices are stored in COLUMN-MAJOR order
-      Eigen::SparseMatrix<Scalar, Eigen::ColMajor> M_col_major(M_);
+      /// Estimate maximum eigenvalue of M
 
-      Spectra::SparseSymMatProd<Scalar> op(M_col_major);
-      Spectra::SymEigsSolver<Scalar, Spectra::LARGEST_MAGN,
-                             Spectra::SparseSymMatProd<Scalar>>
-          max_eig_solver(&op, 1, 3);
-      max_eig_solver.init();
+      // Here we use the fact that M >= 0, so that
+      // M = lambda_max(M) = - lambda_min(-M)
 
-      int max_iterations = 10000;
-      Scalar tol = 1e-4; // We only require a relatively loose estimate here ...
-      int nconv = max_eig_solver.compute(max_iterations, tol);
+      Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> neg_M_op =
+          [this](const Matrix &X) -> Matrix { return -(this->M_ * X); };
 
-      Scalar lambda_max = max_eig_solver.eigenvalues()(0);
+      size_t num_iters;
+      size_t nc;
+      Vector theta;
+      Matrix X;
+      std::tie(theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+          neg_M_op,
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+              std::nullopt),
+          std::optional<
+              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+              std::nullopt),
+          M_.rows(), 5, 1, 100, num_iters, nc, 1e-2);
+
+      // Extract estimated norm of LGrho
+      double lambda_max = -theta(0);
+
+      /// Calculate and cache regularized Cholesky decomposition
+
       reg_Chol_precon_.compute(
           M_ +
           SparseMatrix(Vector::Constant(M_.rows(),
                                         lambda_max / reg_Chol_precon_max_cond_)
                            .asDiagonal()));
-    }
-  }
+    } // else if (preconditioner_ == Preconditioner::RegularizedCholesky)
+
+  } // form == Explicit
 }
 
 void SESyncProblem::set_relaxation_rank(size_t rank) {
@@ -339,8 +367,7 @@ Matrix SESyncProblem::round_solution(const Matrix Y) const {
 
 Matrix SESyncProblem::compute_Lambda_blocks(const Matrix &Y) const {
   // Compute S * Y', where S is the data matrix defining the quadratic form
-  // for
-  // the specific version of the SE-Sync problem we're solving
+  // for the specific version of the SE-Sync problem we're solving
   Matrix SYt = data_matrix_product(Y.transpose());
 
   // Preallocate storage for diagonal blocks of Lambda
@@ -360,12 +387,9 @@ Matrix SESyncProblem::compute_Lambda_blocks(const Matrix &Y) const {
   return Lambda_blocks;
 }
 
-SparseMatrix SESyncProblem::compute_Lambda_from_Lambda_blocks(
-    const Matrix &Lambda_blocks) const {
-
-  size_t offset =
-      ((form_ == Formulation::Simplified || form_ == Formulation::SOSync) ? 0
-                                                                          : n_);
+SparseMatrix
+SESyncProblem::compute_Lambda_from_Lambda_blocks(const Matrix &Lambda_blocks,
+                                                 size_t offset) const {
 
   std::vector<Eigen::Triplet<Scalar>> elements;
   elements.reserve(d_ * d_ * n_);
@@ -381,6 +405,14 @@ SparseMatrix SESyncProblem::compute_Lambda_from_Lambda_blocks(
   return Lambda;
 }
 
+SparseMatrix SESyncProblem::compute_Lambda_from_Lambda_blocks(
+    const Matrix &Lambda_blocks) const {
+
+  size_t offset = (form_ == Formulation::Explicit) ? n_ : 0;
+
+  return compute_Lambda_from_Lambda_blocks(Lambda_blocks, offset);
+}
+
 SparseMatrix SESyncProblem::compute_Lambda(const Matrix &Y) const {
   // First, compute the diagonal blocks of Lambda
   Matrix Lambda_blocks = compute_Lambda_blocks(Y);
@@ -388,96 +420,44 @@ SparseMatrix SESyncProblem::compute_Lambda(const Matrix &Y) const {
   return compute_Lambda_from_Lambda_blocks(Lambda_blocks);
 }
 
-bool SESyncProblem::compute_S_minus_Lambda_min_eig(
-    const Matrix &Y, Scalar &min_eigenvalue, Vector &min_eigenvector,
-    size_t &num_mat_vec_prods, size_t max_iterations,
-    Scalar min_eigenvalue_nonnegativity_tolerance,
-    size_t num_Lanczos_vectors) const {
+bool SESyncProblem::verify_solution(const Matrix &Y, Scalar eta, size_t nx,
+                                    Scalar &theta, Vector &x, size_t &num_iters,
+                                    size_t max_LOBPCG_iters,
+                                    Scalar max_fill_factor,
+                                    Scalar drop_tol) const {
 
-  num_mat_vec_prods = 0;
+  /// Construct certificate matrix S
 
-  // First, compute the largest-magnitude eigenvalue of this matrix
-  SMinusLambdaProdFunctor lm_op(this, Y);
-  Spectra::SymEigsSolver<Scalar, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN,
-                         SMinusLambdaProdFunctor>
-      largest_magnitude_eigensolver(&lm_op, 1,
-                                    std::min(num_Lanczos_vectors, n_ * d_));
-  largest_magnitude_eigensolver.init();
+  Matrix Lambda_blocks;
+  SparseMatrix S;
 
-  int num_converged = largest_magnitude_eigensolver.compute(
-      max_iterations, 1e-4, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN);
-
-  num_mat_vec_prods += largest_magnitude_eigensolver.num_operations();
-
-  // Check convergence and bail out if necessary
-  if (num_converged != 1)
-    return false;
-
-  Scalar lambda_lm = largest_magnitude_eigensolver.eigenvalues()(0);
-
-  if (lambda_lm < 0) {
-    // The largest-magnitude eigenvalue is negative, and therefore also the
-    // minimum eigenvalue, so just return this solution
-    min_eigenvalue = lambda_lm;
-    min_eigenvector = largest_magnitude_eigensolver.eigenvectors(1);
-    min_eigenvector.normalize(); // Ensure that this is a unit vector
-    return true;
+  if (form_ == Formulation::SOSync) {
+    S = LGrho_ - compute_Lambda(Y);
+  } else {
+    // We compute the certificate matrix corresponding to the *full* (i.e.
+    // translation-explicit) form of the problem
+    Lambda_blocks = compute_Lambda_blocks(Y);
+    S = M_ - compute_Lambda_from_Lambda_blocks(Lambda_blocks, n_);
   }
 
-  // The largest-magnitude eigenvalue is positive, and is therefore the
-  // maximum  eigenvalue.  Therefore, after shifting the spectrum of S - Lambda
-  // by -2*lambda_lm (by forming S - Lambda - 2*lambda_max*I), the  shifted
-  // spectrum will lie in the interval [lambda_min(A) - 2*  lambda_max(A),
-  // -lambda_max*A]; in particular, the largest-magnitude eigenvalue of  S -
-  // Lambda - 2*lambda_max*I is lambda_min - 2*lambda_max, with  corresponding
-  // eigenvector v_min; furthermore, the condition number sigma of S - Lambda
-  // -2*lambda_max is then upper-bounded by 2 :-).
+  /// Test positive-semidefiniteness of certificate matrix S using fast
+  /// verification method
+  bool PSD = fast_verification(S, eta, nx, theta, x, num_iters,
+                               max_LOBPCG_iters, max_fill_factor, drop_tol);
 
-  SMinusLambdaProdFunctor min_shifted_op(this, Y, -2 * lambda_lm);
+  if (!PSD && (form_ == Formulation::Simplified)) {
+    // Extract the (trailing) portion of the tangent vector corresponding to the
+    // rotational states
+    Vector v = x.tail(n_ * d_).normalized();
+    x = v;
 
-  Spectra::SymEigsSolver<Scalar, Spectra::SELECT_EIGENVALUE::LARGEST_MAGN,
-                         SMinusLambdaProdFunctor>
-      min_eigensolver(&min_shifted_op, 1,
-                      std::min(num_Lanczos_vectors, n_ * d_));
+    // Compute x's Rayleight quotient with the simplified certificate matrix
+    SparseMatrix Lambda = compute_Lambda_from_Lambda_blocks(Lambda_blocks);
+    Vector Sx = data_matrix_product(x) - Lambda * x;
+    theta = x.dot(Sx);
+  }
 
-  // If Y is a critical point of F, then Y^T is also in the null space of S -
-  // Lambda(Y) (cf. Lemma 6 of the tech report), and therefore its rows are
-  // eigenvectors corresponding to the eigenvalue 0.  In the case  that the
-  // relaxation is exact, this is the *minimum* eigenvalue, and therefore the
-  // rows of Y are exactly the eigenvectors that we're looking for.  On the
-  // other hand, if the relaxation is *not* exact, then S - Lambda(Y) has at
-  // least one strictly negative eigenvalue, and the rows of Y are *unstable
-  // fixed points* for the Lanczos iterations.  Thus, we will take a slightly
-  // "fuzzed" version of the first row of Y as an initialization for the Lanczos
-  // iterations; this allows for rapid convergence in the case that the
-  // relaxation is exact (since are starting close to a solution), while
-  // simultaneously allowing the iterations to escape from this fixed point in
-  // the case that the relaxation is not exact.
-  Vector v0 = Y.row(0).transpose();
-  Vector perturbation(v0.size());
-  perturbation.setRandom();
-  perturbation.normalize();
-  Vector xinit = v0 + (.03 * v0.norm()) * perturbation; // Perturb v0 by ~3%
-
-  // Use this to initialize the eigensolver
-  min_eigensolver.init(xinit.data());
-
-  // Now determine the relative precision required in the Lanczos method in
-  // order to be able to estimate the smallest eigenvalue within an *absolute*
-  // tolerance of 'min_eigenvalue_nonnegativity_tolerance'
-  num_converged = min_eigensolver.compute(
-      max_iterations, min_eigenvalue_nonnegativity_tolerance / lambda_lm,
-      Spectra::SELECT_EIGENVALUE::LARGEST_MAGN);
-
-  num_mat_vec_prods += min_eigensolver.num_operations();
-
-  if (num_converged != 1)
-    return false;
-
-  min_eigenvector = min_eigensolver.eigenvectors(1);
-  min_eigenvector.normalize(); // Ensure that this is a unit vector
-  min_eigenvalue = min_eigensolver.eigenvalues()(0) + 2 * lambda_lm;
-  return true;
+  return PSD;
 }
 
 Matrix SESyncProblem::chordal_initialization() const {
@@ -525,47 +505,4 @@ Matrix SESyncProblem::random_sample() const {
   return Y;
 }
 
-/// MINIMUM EIGENVALUE COMPUTATION STRUCT
-
-SESyncProblem::SMinusLambdaProdFunctor::SMinusLambdaProdFunctor(
-    const SESyncProblem *prob, const Matrix &Y, Scalar sigma)
-    : problem_(prob), dim_(prob->dimension()), sigma_(sigma) {
-
-  if ((problem_->formulation() == Formulation::Simplified) ||
-      (problem_->formulation() == Formulation::SOSync)) {
-    rows_ = problem_->dimension() * problem_->num_states();
-    cols_ = problem_->dimension() * problem_->num_states();
-  } else // mode == Explicit
-  {
-    rows_ = (problem_->dimension() + 1) * problem_->num_states();
-    cols_ = (problem_->dimension() + 1) * problem_->num_states();
-  }
-
-  // Compute and cache this on construction
-  Lambda_blocks_ = problem_->compute_Lambda_blocks(Y);
-}
-
-void SESyncProblem::SMinusLambdaProdFunctor::perform_op(Scalar *x,
-                                                        Scalar *y) const {
-  Eigen::Map<Vector> X(x, cols_);
-  Eigen::Map<Vector> Y(y, rows_);
-
-  Y = problem_->data_matrix_product(X);
-
-  // Offset corresponding to the first index in X and Y associated with
-  // rotational blocks
-  size_t offset = (((problem_->formulation() == Formulation::Simplified) ||
-                    (problem_->formulation() == Formulation::SOSync))
-                       ? 0
-                       : problem_->num_states());
-
-#pragma omp parallel for
-  for (size_t i = 0; i < problem_->num_states(); ++i)
-    Y.segment(offset + i * dim_, dim_) -=
-        Lambda_blocks_.block(0, i * dim_, dim_, dim_) *
-        X.segment(offset + i * dim_, dim_);
-
-  if (sigma_ != 0)
-    Y += sigma_ * X;
-}
 } // namespace SESync

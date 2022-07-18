@@ -28,13 +28,24 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     throw std::invalid_argument(
         "Maximum computation time must be a positive value");
 
-  if (options.max_eig_iterations < 0)
-    throw std::invalid_argument(
-        "Maximum number of Lanczos iterations must be a positive value");
-
   if (options.min_eig_num_tol <= 0)
     throw std::invalid_argument("Numerical tolerance for minimum eigenvalue "
                                 "nonnegativity must be a positive value");
+
+  if (options.LOBPCG_block_size < 1)
+    throw std::invalid_argument("LOBPCG block size must be a positive integer");
+
+  if (options.LOBPCG_max_fill_factor <= 0)
+    throw std::invalid_argument("Maximum fill factor for LOBPCG preconditioner "
+                                "must be a positive value");
+
+  if (options.LOBPCG_drop_tol <= 0 || options.LOBPCG_drop_tol > 1)
+    throw std::invalid_argument("Drop tolerance for LOBPCG preconditioner must "
+                                "be a positive value in the range (0, 1]");
+
+  if (options.LOBPCG_max_iterations <= 0)
+    throw std::invalid_argument(
+        "Maximum number of LOBPCG iterations must be a positive value");
 
   /// ALGORITHM DATA
 
@@ -45,8 +56,8 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   Matrix NablaF_Y;
 
   // The output results struct that we will return
-  SESyncResult SESyncResults;
-  SESyncResults.status = MaxRank;
+  SESyncResult sesync_result;
+  sesync_result.status = MaxRank;
 
   /// OPTION PARSING AND OUTPUT TO USER
 
@@ -67,14 +78,20 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << std::endl;
     std::cout << " Maximum level of Riemannian staircase: " << options.rmax
               << std::endl;
-    std::cout << " Number of Lanczos vectors to use in minimum eigenvalue "
-                 "computation: "
-              << options.num_Lanczos_vectors << std::endl;
-    std::cout << " Maximum number of iterations for eigenvalue computation: "
-              << options.max_eig_iterations << std::endl;
     std::cout << " Tolerance for accepting an eigenvalue as numerically "
                  "nonnegative in optimality verification: "
               << options.min_eig_num_tol << std::endl;
+    std::cout << " LOBPCG block size: " << options.LOBPCG_block_size
+              << std::endl;
+    std::cout << " LOBPCG preconditioner maximum fill factor: "
+              << options.LOBPCG_max_fill_factor << std::endl;
+    std::cout << " LOBPCG preconditioner drop tolerance: "
+              << options.LOBPCG_drop_tol << std::endl;
+
+    std::cout << " Maximum number of LOBPCG iterations for escape direction "
+                 "computation: "
+              << options.LOBPCG_max_iterations << std::endl;
+
     if (problem.formulation() == Formulation::Simplified) {
       std::cout << " Using "
                 << (problem.projection_factorization() ==
@@ -188,11 +205,11 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       };
 
   // Preconditioning operator (optional)
-  std::experimental::optional<
+  std::optional<
       Optimization::Riemannian::LinearOperator<Matrix, Matrix, Matrix>>
       precon;
   if (options.preconditioner == Preconditioner::None)
-    precon = std::experimental::nullopt;
+    precon = std::nullopt;
   else {
     Optimization::Riemannian::LinearOperator<Matrix, Matrix, Matrix> precon_op =
         [&problem](const Matrix &Y, const Matrix &Ydot,
@@ -233,10 +250,10 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     }
   }
 
-  SESyncResults.initialization_time = Stopwatch::tock(SESync_start_time);
+  sesync_result.initialization_time = Stopwatch::tock(SESync_start_time);
   if (options.verbose)
     std::cout << " SE-Sync initialization finished; elapsed time: "
-              << SESyncResults.initialization_time << " seconds" << std::endl
+              << sesync_result.initialization_time << " seconds" << std::endl
               << std::endl;
 
   if (options.verbose) {
@@ -272,7 +289,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     /// Test temporal stopping condition
 
     if (RTR_iteration_start_time >= options.max_computation_time) {
-      SESyncResults.status = ElapsedTime;
+      sesync_result.status = ElapsedTime;
       break;
     }
 
@@ -289,40 +306,46 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                 << std::endl;
 
     /// Run optimization!
-    Optimization::Riemannian::TNTResult<Matrix, Scalar> TNTResults =
+    Optimization::Riemannian::TNTResult<Matrix, Scalar> tnt_result =
         Optimization::Riemannian::TNT<Matrix, Matrix, Scalar, Matrix>(
             F, QM, metric, retraction, Y, NablaF_Y, precon, params,
             options.user_function);
 
     // Extract the results
-    SESyncResults.Yopt = TNTResults.x;
-    SESyncResults.SDPval = TNTResults.f;
-    SESyncResults.gradnorm =
-        problem.Riemannian_gradient(SESyncResults.Yopt).norm();
+    sesync_result.Yopt = tnt_result.x;
+    sesync_result.SDPval = tnt_result.f;
+    sesync_result.gradnorm =
+        problem.Riemannian_gradient(sesync_result.Yopt).norm();
 
     // Record sequence of function values
-    SESyncResults.function_values.push_back(TNTResults.objective_values);
+    sesync_result.function_values.push_back(tnt_result.objective_values);
 
     // Record sequence of gradient norm values
-    SESyncResults.gradient_norms.push_back(TNTResults.gradient_norms);
+    sesync_result.gradient_norms.push_back(tnt_result.gradient_norms);
 
     // Record sequence of (# Hessian-vector products)
-    SESyncResults.Hessian_vector_products.push_back(
-        TNTResults.inner_iterations);
+    sesync_result.Hessian_vector_products.push_back(
+        tnt_result.inner_iterations);
 
     // Record sequence of elapsed optimization times
-    SESyncResults.elapsed_optimization_times.push_back(TNTResults.time);
+    sesync_result.elapsed_optimization_times.push_back(tnt_result.time);
 
     // Record sequence of pose estimates, if requested
     if (options.log_iterates)
-      SESyncResults.iterates.push_back(TNTResults.iterates);
+      sesync_result.iterates.push_back(tnt_result.iterates);
+
+    /// Check TNT termination status
+    if (tnt_result.status == Optimization::Riemannian::TNTStatus::ElapsedTime) {
+      sesync_result.status = SESyncStatus::ElapsedTime;
+      break;
+    }
 
     if (options.verbose) {
       // Display some output to the user
       std::cout << std::endl
                 << "Found first-order critical point with value F(Y) = "
-                << SESyncResults.SDPval
-                << "!  Elapsed computation time: " << TNTResults.elapsed_time
+                << sesync_result.SDPval
+                << "!  Elapsed computation time: " << tnt_result.elapsed_time
                 << " seconds" << std::endl
                 << std::endl;
       std::cout << "Checking second order optimality ... " << std::endl;
@@ -330,54 +353,51 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
 
     /// Check second-order optimality
 
-    // Compute the minimum eigenvalue lambda and corresponding eigenvector
-    // of Q - Lambda
-    size_t num_min_eig_mv_ops;
-    auto eig_start_time = Stopwatch::tick();
-    bool eigenvalue_convergence = problem.compute_S_minus_Lambda_min_eig(
-        SESyncResults.Yopt, SESyncResults.lambda_min, SESyncResults.v_min,
-        num_min_eig_mv_ops, options.max_eig_iterations, options.min_eig_num_tol,
-        options.num_Lanczos_vectors);
-    double eig_elapsed_time = Stopwatch::tock(eig_start_time);
+    size_t num_lobpcg_iters;
+    auto verification_start_time = Stopwatch::tick();
+
+    Vector v;     // Escape direction
+    Scalar theta; // Curvature of certificate matrix along escape direction
+
+    bool global_opt = problem.verify_solution(
+        sesync_result.Yopt, options.min_eig_num_tol, options.LOBPCG_block_size,
+        theta, v, num_lobpcg_iters, options.LOBPCG_max_iterations,
+        options.LOBPCG_max_fill_factor, options.LOBPCG_drop_tol);
+    double verification_elapsed_time = Stopwatch::tock(verification_start_time);
 
     // Check eigenvalue convergence
-    if (!eigenvalue_convergence) {
+    if (!global_opt && theta >= -options.min_eig_num_tol / 2) {
       if (options.verbose)
-        std::cout << "WARNING!  EIGENVALUE COMPUTATION DID NOT CONVERGE TO "
-                     "DESIRED PRECISION!"
-                  << std::endl;
-      SESyncResults.status = EigImprecision;
+        std::cout
+            << "WARNING! ESCAPE DIRECTION COMPUTATION DID NOT CONVERGE TO "
+               "DESIRED PRECISION!"
+            << std::endl;
+      sesync_result.status = EigImprecision;
       break;
     }
 
     // Record results of eigenvalue computation
-    SESyncResults.minimum_eigenvalues.push_back(SESyncResults.lambda_min);
-    SESyncResults.min_eig_mv_ops.push_back(num_min_eig_mv_ops);
-    SESyncResults.min_eig_comp_times.push_back(eig_elapsed_time);
+    sesync_result.escape_direction_curvatures.push_back(theta);
+    sesync_result.LOBPCG_iters.push_back(num_lobpcg_iters);
+    sesync_result.verification_times.push_back(verification_elapsed_time);
 
-    // Test nonnegativity of minimum eigenvalue
-    if (SESyncResults.lambda_min > -options.min_eig_num_tol) {
+    if (global_opt) {
       // results.Yopt is a second-order critical point (global optimum)!
       if (options.verbose)
-        std::cout << "Found second-order critical point! Minimum eigenvalue: "
-                  << SESyncResults.lambda_min
-                  << ".  Elapsed computation time: " << eig_elapsed_time
-                  << " seconds (" << num_min_eig_mv_ops
-                  << " matrix-vector multiplications)." << std::endl;
-      SESyncResults.status = GlobalOpt;
+        std::cout
+            << "Found second-order critical point! Elapsed computation time: "
+            << verification_elapsed_time << " seconds." << std::endl;
+      sesync_result.status = GlobalOpt;
       break;
     } // global optimality
     else {
 
       /// ESCAPE FROM SADDLE!
       if (options.verbose) {
-        std::cout << "Saddle point detected! Minimum eigenvalue: "
-                  << SESyncResults.lambda_min
-                  << ".  Elapsed computation time: " << eig_elapsed_time
-                  << " seconds (" << num_min_eig_mv_ops
-                  << " matrix-vector multiplications)." << std::endl;
-
-        std::cout << "Computing escape direction ... " << std::endl;
+        std::cout << "Saddle point detected! Curvature along escape direction: "
+                  << theta << ".  Elapsed computation time: "
+                  << verification_elapsed_time << " seconds ("
+                  << num_lobpcg_iters << " LOBPCG iterations)." << std::endl;
       }
 
       // Augment the rank of the rank-restricted semidefinite relaxation in
@@ -386,10 +406,9 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       problem.set_relaxation_rank(r + 1);
 
       Matrix Yplus;
-      bool escape_success =
-          escape_saddle(problem, SESyncResults.Yopt, SESyncResults.lambda_min,
-                        SESyncResults.v_min, options.grad_norm_tol,
-                        options.preconditioned_grad_norm_tol, Yplus);
+      bool escape_success = escape_saddle(
+          problem, sesync_result.Yopt, theta, v, options.grad_norm_tol,
+          options.preconditioned_grad_norm_tol, Yplus);
 
       if (escape_success) {
         // Update initialization point for next level in the Staircase
@@ -401,7 +420,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
                  "SADDLE POINT!  (Try decreasing the preconditioned "
                  "gradient norm tolerance)"
               << std::endl;
-        SESyncResults.status = SaddlePoint;
+        sesync_result.status = SaddlePoint;
         break;
       }
     } // saddle point
@@ -415,12 +434,12 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << "===== END RIEMANNIAN STAIRCASE =====" << std::endl
               << std::endl;
 
-    switch (SESyncResults.status) {
+    switch (sesync_result.status) {
     case GlobalOpt:
       std::cout << "Found global optimum!" << std::endl;
       break;
     case EigImprecision:
-      std::cout << "WARNING: Minimum eigenvalue computation did not achieve "
+      std::cout << "WARNING: Escape direction computation did not achieve "
                    "sufficient accuracy; solution may not be globally optimal!"
                 << std::endl;
       break;
@@ -448,7 +467,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   // Round solution
   auto rounding_start_time = Stopwatch::tick();
   // Recover the complete pose matrix X = [t | R]
-  SESyncResults.xhat = problem.round_solution(SESyncResults.Yopt);
+  sesync_result.xhat = problem.round_solution(sesync_result.Yopt);
   double rounding_elapsed_time = Stopwatch::tock(rounding_start_time);
 
   if (options.verbose)
@@ -456,7 +475,7 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
               << " seconds" << std::endl
               << std::endl;
 
-  SESyncResults.total_computation_time = Stopwatch::tock(SESync_start_time);
+  sesync_result.total_computation_time = Stopwatch::tock(SESync_start_time);
 
   /// Compute some additional interesting bits of data
 
@@ -464,65 +483,63 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
   // Note that since xhat contains the *complete* set of pose estimates, we must
   // extract only the *rotational* elements of xhat if the SE synchronization
   // problem was solved using the simplified formulation
-  SESyncResults.Fxhat =
+  sesync_result.Fxhat =
       (problem.formulation() == Formulation::Simplified
-           ? problem.evaluate_objective(SESyncResults.xhat.block(
+           ? problem.evaluate_objective(sesync_result.xhat.block(
                  0, problem.num_states(), problem.dimension(),
                  problem.dimension() * problem.num_states()))
-           : problem.evaluate_objective(SESyncResults.xhat));
+           : problem.evaluate_objective(sesync_result.xhat));
 
   // Compute the primal optimal SDP solution Lambda and its objective value
-  Matrix Lambda_blocks = problem.compute_Lambda_blocks(SESyncResults.Yopt);
+  Matrix Lambda_blocks = problem.compute_Lambda_blocks(sesync_result.Yopt);
 
-  SESyncResults.trLambda = 0;
+  sesync_result.trLambda = 0;
   for (size_t i = 0; i < problem.num_states(); i++)
-    SESyncResults.trLambda +=
+    sesync_result.trLambda +=
         Lambda_blocks
             .block(0, i * problem.dimension(), problem.dimension(),
                    problem.dimension())
             .trace();
 
-  SESyncResults.Lambda =
+  sesync_result.Lambda =
       problem.compute_Lambda_from_Lambda_blocks(Lambda_blocks);
 
   // Get the duality gap for the primal-dual pair (Y'*Y, Lambda) of SDP
   // estimates
 
-  SESyncResults.duality_gap = SESyncResults.SDPval - SESyncResults.trLambda;
+  sesync_result.duality_gap = sesync_result.SDPval - sesync_result.trLambda;
 
   // Get an upper bound on the (global) suboptimality of the recovered (rounded)
   // pose estimates
-  SESyncResults.suboptimality_bound =
-      SESyncResults.Fxhat - SESyncResults.trLambda;
+  sesync_result.suboptimality_bound =
+      sesync_result.Fxhat - sesync_result.trLambda;
 
   /// FINAL OUTPUT
 
   if (options.verbose) {
     std::cout << "SDP RESULTS:" << std::endl;
-    std::cout << "Value of dual SDP solution F(Y): " << SESyncResults.SDPval
+    std::cout << "Value of dual SDP solution F(Y): " << sesync_result.SDPval
               << std::endl;
     std::cout << "Norm of Riemannian gradient grad F(Y): "
-              << SESyncResults.gradnorm << std::endl;
+              << sesync_result.gradnorm << std::endl;
     std::cout << "Value of primal SDP solution tr(Lambda): "
-              << SESyncResults.trLambda << std::endl;
-    std::cout << "Minimum eigenvalue of certificate matrix S - Lambda: "
-              << SESyncResults.lambda_min << std::endl;
-    std::cout << "SDP duality gap: " << SESyncResults.duality_gap << std::endl
+              << sesync_result.trLambda << std::endl;
+    std::cout << "SDP duality gap: " << sesync_result.duality_gap << std::endl
               << std::endl;
     std::cout << "SE-SYNCHRONIZATION RESULTS:" << std::endl;
-    std::cout << "Value of rounded pose estimates F(x): " << SESyncResults.Fxhat
+    std::cout << "Value of rounded pose estimates F(x): " << sesync_result.Fxhat
               << std::endl;
     std::cout << "Suboptimality bound F(x) - tr(Lambda) of recovered pose "
                  "estimate: "
-              << SESyncResults.suboptimality_bound << std::endl
+              << sesync_result.suboptimality_bound << std::endl
               << std::endl;
     std::cout << "Total elapsed computation time: "
-              << SESyncResults.total_computation_time << " seconds" << std::endl
+              << sesync_result.total_computation_time << " seconds" << std::endl
               << std::endl;
 
     std::cout << "===== END SE-SYNC =====" << std::endl << std::endl;
   } // if (options.verbose)
-  return SESyncResults;
+  return sesync_result;
 }
 
 SESyncResult SESync(const measurements_t &measurements,
@@ -544,20 +561,19 @@ SESyncResult SESync(const measurements_t &measurements,
   return SESync(problem, options, Y0);
 }
 
-bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
-                   Scalar lambda_min, const Vector &v_min,
-                   Scalar gradient_tolerance,
+bool escape_saddle(const SESyncProblem &problem, const Matrix &Y, Scalar theta,
+                   const Vector &v, Scalar gradient_tolerance,
                    Scalar preconditioned_gradient_tolerance, Matrix &Yplus) {
 
-  /** v_min is an eigenvector corresponding to a negative eigenvalue of Q -
-   * Lambda, so the KKT conditions for the semidefinite relaxation are not
-   * satisfied; this implies that Y is a saddle point of the rank-restricted
-   * semidefinite  optimization.  Fortunately, v_min can be used to compute a
-   * descent  direction from this saddle point, as described in Theorem 3.9
-   * of the paper "A Riemannian Low-Rank Method for Optimization over
-   * Semidefinite  Matrices with Block-Diagonal Constraints". Define the vector
-   * Ydot := e_{r+1} * v'; this is a tangent vector to the domain of the SDP
-   * and provides a direction of negative curvature */
+  /** v is an eigenvector corresponding to a negative eigenvalue of Q - Lambda,
+   * so the KKT conditions for the semidefinite relaxation are not satisfied;
+   * this implies that Y is a saddle point of the rank-restricted semidefinite
+   * optimization.  Fortunately, v_min can be used to compute a descent
+   * direction from this saddle point, as described in Theorem 3.9 of the paper
+   * "A Riemannian Low-Rank Method for Optimization over Semidefinite  Matrices
+   * with Block-Diagonal Constraints". Define the vector Ydot := e_{r+1} * v';
+   * this is a tangent vector to the domain of the SDP and provides a direction
+   * of negative curvature */
 
   // Function value at current iterate (saddle point)
   Scalar FY = problem.evaluate_objective(Y);
@@ -572,7 +588,7 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   Y_augmented.topRows(r - 1) = Y;
 
   Matrix Ydot = Matrix::Zero(r, Y.cols());
-  Ydot.bottomRows<1>() = v_min.transpose();
+  Ydot.bottomRows<1>() = v.transpose();
 
   // Set the initial step length to the greater of 10 times the distance needed
   // to arrive at a trial point whose gradient is large enough to avoid
@@ -581,7 +597,7 @@ bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
   // steplength,
   Scalar alpha_min = 1e-6; // Minimum stepsize
   Scalar alpha =
-      std::max(16 * alpha_min, 10 * gradient_tolerance / fabs(lambda_min));
+      std::max(16 * alpha_min, 10 * gradient_tolerance / fabs(theta));
 
   // Vectors of trial stepsizes and corresponding function values
   std::vector<double> alphas;

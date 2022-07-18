@@ -30,7 +30,7 @@ struct SESyncOpts {
 
   /** Stopping criterion based upon the relative decrease in function value
    * between accepted iterations */
-  Scalar rel_func_decrease_tol = 1e-7;
+  Scalar rel_func_decrease_tol = 1e-6;
 
   /** Stopping criterion based upon the norm of an accepted update step */
   Scalar stepsize_tol = 1e-3;
@@ -44,7 +44,7 @@ struct SESyncOpts {
   size_t max_tCG_iterations = 10000;
 
   /** Maximum elapsed computation time (in seconds) */
-  double max_computation_time = std::numeric_limits<double>::max();
+  double max_computation_time = 1800;
 
   /// These next two parameters define the stopping criteria for the truncated
   /// preconditioned conjugate-gradient solver running in the inner loop --
@@ -69,7 +69,7 @@ struct SESyncOpts {
   /** An optional user-supplied function that can be used to instrument/monitor
    * the performance of the internal Riemannian truncated-Newton trust-region
    * optimization algorithm as it runs. */
-  std::experimental::optional<SESyncTNTUserFunction> user_function;
+  std::optional<SESyncTNTUserFunction> user_function;
 
   /// SE-SYNC PARAMETERS
 
@@ -82,22 +82,31 @@ struct SESyncOpts {
   /** The maximum level of the Riemannian Staircase to explore */
   size_t rmax = 10;
 
-  /** The maximum number of Lanczos iterations to admit for the
-   * minimum-eigenvalue computation */
-  size_t max_eig_iterations = 10000;
+  /** Tolerance for accepting the minimum eigenvalue of the
+   * certificate matrix as numerically nonnegative; this should be a small
+   * positive value e.g. 10^-3 */
+  Scalar min_eig_num_tol = 1e-3;
 
-  /** Numerical tolerance for accepting the minimum eigenvalue of the
-   * certificate matrix as numerically; this should be a small positive value
-   * e.g. 10^-4 */
-  Scalar min_eig_num_tol = 1e-5;
+  /** Block size to use in LOBPCG when computing a minimum eigenpair of the
+   * certificate matrix */
+  size_t LOBPCG_block_size = 4;
 
-  /** The number of Lanczos vectors to use in the minimum-eigenvalue computation
-   * (using the implicitly-restarted Arnoldi algorithm); must be in the range
-   * [1, (#poses) * (#problem dimension) - 1] */
-  size_t num_Lanczos_vectors = 20;
+  /// The next parameters control the sparsity of the incomplete symmetric
+  /// indefinite factorization-based preconditioner used in conjunction with
+  /// LOBPCG: 'max_fill_factor' and 'drop_tol' are parameters controlling the
+  /// each column of the inexact sparse triangular *factor L is guanteed to have
+  /// at most max_fill_factor *(nnz(A) / dim(A)) nonzero elements, and any
+  /// elements l in L_k(the kth column of L) satisfying |l| <= drop_tol *
+  /// |L_k|_1 will be set to 0.
+  Scalar LOBPCG_max_fill_factor = 3;
+  Scalar LOBPCG_drop_tol = 1e-3;
 
-  /** Whether to use the Cholesky or QR factorization when computing the
-   * orthogonal projection */
+  /** The maximum number of LOBPCG iterations to permit for the
+   * minimum-eigenpair computation */
+  size_t LOBPCG_max_iterations = 100;
+
+  /** Whether to use the Cholesky or QR factorization when
+   * computing the orthogonal projection */
   ProjectionFactorization projection_factorization =
       ProjectionFactorization::Cholesky;
 
@@ -136,7 +145,7 @@ enum SESyncStatus {
   SaddlePoint,
 
   /** The algorithm converged to a first-order critical point, but the
-   * minimum-eigenvalue computation did not converge to sufficient precision to
+   * minimum-eigenpair computation did not converge to sufficient precision to
    * enable its characterization */
   EigImprecision,
 
@@ -181,12 +190,6 @@ struct SESyncResult {
    */
   Scalar duality_gap;
 
-  /** The minimum eigenvalue of the certificate matrix */
-  Scalar lambda_min;
-
-  /** An eigenvector corresponding to the minimum eigenvalue */
-  Vector v_min;
-
   /** The objective value of the rounded solution xhat in SE(d)^n */
   Scalar Fxhat;
 
@@ -223,19 +226,19 @@ struct SESyncResult {
    * values and gradients were obtained */
   std::vector<std::vector<double>> elapsed_optimization_times;
 
-  /** A vector containing the sequence of minimum eigenvalues of the certificate
-   * matrix constructed from the critical point recovered from the
-   * optimization at each level of the Riemannian Staircase */
-  std::vector<Scalar> minimum_eigenvalues;
+  /** A vector containing the sequence of curvatures theta := x'*S*x of the
+   * certificate matrices S along the computed escape directions x from
+   * suboptimal critical points at each level of the Riemannian Staircase
+   */
+  std::vector<Scalar> escape_direction_curvatures;
 
-  /** A vector containing the number of matrix-vector multiplication operations
-   * performed for the minimum-eigenvalue computation at each level of the
-   * Riemannian Staircase */
-  std::vector<size_t> min_eig_mv_ops;
+  /** A vector containing the number of LOBPCG iterations performed for the
+   * minimum-eigenpair computation at each level of the Riemannian Staircase */
+  std::vector<size_t> LOBPCG_iters;
 
-  /** A vector containing the elapsed time of the minimum eigenvalue computation
-   * at each level of the Riemannian Staircase */
-  std::vector<double> min_eig_comp_times;
+  /** A vector containing the elapsed time needed to perform solution
+   * verification at each level of the Riemannian Staircase */
+  std::vector<double> verification_times;
 
   /** If log_iterates = true, this will contain the sequence of iterates
    * generated by the truncated-Newton trust-region method at each
@@ -262,9 +265,9 @@ SESyncResult SESync(const measurements_t &measurements,
  *  point.  Here:
  *
  * - problem is the specific special Euclidean synchronization problem we are
- *     attempting to solve
+ *   attempting to solve
  * - Y is the critical point (saddle point) obtained at the current level of the
- *     Riemannian Staircase
+ *   Riemannian Staircase
  * - lambda_min is the (negative) minimum eigenvalue of the matrix Q - Lambda
  * - v_min is the eigenvector corresponding to lambda_min
  * - gradient_tolerance is a *lower bound* on the norm of the Riemannian
@@ -291,9 +294,8 @@ SESyncResult SESync(const measurements_t &measurements,
  * contains the point at which to initialize the optimization at the next level
  * of the Riemannian Staircase
  */
-bool escape_saddle(const SESyncProblem &problem, const Matrix &Y,
-                   Scalar lambda_min, const Vector &v_min,
-                   Scalar gradient_tolerance,
+bool escape_saddle(const SESyncProblem &problem, const Matrix &Y, Scalar theta,
+                   const Vector &v, Scalar gradient_tolerance,
                    Scalar preconditioned_gradient_tolerance, Matrix &Yplus);
 
 } // namespace SESync

@@ -2,7 +2,7 @@
 set of pose-graph SLAM measurements and constructing the corresponding data
 matrices used in the SE-Sync algorithm.
  *
- * Copyright (C) 2016 - 2018 by David M. Rosen (dmrosen@mit.edu)
+ * Copyright (C) 2016 - 2022 by David M. Rosen (dmrosen@mit.edu)
  */
 
 #pragma once
@@ -97,5 +97,32 @@ Scalar dS(const Matrix &X, const Matrix &Y, Matrix *G_S = nullptr);
  * SE-Sync tech report.
  */
 Scalar dO(const Matrix &X, const Matrix &Y, Matrix *G_O = nullptr);
+
+/** This function implements the fast solution verification method (Algorithm 3)
+ * described in the paper "Accelerating Certifiable Estimation with
+ * Preconditioned Eigensolvers".
+ *
+ * Given a symmetric sparse matrix S, this function returns a Boolean value
+ * indicating whether the regularized matrix M := S + eta * I is
+ * positive-semidefinite.  In the event that M is *not* PSD, this function
+ * additionally computes a direction of negative curvature x of S, and its
+ * associated Rayleight quotient theta := x'Sx < 0, using the LOBPCG method.
+ *
+ * Here:
+ *
+ * - nx is the size of the block to use in LOBPCG
+ * - num_iters is the number of iterations LOBPCG executed
+ * - max_iters is the maximum number of LOBPCG iterations
+ * - 'max_fill_factor' and 'drop_tol' are parameters controlling the sparsity of
+ *   the incomplete symmetric indefinite factorization-based preconditioner used
+ *   in conjunction with LOBPCG: each column of the inexact sparse triangular
+ *   factor L is guanteed to have at most max_fill_factor * (nnz(A) / dim(A))
+ *   nonzero elements, and any elements l in L_k (the kth column of L)
+ *   satisfying |l| <= drop_tol * |L_k|_1 will be set to 0.
+ */
+bool fast_verification(const SparseMatrix &S, Scalar eta, size_t nx,
+                       Scalar &theta, Vector &x, size_t &num_iters,
+                       size_t max_iters = 1000, Scalar max_fill_factor = 3,
+                       Scalar drop_tol = 1e-3);
 
 } // namespace SESync

@@ -132,6 +132,18 @@ private:
   report).*/
   StiefelProduct SP_;
 
+  /** Private helper function: Given the diagonal blocks Lambda_1, ... Lambda_n
+   * of the certificate matrix Lambda, construct and return the matrix:
+   *
+   * L := [0                      0                ]
+   *      [0  Diag(Lambda_1, Lambda_2 ... Lambda_n)]
+   *
+   * that embeds Lambda as the bottom-right block in the augmented matrix L,
+   * where the top-left 0 matrix is of dimension offset x offset
+   */
+  SparseMatrix compute_Lambda_from_Lambda_blocks(const Matrix &Lambda_blocks,
+                                                 size_t offset) const;
+
 public:
   /// CONSTRUCTORS AND MUTATORS
 
@@ -316,19 +328,36 @@ public:
    * and returns the corresponding Lagrange multiplier matrix Lambda */
   SparseMatrix compute_Lambda(const Matrix &Y) const;
 
-  /** Given a critical point Y in the domain of the optimization problem, this
-   * function computes the smallest eigenvalue lambda_min of S - Lambda and its
-   * associated eigenvector v.  Returns a Boolean value indicating whether the
-   * Lanczos method used to estimate the smallest eigenpair converged to
-   * within the required tolerance. */
-  bool compute_S_minus_Lambda_min_eig(
-      const Matrix &Y, Scalar &min_eigenvalue, Vector &min_eigenvector,
-      size_t &num_mat_vec_prods, size_t max_iterations = 10000,
-      Scalar min_eigenvalue_nonnegativity_tolerance = 1e-5,
-      size_t num_Lanczos_vectors = 20) const;
+  /** Given a critical point Y of the rank-r relaxation, this function
+   * constructs the certificate matrix S(Y) := M - Lambda(Y), and returns a
+   * boolean value indicating whether S(Y) is positive-semidefinite.  In the
+   * event that S is *not* positive-semidefinite, it also computes a direction
+   * of negative curvature x of S, and its corresponding Rayleigh quotient
+   * theta := x'*S*x < 0.  Here:
+   *
+   * - eta is a numerical tolerance for S(Y)'s positive-semidefiniteness: we
+   *   test the positive semidefiniteness of the *regularized* certificate
+   *   matrix S(Y) + eta * I.
+   * - nx is the block size to use in the LOBPCG algorithm
+   * - num_iters is a return value providing the number of LOBPCG iterations
+   *   used to compute the direction of negative curvature x (only set if S(Y) +
+   *   eta * I is *not* PSD)
+   * - max_LOBPCG_iters is the maximum number of LOBPCG iterations to perform
+   * - 'max_fill_factor' and 'drop_tol' are parameters controlling the sparsity
+   *   of the incomplete symmetric indefinite factorization-based preconditioner
+   *   used in conjunction with LOBPCG: each column of the inexact
+   *   sparse triangular factor L is guanteed to have at most max_fill_factor *
+   *   (nnz(A) / dim(A)) nonzero elements, and any elements l in L_k (the kth
+   *   column of L) satisfying |l| <= drop_tol * |L_k|_1 will be set to 0
+   */
+  bool verify_solution(const Matrix &Y, Scalar eta, size_t nx, Scalar &theta,
+                       Vector &x, size_t &num_iters,
+                       size_t max_LOBPCG_iters = 1000,
+                       Scalar max_fill_factor = 3,
+                       Scalar drop_tol = 1e-3) const;
 
-  /** Computes and returns the chordal initialization for the rank-restricted
-   * semidefinite relaxation */
+  /** Computes and returns the chordal initialization for the
+   * rank-restricted semidefinite relaxation */
   Matrix chordal_initialization() const;
 
   /** Randomly samples a point in the domain for the rank-restricted
@@ -342,37 +371,5 @@ public:
     if (iChol_precon_)
       delete iChol_precon_;
   }
-
-  /// MINIMUM EIGENVALUE COMPUTATIONS
-
-  /** This is a lightweight struct used in conjunction with Spectra to compute
-   *the minimum eigenvalue and eigenvector of S - Lambda(X); it has a single
-   *nontrivial function, perform_op(x,y), that computes and returns the product
-   *y = (S - Lambda + sigma*I) x */
-  struct SMinusLambdaProdFunctor {
-    const SESyncProblem *problem_;
-
-    // Diagonal blocks of the matrix Lambda
-    Matrix Lambda_blocks_;
-
-    // Number of rows and columns of the matrix B - Lambda
-    int rows_;
-    int cols_;
-
-    // Dimensional parameter d of the special Euclidean group SE(d) over which
-    // this synchronization problem is defined
-    int dim_;
-    Scalar sigma_;
-
-    // Constructor
-    SMinusLambdaProdFunctor(const SESyncProblem *prob, const Matrix &Y,
-                            Scalar sigma = 0);
-
-    int rows() const { return rows_; }
-    int cols() const { return cols_; }
-
-    // Matrix-vector multiplication operation
-    void perform_op(Scalar *x, Scalar *y) const;
-  };
-};
+}; // class SESyncProblem
 } // namespace SESync
