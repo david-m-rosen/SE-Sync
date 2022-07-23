@@ -1,6 +1,6 @@
 # dmrosen 4-July-2022
 
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.3)
 
 # PROJECT CONFIGURATION
 project(SESync LANGUAGES C CXX VERSION 1.0.0)
@@ -39,7 +39,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE STRING "The CMak
 
 
 # Find (system) Eigen library
-find_package(Eigen3 3.4 REQUIRED)
+find_package(Eigen3 3.3.3 REQUIRED)
 if(EIGEN3_FOUND)
 message(STATUS "Found Eigen3 library: ${EIGEN3_INCLUDE_DIR}\n")
 endif()
@@ -151,10 +151,14 @@ endif()
 if(${BUILD_PYTHON_BINDINGS})
   
   # Find the appropriate Python3 interpreter
+  # NB:  The following command requires CMake version 3.12 or greater
+  if(${CMAKE_VERSION} VERSION_LESS "3.12") 
+    message(FATAL_ERROR "CMake version 3.12 or greater is required to build Python bindings.")
+  endif() 
   find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
   
   # Find pybind11
-  find_package(pybind11 REQUIRED)
+  find_package(pybind11 2.4.3 REQUIRED)
   
   # Determine the location of this user's site-packages directory
   execute_process ( COMMAND ${Python3_EXECUTABLE} -m site --user-site OUTPUT_VARIABLE Python3_USER_SITE_LIB OUTPUT_STRIP_TRAILING_WHITESPACE)
