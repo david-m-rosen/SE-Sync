@@ -66,7 +66,7 @@ $ ./SE-Sync ../../../data/sphere2500.g2o
 Python bindings for the C++ SE-Sync library can also be built using [pybind11](https://pybind11.readthedocs.io/en/stable/index.html).  To do so, install the additional Python dependencies using the command:
 
 ```
-$ sudo apt-get install python3 python3-dev pybind11-dev jupyter-notebook 
+$ sudo apt-get install python3 python3-numpy python3-matplotlib python3-dev pybind11-dev jupyter-notebook 
 ```
 
 and then set `BUILD_PYTHON_BINDINGS` when configuring the CMake project.  See this [notebook](https://github.com/david-m-rosen/SE-Sync/blob/master/C%2B%2B/examples/PySESync.ipynb) for a minimal working example demonstrating the use of SE-Sync's Python interface.
