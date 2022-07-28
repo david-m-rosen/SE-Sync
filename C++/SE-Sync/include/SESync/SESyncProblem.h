@@ -34,10 +34,6 @@ typedef Eigen::CholmodDecomposition<SparseMatrix> SparseCholeskyFactorization;
  * projection operation */
 typedef Eigen::SPQR<SparseMatrix> SparseQRFactorization;
 
-/** The type of the incomplete Cholesky decomposition we will use for
- * preconditioning the conjugate gradient iterations in the RTR method */
-typedef Eigen::IncompleteCholesky<Scalar> IncompleteCholeskyFactorization;
-
 class SESyncProblem {
 private:
   /// PROBLEM DATA
@@ -117,9 +113,6 @@ private:
   /** Diagonal Jacobi preconditioner */
   DiagonalMatrix Jacobi_precon_;
 
-  /** Incomplete Cholesky Preconditioner */
-  IncompleteCholeskyFactorization *iChol_precon_ = nullptr;
-
   /** Tikhonov-regularized Cholesky Preconditioner */
   SparseCholeskyFactorization reg_Chol_precon_;
 
@@ -165,13 +158,13 @@ public:
    *  - preconditioner is an enum type specifying the preconditioning strategy
    *      to employ
    */
-  SESyncProblem(
-      const measurements_t &measurements,
-      const Formulation &formulation = Formulation::Simplified,
-      const ProjectionFactorization &projection_factorization =
-          ProjectionFactorization::Cholesky,
-      const Preconditioner &preconditioner = Preconditioner::IncompleteCholesky,
-      Scalar reg_chol_precon_max_cond = 1e6);
+  SESyncProblem(const measurements_t &measurements,
+                const Formulation &formulation = Formulation::Simplified,
+                const ProjectionFactorization &projection_factorization =
+                    ProjectionFactorization::Cholesky,
+                const Preconditioner &preconditioner =
+                    Preconditioner::RegularizedCholesky,
+                Scalar reg_chol_precon_max_cond = 1e6);
 
   /** Set the maximum rank of the rank-restricted semidefinite relaxation */
   void set_relaxation_rank(size_t rank);
@@ -367,9 +360,6 @@ public:
   ~SESyncProblem() {
     if (QR_)
       delete QR_;
-
-    if (iChol_precon_)
-      delete iChol_precon_;
   }
 }; // class SESyncProblem
 } // namespace SESync

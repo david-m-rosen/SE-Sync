@@ -15,28 +15,10 @@ SESyncProblem::SESyncProblem(
       preconditioner_(precon),
       reg_Chol_precon_max_cond_(reg_chol_precon_max_cond) {
 
-  // Construct oriented incidence matrix for the underlying pose graph
+  /// Construct oriented incidence matrix for the underlying pose graph
   A_ = construct_oriented_incidence_matrix(measurements);
 
-  /// Construct B matrices
-
-  // Matrix B3 is required by all methods to construct chordal initializations
-  B3_ = construct_B3_matrix(measurements);
-
-  if (form_ != Formulation::SOSync) {
-    // When solving the Simplified or Explicit forms of the problem, we also
-    // require the matrices B1 and B2 to calculate chordal initializations
-    // and/or recover the optimal assignment t(R) of the translational states
-    // corresponding to the estimate for the robot orientations
-    construct_B1_B2_matrices(measurements, B1_, B2_);
-  }
-
-  /// Construct M matrix
-  // This is needed for any formulation in which translation measurements are
-  // present
-  if (form_ != Formulation::SOSync) {
-    M_ = construct_M_matrix(measurements);
-  }
+  /// SET PROBLEM DIMENSIONS
 
   /// Set dimensions of the problem
   n_ = A_.rows();
@@ -50,6 +32,26 @@ SESyncProblem::SESyncProblem(
   SP_.set_n(n_);
   SP_.set_p(r_);
 
+  /// Construct B matrices
+
+  // Matrix B3 is required by all methods to construct chordal initializations
+  B3_ = construct_B3_matrix(measurements);
+
+  if (form_ != Formulation::SOSync) {
+    // When solving the Simplified or Explicit forms of the problem, we also
+    // require the matrices B1 and B2 to calculate chordal initializations
+    // and/or recover the optimal assignment t(R) of the translational states
+    // corresponding to the estimate for the robot orientations
+    construct_B1_B2_matrices(measurements, B1_, B2_);
+
+    // The full data matrix M is also needed for either form of
+    // SE-synchronization
+    M_ = construct_M_matrix(measurements);
+  }
+
+  /// Construct any additional auxiliary data matrices that are required
+  /// (depending upon the specific problem formulation selected)
+
   if (form_ == Formulation::Simplified || form_ == Formulation::SOSync) {
     /// Construct data matrices required for the implicit or rotation-only
     /// formulations of the problem
@@ -59,8 +61,8 @@ SESyncProblem::SESyncProblem(
 
     if (form_ == Formulation::Simplified) {
 
-      // Construct the auxiliary data (matrices and cached factorizations)
-      // needed to compute products with the objective matrix Q
+      /// Construct the auxiliary data (matrices and cached factorizations)
+      /// needed to compute products with the objective matrix Q
 
       // Construct square root of the (diagonal) matrix of translational
       // measurement precisions
@@ -101,95 +103,72 @@ SESyncProblem::SESyncProblem(
         QR_->compute(SqrtOmega_AredT_);
       }
     } // if (form_ == Formulation::Simplified)
+  }   // Auxiliary data matrix construction
 
-    /** Compute and cache preconditioning matrices, if required */
-    if (preconditioner_ == Preconditioner::Jacobi) {
-      Vector diag = LGrho_.diagonal();
-      Jacobi_precon_ = diag.cwiseInverse().asDiagonal();
-    } else if (preconditioner_ == Preconditioner::IncompleteCholesky)
-      iChol_precon_ = new IncompleteCholeskyFactorization(LGrho_);
-    else if (preconditioner_ == Preconditioner::RegularizedCholesky) {
-      /// Estimate maximum eigenvalue of LGrho
+  /// PRECONDITIONER CONSTRUCTION
 
-      // Here we use the fact that LGrho >= 0, so that
-      // ||LGrho||_2 = lambda_max(LGrho) = - lambda_min(-LGrho)
+  if (preconditioner_ == Preconditioner::Jacobi) {
 
-      Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>
-          neg_LGrho_op =
-              [this](const Matrix &X) -> Matrix { return -(this->LGrho_ * X); };
+    // We build a Jacobi (diagonal scaling) preconditioner by inverting the
+    // diagonal of the data matrix D, depending upon the selected problem
+    // formulation
 
-      size_t num_iters;
-      size_t nc;
-      Vector theta;
-      Matrix X;
-      std::tie(theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
-          neg_LGrho_op,
-          std::optional<
-              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
-              std::nullopt),
-          std::optional<
-              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
-              std::nullopt),
-          LGrho_.rows(), 5, 1, 100, num_iters, nc, 1e-2);
+    // We use the data matrix M for the translation-explicit case, and the
+    // rotational connection Laplacian LGrho otherwise
+    const SparseMatrix &D = (form_ == Formulation::Explicit ? M_ : LGrho_);
 
-      // Extract estimated norm of LGrho
-      double lambda_max = -theta(0);
+    Jacobi_precon_ = D.diagonal().cwiseInverse().asDiagonal();
+  } else if (preconditioner_ == Preconditioner::RegularizedCholesky) {
+    /// We will construct and cache a Cholesky factorization of the regularized
+    /// data matrix P := D + lambda_reg * I, where the data matrix D depends
+    /// upon the selected problem formulation formulation
 
-      /// Calculate and cache regularized Cholesky decomposition
+    // We build the preconditioner from LGrho for SO-synchronization, and from
+    // M for SE-synchronization
+    const SparseMatrix &D = (form_ == Formulation::SOSync ? LGrho_ : M_);
 
-      reg_Chol_precon_.compute(
-          LGrho_ +
-          SparseMatrix(Vector::Constant(LGrho_.rows(),
-                                        lambda_max / reg_Chol_precon_max_cond_)
-                           .asDiagonal()));
-    } // else if (preconditioner_ == Preconditioner::RegularizedCholesky)
+    /// Next, we must estimate the spectral norm of D in order to determine
+    /// the value of the regularization constant lambda_reg necessary to
+    /// guarantee that the upper bound for the desired condition number of the
+    /// preconditioner P is achieved
 
-  } else {
-    // form == Explicit
+    // Here we use the fact that D >= 0, so that
+    // ||D||_2 = lambda_max(D) = - lambda_min(-D)
 
-    /** Compute and cache preconditioning matrices, if required */
-    if (preconditioner_ == Preconditioner::Jacobi) {
-      Vector diag = M_.diagonal();
-      Jacobi_precon_ = diag.cwiseInverse().asDiagonal();
-    } else if (preconditioner_ == Preconditioner::IncompleteCholesky)
-      iChol_precon_ = new IncompleteCholeskyFactorization(M_);
-    else if (preconditioner_ == Preconditioner::RegularizedCholesky) {
+    Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> neg_D_op =
+        [&D](const Matrix &X) -> Matrix { return -(D * X); };
 
-      /// Estimate maximum eigenvalue of M
+    // Estimate the algebraically-smallest eigenvalue of -D using LOBPCG
 
-      // Here we use the fact that M >= 0, so that
-      // M = lambda_max(M) = - lambda_min(-M)
+    size_t num_iters;
+    size_t nc;
+    Vector theta;
+    Matrix X;
+    std::tie(theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
+        neg_D_op,
+        std::optional<
+            Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+            std::nullopt),
+        std::optional<
+            Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
+            std::nullopt),
+        D.rows(), 4, 1, 100, num_iters, nc, 1e-2);
 
-      Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix> neg_M_op =
-          [this](const Matrix &X) -> Matrix { return -(this->M_ * X); };
+    // Extract estimated norm of M
+    Scalar Dnorm = -theta(0);
 
-      size_t num_iters;
-      size_t nc;
-      Vector theta;
-      Matrix X;
-      std::tie(theta, X) = Optimization::LinearAlgebra::LOBPCG<Vector, Matrix>(
-          neg_M_op,
-          std::optional<
-              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
-              std::nullopt),
-          std::optional<
-              Optimization::LinearAlgebra::SymmetricLinearOperator<Matrix>>(
-              std::nullopt),
-          M_.rows(), 5, 1, 100, num_iters, nc, 1e-2);
+    // Compute the required value of the regularization parameter lambda_reg
+    Scalar lambda_reg = Dnorm / (reg_Chol_precon_max_cond_ - 1);
 
-      // Extract estimated norm of LGrho
-      double lambda_max = -theta(0);
+    /// Construct and factor the regularized data matrix P := D + lambda_reg * I
 
-      /// Calculate and cache regularized Cholesky decomposition
+    // Construct regularized data matrix Mbar
+    SparseMatrix P =
+        D + SparseMatrix(Vector::Constant(D.rows(), lambda_reg).asDiagonal());
 
-      reg_Chol_precon_.compute(
-          M_ +
-          SparseMatrix(Vector::Constant(M_.rows(),
-                                        lambda_max / reg_Chol_precon_max_cond_)
-                           .asDiagonal()));
-    } // else if (preconditioner_ == Preconditioner::RegularizedCholesky)
-
-  } // form == Explicit
+    // Compute and cache Cholesky factorization of Mbar
+    reg_Chol_precon_.compute(P);
+  } // Preconditioner construction
 }
 
 void SESyncProblem::set_relaxation_rank(size_t rank) {
@@ -253,12 +232,40 @@ Matrix SESyncProblem::precondition(const Matrix &Y, const Matrix &dotY) const {
     return dotY;
   else if (preconditioner_ == Preconditioner::Jacobi)
     return tangent_space_projection(Y, dotY * Jacobi_precon_);
-  else if (preconditioner_ == Preconditioner::IncompleteCholesky)
-    return tangent_space_projection(
-        Y, iChol_precon_->solve(dotY.transpose()).transpose());
-  else // preconditioner == RegularizedCholesky
-    return tangent_space_projection(
-        Y, reg_Chol_precon_.solve(dotY.transpose()).transpose());
+  else {
+    // preconditioner == RegularizedCholesky
+    if (form_ != Formulation::Simplified) {
+      return tangent_space_projection(
+          Y, reg_Chol_precon_.solve(dotY.transpose()).transpose());
+    } else {
+      // When preconditioning the Simplified form of the problem (whose
+      // objective matrix S is the generalized Schur complement of the data
+      // matrix M with respect to the translational states), we make use of the
+      // fact that for a block matrix of the form:
+      //
+      // M = [A  B]
+      //     [B' C]
+      //
+      // and Schur complement S := C - B' * A^-1 * B, the product PYdot := S^-1
+      // * Ydot is given by the second block of the solution Z := (X,PYdot) to
+      // the following linear system:
+      //
+      //  M  [X]   =   [0]
+      //   [PYdot] = [Ydot]
+
+      // Allocate right-hand side
+      Matrix rhs = Matrix::Zero(M_.rows(), r_);
+
+      // Set second block to Ydot
+      rhs.bottomRows(d_ * n_) = dotY.transpose();
+
+      // Solve linear system
+      Matrix Z = reg_Chol_precon_.solve(rhs);
+
+      // Extract PYdot from Z and return
+      return tangent_space_projection(Y, Z.bottomRows(d_ * n_).transpose());
+    } // formulation == Simplified
+  }   // preconditioner == RegularizedCholesky
 }
 
 Matrix SESyncProblem::tangent_space_projection(const Matrix &Y,

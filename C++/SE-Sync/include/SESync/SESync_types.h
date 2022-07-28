@@ -52,12 +52,7 @@ enum class ProjectionFactorization { Cholesky, QR };
 
 /** The set of available preconditioning strategies to use in the Riemannian
  * Trust Region when solving this problem */
-enum class Preconditioner {
-  None,
-  Jacobi,
-  IncompleteCholesky,
-  RegularizedCholesky
-};
+enum class Preconditioner { None, Jacobi, RegularizedCholesky };
 
 /** The strategy to use for constructing an initial iterate */
 enum class Initialization { Chordal, Random };

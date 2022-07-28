@@ -139,8 +139,6 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
       std::cout << "the identity preconditioner";
     else if (problem.preconditioner() == Preconditioner::Jacobi)
       std::cout << "Jacobi preconditioner";
-    else if (problem.preconditioner() == Preconditioner::IncompleteCholesky)
-      std::cout << "incomplete Cholesky preconditioner";
     else if (problem.preconditioner() == Preconditioner::RegularizedCholesky)
       std::cout << "regularized Cholesky preconditioner with maximum condition "
                    "number "

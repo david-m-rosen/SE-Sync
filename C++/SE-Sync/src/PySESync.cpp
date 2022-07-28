@@ -44,7 +44,6 @@ PYBIND11_MODULE(PySESync, m) {
   py::enum_<SESync::Preconditioner>(m, "Preconditioner")
       .value("None", SESync::Preconditioner::None)
       .value("Jacobi", SESync::Preconditioner::Jacobi)
-      .value("IncompleteCholesky", SESync::Preconditioner::IncompleteCholesky)
       .value("RegularizedCholesky",
              SESync::Preconditioner::RegularizedCholesky);
 
@@ -435,7 +434,7 @@ PYBIND11_MODULE(PySESync, m) {
            py::arg("projection_factorization") =
                SESync::ProjectionFactorization::Cholesky,
            py::arg("preconditioner") =
-               SESync::Preconditioner::IncompleteCholesky,
+               SESync::Preconditioner::RegularizedCholesky,
            py::arg("reg_chol_precon_max_cond") = 1e6, "Basic constructor.")
       .def("set_relaxation_rank", &SESync::SESyncProblem::set_relaxation_rank,
            "Set maximum rank of the rank-restricted semidefinite relaxation.")
