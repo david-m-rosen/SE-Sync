@@ -216,6 +216,11 @@ struct SESyncResult {
    */
   std::vector<std::vector<Scalar>> gradient_norms;
 
+  /** A vector containing the sequence of norms of the preconditioned Riemannian
+   * gradients obtained during the optimization at each level of the Riemannian
+   * Staircase */
+  std::vector<std::vector<Scalar>> preconditioned_gradient_norms;
+
   /** A vector containing the sequence of (# Hessian-vector product operations)
    * carried out during the optimization at each level of the Riemannian
    * Staircase */

@@ -220,6 +220,11 @@ PYBIND11_MODULE(PySESync, m) {
                      "A vector containing the sequence of Riemannian gradient "
                      "norms obtained during optimization at each level of the "
                      "Riemannian Staircase")
+      .def_readwrite("preconditioned_gradient_norms",
+                     &SESync::SESyncResult::preconditioned_gradient_norms,
+                     "A vector containing the sequence of preconditioned "
+                     "Riemannian gradient norms obtained during optimization "
+                     "at each level of the Riemannian Staircase")
       .def_readwrite(
           "Hessian_vector_products",
           &SESync::SESyncResult::Hessian_vector_products,

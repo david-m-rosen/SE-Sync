@@ -320,8 +320,12 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     // Record sequence of function values
     sesync_result.function_values.push_back(tnt_result.objective_values);
 
-    // Record sequence of gradient norm values
+    // Record sequence of gradient norms
     sesync_result.gradient_norms.push_back(tnt_result.gradient_norms);
+
+    // Record sequence of preconditioned gradient norms
+    sesync_result.preconditioned_gradient_norms.push_back(
+        tnt_result.preconditioned_gradient_norms);
 
     // Record sequence of (# Hessian-vector products)
     sesync_result.Hessian_vector_products.push_back(
