@@ -331,6 +331,15 @@ SESyncResult SESync(SESyncProblem &problem, const SESyncOpts &options,
     sesync_result.Hessian_vector_products.push_back(
         tnt_result.inner_iterations);
 
+    // Record sequence of update step norms
+    sesync_result.update_step_norms.push_back(tnt_result.update_step_norms);
+
+    // Record sequence of update step M-norms
+    sesync_result.update_step_M_norms.push_back(tnt_result.update_step_M_norms);
+
+    // Record sequence of gain ratios for the update steps
+    sesync_result.gain_ratios.push_back(tnt_result.gain_ratios);
+
     // Record sequence of elapsed optimization times
     sesync_result.elapsed_optimization_times.push_back(tnt_result.time);
 

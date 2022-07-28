@@ -226,6 +226,20 @@ struct SESyncResult {
    * Staircase */
   std::vector<std::vector<size_t>> Hessian_vector_products;
 
+  /** A vector containing the sequence of norms of the update steps computed
+   * during the optimization at each level of the Riemannian Staircase */
+  std::vector<std::vector<Scalar>> update_step_norms;
+
+  /** A vector containing the sequence of M-norms | h_k |_{M_k} of the update
+   * steps h_k computed during the optimization at each level of the Riemannian
+   * Staircase, where M_k is the preconditioner constructed in the kth iteration
+   */
+  std::vector<std::vector<Scalar>> update_step_M_norms;
+
+  /** A vector containing the sequence of gain ratios for the update steps
+   * computed during optimization at each level of the Riemannian Staircase */
+  std::vector<std::vector<Scalar>> gain_ratios;
+
   /** A vector containing the sequence of elapsed times in the optimization at
    * each level of the Riemannian Staircase at which the corresponding function
    * values and gradients were obtained */

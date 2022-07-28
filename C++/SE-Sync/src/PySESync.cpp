@@ -231,6 +231,21 @@ PYBIND11_MODULE(PySESync, m) {
           "A vector containing the sequence of "
           "(# Hessian-vector products required) at each level of the "
           "Riemannian Staircase")
+      .def_readwrite("update_step_norms",
+                     &SESync::SESyncResult::update_step_norms,
+                     "A vector containing the sequence of norms of the update "
+                     "steps computed during the optimization at each level of "
+                     "the Riemannian Staircase")
+      .def_readwrite(
+          "update_step_M_norms", &SESync::SESyncResult::update_step_M_norms,
+          "A vector containing the sequence of M-norms | h_k |_{M_k} of the "
+          "update steps h_k computed during the optimization at each level of "
+          "the Riemannian Staircase, where M_k is the preconditioner "
+          "constructed in the kth iteration")
+      .def_readwrite("gain_ratios", &SESync::SESyncResult::gain_ratios,
+                     "A vector containing the sequence of gain ratios for the "
+                     "update steps computed during optimization at each level "
+                     "of the Riemannian Staircase")
       .def_readwrite(
           "elapsed_optimization_times",
           &SESync::SESyncResult::elapsed_optimization_times,
