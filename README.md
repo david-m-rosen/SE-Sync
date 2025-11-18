@@ -21,6 +21,7 @@ The C++ implementation of SE-Sync can be built and exported as a CMake project. 
 
 #### C++ quick installation guide
 
+### Linux
 The following installation instructions have been verified on Ubuntu 22.04:
 
 *Step 1:*  Install dependencies
@@ -61,13 +62,75 @@ $ cd bin
 $ ./SE-Sync ../../../data/sphere2500.g2o 
 ```
 
+### Mac
+The following installation instructions have been verified on Sequoia 15.6:
+
+*Step 1:* Create a conda environment 
+```
+conda create -n sesync python=3.12 -y
+```
+```
+conda activate sesync
+```
+```
+conda config --env --add channels conda-forge
+```
+```
+conda config --env --set channel_priority strict
+```
+
+*Step 2:* Add the appropriate packages
+```
+conda install -y suitesparse=5.10 eigen llvm-openmp pybind11 numpy
+```
+```
+brew install gcc cmake
+```
+
+*Step 3: Clone the repository*
+```
+git clone https://github.com/david-m-rosen/SE-Sync.git
+```
+
+*Step 4: Initialize Git submodules*
+```
+cd SE-Sync
+git submodule init
+git submodule update
+```
+
+*Step 5:*  Create build directory
+```
+cd C++ && mkdir build && cd build
+```
+
+*Step 6:*  Configure build and generate Makefiles
+```
+cmake .. -DBUILD_PYTHON_BINDINGS=ON -DPython3_EXECUTABLE="$(which python)" -DPython3_SITEARCH="$CONDA_PREFIX/lib/python3.12/site-packages" -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_C_COMPILER=$(brew --prefix gcc)/bin/gcc-15 -DCMAKE_CXX_COMPILER=$(brew --prefix gcc)/bin/g++-15 -DCMAKE_PREFIX_PATH="$CONDA_PREFIX"
+```
+
+*Step 7:*  Build code
+```
+make -j$(sysctl -n hw.logicalcpu)
+```
+
+*Step 8:*  Run the example command-line utility on some tasty data :-D!
+```
+cd bin
+./SE-Sync ../../../data/sphere2500.g2o 
+```
+ 
+
 ### Python
 
 Python bindings for the C++ SE-Sync library can also be built using [pybind11](https://pybind11.readthedocs.io/en/stable/index.html).  To do so, install the additional Python dependencies using the command:
 
+### Linux
+
 ```
 $ sudo apt-get install python3 python3-numpy python3-matplotlib python3-dev pybind11-dev jupyter-notebook 
 ```
+
 
 and then set `BUILD_PYTHON_BINDINGS` when configuring the CMake project.  See this [notebook](https://github.com/david-m-rosen/SE-Sync/blob/master/C%2B%2B/examples/PySESync.ipynb) for a minimal working example demonstrating the use of SE-Sync's Python interface.
 
